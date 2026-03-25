@@ -1,10 +1,10 @@
-# 🚀 Panduan Instalasi Lokal (XAMPP)
+# Panduan Instalasi Lokal (XAMPP)
 
 Ikuti langkah-langkah berikut untuk menjalankan proyek Laravel ini di lingkungan lokal menggunakan XAMPP.
 
 ---
 
-## 📋 Prasyarat
+## Prasyarat
 
 Pastikan tools berikut sudah terinstall:
 
@@ -15,7 +15,7 @@ Pastikan tools berikut sudah terinstall:
 
 ---
 
-## ⚙️ Langkah-Langkah Instalasi
+## Langkah-Langkah Instalasi
 
 ### 1. Clone Repository
 
@@ -127,7 +127,7 @@ http://localhost/nama-proyek/public
 
 ---
 
-## 🎨 Menjalankan Frontend (Vite)
+## Menjalankan Frontend (Vite)
 
 jalankan:
 
@@ -139,6 +139,6 @@ npm run dev
 
 ---
 
-## ✅ Selesai
+## Selesai
 
 Aplikasi siap digunakan di lokal.
