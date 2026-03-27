@@ -120,17 +120,20 @@ Route::middleware('auth')->group(function () {
     */
     Route::get('/report', [TransactionController::class, 'report'])->name('report');
     Route::get('/report/download', [TransactionController::class, 'downloadReport'])->name('report.download');
-
-    Route::get('/report-product', [ProductController::class, 'reportProduct'])
-        ->name('report.product');
-
+    Route::get('/report-product', [ProductController::class, 'reportProduct'])->name('report.product');
 
     /*
     |--------------------------------------------------------------------------
-    | Tools
+    | pc-builder
     |--------------------------------------------------------------------------
     */
-    Route::get('/pc-builder', [PcBuilderController::class, 'index'])->name('pc-builder');
+    Route::get('/pc-builder', [PcBuilderController::class, 'index'])->name('pc-builder.index');
+    Route::get('/pc-builder/compatible', [PcBuilderController::class, 'getCompatible'])->name('pc-builder.compatible');
 
+    /*
+    |--------------------------------------------------------------------------
+    | Setting
+    |--------------------------------------------------------------------------
+    */
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
 });
