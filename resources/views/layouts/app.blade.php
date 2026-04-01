@@ -147,7 +147,7 @@
                     <span class="ml-3 {{ request()->routeIs('users.index') ? 'font-semibold' : 'font-normal' }}">User</span>
                 </a>
 
-                <a href="{{ route('pc-builder') }}" class="flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('pc-builder') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">
+                <a href="{{ route('pc-builder.index') }}" class="flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('pc-builder.index') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-monitor-cog-icon lucide-monitor-cog">
                         <path d="M12 17v4" />
                         <path d="m14.305 7.53.923-.382" />
@@ -162,7 +162,7 @@
                         <path d="M8 21h8" />
                         <circle cx="18" cy="6" r="3" />
                     </svg>
-                    <span class="ml-3 {{ request()->routeIs('pc-builder') ? 'font-semibold' : 'font-normal' }}">Simulasi PC</span>
+                    <span class="ml-3 {{ request()->routeIs('pc-builder.index') ? 'font-semibold' : 'font-normal' }}">Simulasi PC</span>
                 </a>
 
                 <a href="{{ route('settings') }}" class="flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('settings') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">

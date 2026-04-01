@@ -8,36 +8,44 @@ use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\Category;
+use App\Models\Product;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. USERS (Gas awal buat login)
+        // ============================================================
+        // 1. USERS
+        // ============================================================
         User::create([
-            'name' => 'Staff',
-            'email' => 'staff@gmail.com',
+            'name'     => 'Staff',
+            'email'    => 'staff@gmail.com',
             'password' => Hash::make('123'),
-            'role' => 'staff'
+            'role'     => 'staff'
         ]);
 
         User::create([
-            'name' => 'Owner User',
-            'email' => 'owner@gmail.com',
+            'name'     => 'Owner User',
+            'email'    => 'owner@gmail.com',
             'password' => Hash::make('123'),
-            'role' => 'owner'
+            'role'     => 'owner'
         ]);
 
-        // 2. CATEGORIES (Lengkap buat ekosistem perakitan PC)
+        // ============================================================
+        // 2. CATEGORIES
+        // ⚠️ PENTING: Nama kategori ini harus sama persis dengan
+        //    specKeyMap di JavaScript PC Builder (create/edit blade).
+        //    Jangan ubah nama di bawah kecuali kamu ubah juga di JS.
+        // ============================================================
         $catProcessor   = Category::create(['name' => 'Processor']);
         $catMotherboard = Category::create(['name' => 'Motherboard']);
         $catRam         = Category::create(['name' => 'RAM']);
-        $catVga         = Category::create(['name' => 'VGA Card']);
-        $catStorage     = Category::create(['name' => 'Storage (SSD/HDD)']);
+        $catVga         = Category::create(['name' => 'VGA']);           // Sebelumnya 'VGA Card' — disesuaikan dengan specKeyMap
+        $catStorage     = Category::create(['name' => 'Storage']);       // Sebelumnya 'Storage (SSD/HDD)' — disesuaikan
         $catPsu         = Category::create(['name' => 'Power Supply']);
         $catCasing      = Category::create(['name' => 'Casing']);
-        $catCooler      = Category::create(['name' => 'Cooling System']);
+        $catCooler      = Category::create(['name' => 'CPU Cooler']);    // Sebelumnya 'Cooling System' — disesuaikan
 
         // Peripheral & Display
         Category::create(['name' => 'Monitor']);
@@ -59,29 +67,33 @@ class DatabaseSeeder extends Seeder
         Category::create(['name' => 'Gaming Chair & Desk']);
         Category::create(['name' => 'Lainnya']);
 
+        // ============================================================
         // 3. SUPPLIERS
+        // ============================================================
         $supplier1 = Supplier::create([
             'nama_supplier' => 'PT Sumber Teknologi',
-            'alamat' => 'Jakarta'
+            'alamat'        => 'Jakarta'
         ]);
 
         $supplier2 = Supplier::create([
             'nama_supplier' => 'CV Mega Komputer',
-            'alamat' => 'Surabaya'
+            'alamat'        => 'Surabaya'
         ]);
 
-        // 6. CUSTOMERS
+        // ============================================================
+        // 4. CUSTOMERS
+        // ============================================================
         Customer::create([
-            'name' => 'Budi Santoso',
-            'email' => 'budi@email.com',
-            'phone' => '081234567890',
+            'name'    => 'Budi Santoso',
+            'email'   => 'budi@email.com',
+            'phone'   => '081234567890',
             'address' => 'Jakarta Selatan'
         ]);
 
         Customer::create([
-            'name' => 'Siti Rahayu',
-            'email' => 'siti@email.com',
-            'phone' => '081234567891',
+            'name'    => 'Siti Rahayu',
+            'email'   => 'siti@email.com',
+            'phone'   => '081234567891',
             'address' => 'Bandung'
         ]);
 

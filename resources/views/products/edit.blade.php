@@ -8,6 +8,11 @@
         <h1 class="text-2xl font-semibold tracking-tight text-slate-800">Edit Produk</h1>
         <p class="text-sm text-slate-500">Update data {{ $product->name }} dengan teliti.</p>
     </div>
+<div class="px-5">
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-800">Edit Produk</h1>
+        <p class="text-sm text-slate-500">Update data {{ $product->name }} dengan teliti.</p>
+    </div>
 
     <form action="{{ route('products.update', $product->id) }}" method="POST" enctype="multipart/form-data">
         @csrf
@@ -196,12 +201,21 @@
     function addSpec() {
         const container = document.getElementById('specs-container');
         container.insertAdjacentHTML('beforeend', `
+    function addSpec() {
+        const container = document.getElementById('specs-container');
+        container.insertAdjacentHTML('beforeend', `
             <div class="flex gap-3 spec-row">
-                <input type="text" name="specs[${specIndex}][key]" placeholder="Key" class="w-1/3 px-4 py-2 rounded-xl border border-slate-200 text-sm">
-                <input type="text" name="specs[${specIndex}][value]" placeholder="Value" class="flex-1 px-4 py-2 rounded-xl border border-slate-200 text-sm">
+                <select name="specs[${specIndex}][key]"
+                    class="spec-key-select w-1/3 px-4 py-2 rounded-xl border border-slate-200 text-sm bg-white">
+                    ${buildSpecOptions()}
+                </select>
+                <input type="text" name="specs[${specIndex}][value]" placeholder="Value"
+                    class="flex-1 px-4 py-2 rounded-xl border border-slate-200 text-sm">
                 <button type="button" onclick="this.parentElement.remove()" class="text-red-500 px-2">×</button>
             </div>
         `);
+        specIndex++;
+    }
         specIndex++;
     }
 
