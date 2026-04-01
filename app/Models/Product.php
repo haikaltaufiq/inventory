@@ -15,7 +15,12 @@ class Product extends Model
         'selling_price',
         'warranty',
         'description',
+        'technical_specs',
         'image_url'
+    ];
+
+    protected $casts = [
+        'technical_specs' => 'array',
     ];
 
     public function category(): BelongsTo

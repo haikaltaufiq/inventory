@@ -7,150 +7,197 @@
 
         {{-- 1. MODAL: PILIH SUPPLIER --}}
         <x-modal id="modalSupplier" title="Pilih Sumber Stok" size="md">
-            <div class="space-y-3">
-                {{-- HEADER INFO PRODUK --}}
-                <div class="p-3 bg-slate-50 border border-slate-100 rounded-xl mb-2">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pilih Gudang/Supplier untuk:
-                    </p>
-                    <p class="text-sm font-bold text-slate-800" x-text="selectedProduct.name"></p>
+            <div class="space-y-4">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+                    <p class="text-sm font-semibold text-slate-900" x-text="selectedProduct.name"></p>
+                    <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                        <span class="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200"
+                            x-text="selectedProduct.category_name || 'Uncategorized'"></span>
+                        <span class="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                            Harga mulai Rp <span x-text="formatNumber(selectedProduct.base_price || 0)"></span>
+                        </span>
+                    </div>
+                    <p class="mt-3 text-sm text-slate-500">Pilih supplier dengan stok dan kondisi yang paling sesuai.</p>
                 </div>
-                {{-- LIST SUPPLIER --}}
-                <template x-for="source in selectedProduct.suppliers" :key="source.source_key">
-                    <button @click="checkCompatibilityBeforeAdd(selectedProduct, source)"
-                        class="w-full flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl hover:border-slate-900 transition group">
-                        <div class="text-left">
-                            <p class="text-sm font-black text-slate-800 group-hover:text-slate-900" x-text="source.name">
-                            </p>
-                            <p class="text-[10px] text-slate-400 uppercase font-bold mt-1"
-                                x-text="'Stok: ' + source.pivot_stock + ' | Rp ' + formatNumber(source.pivot_price) + ' | ' + (source.condition || '-')">
-                            </p>
-                        </div>
-                        <i class="fas fa-plus text-slate-300 group-hover:text-slate-900"></i>
-                    </button>
-                </template>
+
+                <div class="space-y-3">
+                    <template x-for="source in selectedProduct.suppliers" :key="source.source_key">
+                        <button @click="checkCompatibilityBeforeAdd(selectedProduct, source)"
+                            class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition hover:border-slate-300 hover:bg-slate-50/70">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-sm font-semibold text-slate-900" x-text="source.name"></span>
+                                        <span x-show="source.condition"
+                                            class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500"
+                                            x-text="source.condition"></span>
+                                    </div>
+                                    <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+                                        <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                            <p class="text-xs text-slate-400">Stok tersedia</p>
+                                            <p class="mt-1 font-semibold text-slate-800" x-text="source.pivot_stock"></p>
+                                        </div>
+                                        <div class="rounded-xl bg-slate-50 px-3 py-2">
+                                            <p class="text-xs text-slate-400">Harga jual</p>
+                                            <p class="mt-1 font-semibold text-slate-800">Rp <span
+                                                    x-text="formatNumber(source.pivot_price)"></span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span
+                                    class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500">
+                                    <i class="fas fa-arrow-right text-sm"></i>
+                                </span>
+                            </div>
+                        </button>
+                    </template>
+                </div>
             </div>
         </x-modal>
 
         {{-- 2. MODAL: WARNING CONFLICT --}}
-        <x-modal id="modalConflict" title="Conflict Alert!" size="sm">
+        <x-modal id="modalConflict" title="Compatibility Check" size="sm">
             <div class="text-center p-2">
                 {{-- ICON STATUS --}}
-                <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-radiation text-2xl"></i>
+                <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-xl"></i>
                 </div>
                 {{-- DESKRIPSI KONFLIK --}}
-                <h3 class="text-sm font-black text-slate-800 uppercase">Compatibility Warning</h3>
-                <p class="text-[11px] text-slate-500 mt-2 leading-relaxed" x-text="conflictMessage"></p>
+                <h3 class="text-base font-semibold text-slate-900">Produk mungkin tidak kompatibel</h3>
+                <p class="text-sm text-slate-500 mt-2 leading-relaxed" x-text="conflictMessage"></p>
                 {{-- AKSI --}}
                 <div class="flex flex-col gap-2 mt-6">
                     <button @click="forceAddToCart()"
-                        class="w-full py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-200">Tetap
+                        class="w-full py-3 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition">Tetap
                         Tambahkan</button>
                     <button @click="closeModal('modalConflict')"
-                        class="w-full py-3 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest">Batal</button>
+                        class="w-full py-3 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition">Batal</button>
                 </div>
             </div>
         </x-modal>
 
         {{-- 3. MODAL: FINAL CHECKOUT --}}
-        <x-modal id="modalCheckout" title="Finalisasi Transaksi" size="md">
-            <div class="space-y-5">
-                {{-- SALES AGENT --}}
-                <div>
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sales Agent</label>
-                    <select x-model="transactionData.sales"
-                        class="w-full mt-2 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-bold outline-none focus:border-slate-900">
-                        <option value="" disabled>Pilih Sales</option>
-                        @foreach ($salesUsers as $salesUser)
-                            <option value="{{ $salesUser->name }}">{{ $salesUser->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                {{-- DATA CUSTOMER --}}
-                <div class="pt-4 border-t border-slate-100">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Customer</label>
-                    <div class="grid grid-cols-1 gap-3 mt-2">
-                        <input type="text" x-model="transactionData.customerName" placeholder="Nama Lengkap Customer"
-                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:border-slate-900">
-                        <input type="text" x-model="transactionData.customerPhone" placeholder="Nomor WhatsApp (628...)"
-                            class="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:border-slate-900">
+        <div id="modalCheckout"
+            class="fixed inset-0 z-50 hidden items-center justify-center overflow-y-auto bg-black/50 p-4 md:p-6">
+            <div class="my-auto w-full max-w-4xl overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl">
+                <div class="flex items-start justify-between border-b border-slate-100 px-5 py-4 md:px-6">
+                    <div>
+                        <p class="text-xs text-slate-500">Finalisasi transaksi</p>
+                        <h2 class="mt-1 text-lg font-semibold text-slate-900">Konfirmasi detail order</h2>
                     </div>
-                </div>
-                {{-- SERVICE FEE --}}
-                <div class="pt-4 border-t border-slate-100">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Service Fee</label>
-                    <input type="number" min="0" step="0.01" x-model.number="serviceFee" placeholder="0"
-                        class="w-full mt-2 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none focus:border-slate-900">
-                </div>
-                {{-- DOKUMEN TRANSAKSI --}}
-                <div class="pt-4 border-t border-slate-100">
-                    <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dokumen Transaksi</label>
-                    <select x-model="transactionData.type"
-                        class="w-full mt-2 px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm font-semibold outline-none focus:border-slate-900">
-                        <option value="Invoice">Invoice</option>
-                        <option value="Quotation">Quotation</option>
-                        <option value="DO">Delivery Order</option>
-                    </select>
-                    <p class="text-[10px] text-slate-400 mt-2">PDF akan otomatis diunduh setelah transaksi berhasil.</p>
-                </div>
-                {{-- RINGKASAN TOTAL --}}
-                <div class="p-4 bg-slate-900 rounded-2xl text-white mt-4">
-                    <div class="flex justify-between items-center text-[11px] text-slate-300 mb-1">
-                        <span>Subtotal</span>
-                        <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
-                    </div>
-                    <div class="flex justify-between items-center text-[11px] text-slate-300 mb-3">
-                        <span>Service Fee</span>
-                        <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
-                    </div>
-                    <div class="flex justify-between items-center">
-                        <span class="text-[10px] font-bold uppercase text-slate-400">Total Tagihan</span>
-                        <span class="text-xl font-black">Rp <span x-text="formatNumber(finalTotal)"></span></span>
-                    </div>
-                    <button @click="submitOrder()"
-                        class="w-full mt-4 py-4 bg-emerald-500 text-white rounded-xl font-black text-[11px] uppercase tracking-widest hover:bg-emerald-600 transition shadow-lg shadow-emerald-900/20">
-                        Simpan Transaksi
+                    <button onclick="closeModal('modalCheckout')"
+                        class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900">
+                        <i class="fas fa-times text-sm"></i>
                     </button>
                 </div>
+
+                <div class="max-h-[calc(100vh-8rem)] overflow-y-auto px-5 py-5 md:px-6 md:py-6">
+                    <div class="grid gap-5 lg:grid-cols-[1.15fr,0.85fr]">
+                        <div class="space-y-4">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                <label class="text-sm font-medium text-slate-600">Sales</label>
+                                <select x-model="transactionData.sales"
+                                    class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                    <option value="" disabled>Pilih Sales</option>
+                                    @foreach ($salesUsers as $salesUser)
+                                        <option value="{{ $salesUser->name }}">{{ $salesUser->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                <label class="text-sm font-medium text-slate-600">Customer</label>
+                                <div class="mt-2 grid grid-cols-1 gap-3">
+                                    <input type="text" x-model="transactionData.customerName" placeholder="Nama Lengkap Customer"
+                                        class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                    <input type="text" x-model="transactionData.customerPhone" placeholder="Nomor WhatsApp (628...)"
+                                        class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                    <label class="text-sm font-medium text-slate-600">Service fee</label>
+                                    <input type="number" min="0" step="0.01" x-model.number="serviceFee" placeholder="0"
+                                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                </div>
+
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                    <label class="text-sm font-medium text-slate-600">Dokumen transaksi</label>
+                                    <select x-model="transactionData.type"
+                                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                        <option value="Invoice">Invoice</option>
+                                        <option value="Quotation">Quotation</option>
+                                        <option value="DO">Delivery Order</option>
+                                    </select>
+                                    <p class="mt-2 text-xs text-slate-400">Dokumen PDF akan otomatis diunduh setelah transaksi berhasil disimpan.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:p-5">
+                            <p class="text-sm font-medium text-slate-700">Ringkasan transaksi</p>
+                            <p class="mt-1 text-sm text-slate-500">Pastikan detail customer, dokumen, dan total sudah sesuai sebelum disimpan.</p>
+
+                            <div class="mt-5 space-y-3">
+                                <div class="flex items-center justify-between text-sm text-slate-500">
+                                    <span>Subtotal</span>
+                                    <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
+                                </div>
+                                <div class="flex items-center justify-between text-sm text-slate-500">
+                                    <span>Service Fee</span>
+                                    <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                                </div>
+                                <div class="flex items-center justify-between border-t border-slate-200 pt-3">
+                                    <span class="text-sm font-medium text-slate-600">Total tagihan</span>
+                                    <span class="text-2xl font-semibold text-slate-900">Rp <span x-text="formatNumber(finalTotal)"></span></span>
+                                </div>
+                            </div>
+
+                            <button @click="submitOrder()"
+                                class="mt-5 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800">
+                                Simpan Transaksi
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </x-modal>
+        </div>
 
         {{-- MAIN INTERFACE --}}
         <div class="flex gap-8 items-start">
             <div class="flex-1 min-w-0">
                 {{-- SEARCH + FILTER BAR --}}
-                <div class="flex gap-4 items-center mb-8">
+                <div class="mb-8">
                     <div
-                        class="flex-1 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-2 pr-4">
+                        class="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm lg:flex-row lg:items-center">
                         {{-- SEARCH INPUT --}}
                         <div class="relative flex-1">
-                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
                             <input type="text" x-model="searchQuery" placeholder="Cari Part PC..."
-                                class="w-full pl-12 pr-4 py-2 border-none outline-none focus:ring-0 text-sm font-medium">
+                                class="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white">
                         </div>
 
                         {{-- CATEGORY DROPDOWN --}}
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open"
-                                class="flex items-center justify-between gap-3 px-5 py-2.5 bg-slate-50 border border-slate-100 rounded-xl shadow-sm hover:border-slate-300 transition min-w-[150px]">
-                                <div class="flex flex-col items-start">
-                                    <span
-                                        class="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Category</span>
-                                    <span class="text-[11px] font-black text-slate-900 uppercase tracking-tighter"
-                                        x-text="activeCat"></span>
+                                class="flex h-11 min-w-[13rem] items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-white">
+                                <div class="flex min-w-0 items-center gap-3">
+                                    <span class="text-sm text-slate-400"><i class="fas fa-layer-group"></i></span>
+                                    <span class="truncate" x-text="activeCat"></span>
                                 </div>
                                 <i class="fas fa-chevron-down text-[10px] text-slate-400 transition-transform"
                                     :class="open ? 'rotate-180' : ''"></i>
                             </button>
                             <div x-show="open" @click.away="open = false" x-transition
-                                class="absolute right-0 mt-2 w-48 bg-white border border-slate-100 rounded-2xl shadow-xl z-50 py-1 overflow-hidden">
+                                class="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1 shadow-xl">
                                 <button @click="activeCat = 'Semua'; open = false"
-                                    class="w-full text-left px-5 py-3 text-[11px] font-bold uppercase hover:bg-slate-50"
-                                    :class="activeCat === 'Semua' ? 'text-blue-600 bg-blue-50' : 'text-slate-600'">Semua</button>
+                                    class="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-slate-50"
+                                    :class="activeCat === 'Semua' ? 'bg-slate-50 text-slate-900' : 'text-slate-600'">Semua</button>
                                 <template x-for="cat in categories" :key="cat.id">
                                     <button @click="activeCat = cat.name; open = false"
-                                        class="w-full text-left px-5 py-3 text-[11px] font-bold uppercase hover:bg-slate-50 flex items-center justify-between"
-                                        :class="activeCat === cat.name ? 'text-blue-600 bg-blue-50' : 'text-slate-600'">
+                                        class="flex w-full items-center justify-between px-4 py-3 text-left text-sm hover:bg-slate-50"
+                                        :class="activeCat === cat.name ? 'bg-slate-50 text-slate-900' : 'text-slate-600'">
                                         <span x-text="cat.name"></span>
                                         <i x-show="activeCat === cat.name" class="fas fa-check text-[10px]"></i>
                                     </button>
@@ -158,15 +205,13 @@
                             </div>
                         </div>
 
-                        <div class="h-8 w-px bg-slate-100 mx-2"></div>
-
                         {{-- COMPATIBILITY TOGGLE --}}
                         <button @click="filterCompatible = !filterCompatible"
-                            :class="filterCompatible ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                'bg-slate-50 text-slate-400 border-slate-100'"
-                            class="px-4 py-2.5 border rounded-xl text-[10px] font-black uppercase tracking-widest transition flex items-center gap-2">
+                            :class="filterCompatible ? 'bg-slate-900 text-white border-slate-900' :
+                                'bg-slate-50 text-slate-600 border-slate-200'"
+                            class="flex h-11 items-center gap-2 rounded-xl border px-4 text-sm transition hover:border-slate-300">
                             <i class="fas fa-microchip"></i>
-                            <span x-text="filterCompatible ? 'Compatibility: ON' : 'Compatibility: OFF'"></span>
+                            <span x-text="filterCompatible ? 'Compatibility aktif' : 'Match compatibility'"></span>
                         </button>
                     </div>
                 </div>
@@ -176,46 +221,46 @@
                     <template x-for="product in filteredProducts" :key="product.id">
                         {{-- PRODUCT CARD --}}
                         <div
-                            class="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden flex flex-col group hover:shadow-xl hover:shadow-slate-200/50 transition duration-500">
+                            class="flex flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-slate-200 hover:shadow-md">
                             {{-- PRODUCT IMAGE --}}
-                            <div class="aspect-4/3 bg-slate-50 relative overflow-hidden cursor-zoom-in"
-                                @click="openDetail(product)">
+                            <div class="relative aspect-[4/3] overflow-hidden bg-slate-50/80">
                                 <img :src="product.image"
-                                    class="w-full h-full object-cover group-hover:scale-110 transition duration-700"
+                                    class="h-full w-full object-cover object-center"
                                     x-on:error="$el.src=@js(asset('assets/no-image.svg'))">
-                            </div>
-                            {{-- PRODUCT INFO --}}
-                            <div class="p-6 flex-1 flex flex-col">
-                                <div class="flex justify-between items-start mb-2">
-                                    <p class="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]"
-                                        x-text="product.category_name"></p>
+                                <div class="absolute inset-x-0 top-0 flex items-start justify-between p-4">
+                                    <span
+                                        class="rounded-full bg-white/90 px-3 py-1 text-xs text-slate-500 ring-1 ring-slate-200/80 backdrop-blur"
+                                        x-text="product.category_name"></span>
                                     <button type="button" @click.stop="openDetail(product)"
-                                        class="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition flex items-center justify-center relative z-10 pointer-events-auto"
+                                        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white/90 text-slate-500 transition hover:bg-white hover:text-slate-900"
                                         title="Lihat Detail" aria-label="Lihat Detail Produk">
-                                        <i class="fas fa-info text-[10px]"></i>
+                                        <i class="fas fa-info text-sm"></i>
                                     </button>
                                 </div>
-                                <h3 class="font-bold text-slate-800 text-[13px] h-10 line-clamp-2 leading-snug"
+                            </div>
+                            {{-- PRODUCT INFO --}}
+                            <div class="flex flex-1 flex-col p-5">
+                                <h3 class="min-h-12 text-[15px] font-semibold leading-6 text-slate-900"
                                     x-text="product.name"></h3>
                                 {{-- PRODUCT SPECS --}}
                                 <div class="mt-3 flex flex-wrap gap-2">
                                     <template x-for="spec in getSpecs(product).slice(0, 2)" :key="spec.key + spec.value">
                                         <span
-                                            class="text-[9px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
+                                            class="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-500">
                                             <span x-text="spec.key"></span>: <span x-text="spec.value"></span>
                                         </span>
                                     </template>
                                 </div>
                                 {{-- PRICE + ACTION --}}
-                                <div class="mt-6 flex items-center justify-between">
+                                <div class="mt-6 flex items-end justify-between gap-4">
                                     <div>
-                                        <p class="text-[8px] text-slate-400 font-bold uppercase">Price Start</p>
-                                        <p class="text-sm font-black text-slate-900">Rp <span
+                                        <p class="text-xs text-slate-400">Harga mulai</p>
+                                        <p class="mt-1 text-lg font-semibold text-slate-900">Rp <span
                                                 x-text="formatNumber(product.base_price)"></span></p>
                                     </div>
                                     <button @click="handleAddToCart(product)"
-                                        class="w-12 h-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center hover:bg-black transition-all hover:scale-110 shadow-lg shadow-slate-900/20">
-                                        <i class="fas fa-plus text-xs"></i>
+                                        class="inline-flex h-11 items-center justify-center rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-slate-800">
+                                        Tambah
                                     </button>
                                 </div>
                             </div>
@@ -225,51 +270,66 @@
             </div>
 
             {{-- SIDEBAR CART --}}
-            <div class="w-[400px] shrink-0 sticky top-6">
+            <div class="w-100 shrink-0 sticky top-6">
                 <div
-                    class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col h-[calc(100vh-60px)] overflow-hidden">
+                    class="flex h-[calc(100vh-60px)] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
                     {{-- CART HEADER --}}
-                    <div class="p-8 border-b border-slate-50 flex justify-between items-center">
-                        <h2 class="font-black text-slate-900 uppercase text-[12px] tracking-[0.3em]">Order Summary</h2>
-                        <span class="text-[10px] font-black text-slate-400" x-text="cart.length + ' ITEMS'"></span>
+                    <div class="flex items-start justify-between border-b border-slate-100 px-6 py-5">
+                        <div>
+                            <h2 class="text-base font-semibold text-slate-900">Order summary</h2>
+                            <p class="mt-1 text-sm text-slate-500">Ringkasan item yang akan diproses.</p>
+                        </div>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500"
+                            x-text="cart.length + ' item'"></span>
                     </div>
 
                     {{-- CART ITEMS --}}
-                    <div class="flex-1 overflow-y-auto p-8 space-y-6">
-                        <template x-for="item in cart" :key="item.cartId">
-                            <div class="flex gap-4">
-                                <div
-                                    class="w-16 h-16 bg-slate-50 rounded-2xl border border-slate-100 overflow-hidden shrink-0">
-                                    <img :src="item.image" class="w-full h-full object-cover">
+                    <div class="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+                        <template x-if="cart.length === 0">
+                            <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
+                                <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-slate-400 ring-1 ring-slate-200">
+                                    <i class="fas fa-shopping-bag text-lg"></i>
                                 </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex justify-between items-start">
-                                        <h4 class="text-[12px] font-bold text-slate-800 truncate pr-2" x-text="item.name">
-                                        </h4>
-                                        <button @click="removeFromCart(item.cartId)"
-                                            class="text-slate-300 hover:text-red-500 transition"><i
-                                                class="fas fa-times text-xs"></i></button>
+                                <p class="mt-4 text-sm font-medium text-slate-700">Belum ada item di order.</p>
+                                <p class="mt-1 text-sm text-slate-500">Tambahkan produk dari daftar di sebelah kiri.</p>
+                            </div>
+                        </template>
+                        <template x-for="item in cart" :key="item.cartId">
+                            <div class="rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
+                                <div class="flex gap-4">
+                                    <div
+                                        class="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                        <img :src="item.image" class="w-full h-full object-cover">
                                     </div>
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <span class="text-[9px] font-black text-blue-500 uppercase"
-                                            x-text="item.supplierName"></span>
-                                        <template x-if="item.isConflict">
-                                            <span
-                                                class="text-[8px] font-black text-red-500 uppercase tracking-tighter">[CONFLICT]</span>
-                                        </template>
-                                    </div>
-                                    {{-- QTY + LINE TOTAL --}}
-                                    <div class="flex items-center justify-between mt-3">
-                                        <div
-                                            class="flex items-center gap-2 bg-slate-50 rounded-xl p-1 px-2 border border-slate-100">
-                                            <button @click="updateQty(item.cartId, -1)"
-                                                class="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-black">-</button>
-                                            <span class="text-[11px] font-black w-4 text-center" x-text="item.qty"></span>
-                                            <button @click="updateQty(item.cartId, 1)"
-                                                class="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-black">+</button>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex justify-between items-start">
+                                            <h4 class="pr-2 text-sm font-semibold text-slate-900 line-clamp-2" x-text="item.name">
+                                            </h4>
+                                            <button @click="removeFromCart(item.cartId)"
+                                                class="text-slate-300 transition hover:text-red-500"><i
+                                                    class="fas fa-times text-xs"></i></button>
                                         </div>
-                                        <p class="text-[12px] font-black text-slate-900">Rp <span
-                                                x-text="formatNumber(item.price * item.qty)"></span></p>
+                                        <div class="mt-2 flex flex-wrap items-center gap-2">
+                                            <span class="text-xs text-slate-500" x-text="item.supplierName"></span>
+                                            <template x-if="item.isConflict">
+                                                <span
+                                                    class="rounded-full bg-amber-50 px-2 py-1 text-[11px] text-amber-700">Compatibility warning</span>
+                                            </template>
+                                        </div>
+                                        {{-- QTY + LINE TOTAL --}}
+                                        <div class="mt-4 flex items-center justify-between">
+                                            <div
+                                                class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white p-1">
+                                                <button @click="updateQty(item.cartId, -1)"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">-</button>
+                                                <span class="w-8 text-center text-sm font-medium text-slate-800"
+                                                    x-text="item.qty"></span>
+                                                <button @click="updateQty(item.cartId, 1)"
+                                                    class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">+</button>
+                                            </div>
+                                            <p class="text-sm font-semibold text-slate-900">Rp <span
+                                                    x-text="formatNumber(item.price * item.qty)"></span></p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -277,24 +337,25 @@
                     </div>
 
                     {{-- CART SUMMARY --}}
-                    <div class="p-8 bg-slate-50 border-t border-slate-100 space-y-4">
-                        <div class="flex justify-between items-center text-sm text-slate-500">
-                            <span>Subtotal</span>
-                            <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
-                        </div>
-                        <div class="flex justify-between items-center text-sm text-slate-500">
-                            <span>Service Fee</span>
-                            <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
-                        </div>
-                        <div class="pt-4 border-t border-slate-200 flex justify-between items-center">
-                            <span class="text-[14px] font-black text-slate-900 uppercase tracking-tighter">Total
-                                Bill</span>
-                            <span class="text-2xl font-black text-slate-900 tracking-tighter">Rp <span
-                                    x-text="formatNumber(finalTotal)"></span></span>
+                    <div class="border-t border-slate-100 bg-white px-6 py-5">
+                        <div class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <div class="flex items-center justify-between text-sm text-slate-500">
+                                <span>Subtotal</span>
+                                <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm text-slate-500">
+                                <span>Service Fee</span>
+                                <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-200 pt-3">
+                                <span class="text-sm font-medium text-slate-600">Total bill</span>
+                                <span class="text-2xl font-semibold text-slate-900">Rp <span
+                                        x-text="formatNumber(finalTotal)"></span></span>
+                            </div>
                         </div>
                         <button @click="openModal('modalCheckout')" :disabled="cart.length === 0"
-                            class="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] font-black text-[11px] uppercase tracking-[0.2em] hover:bg-black transition disabled:opacity-30">
-                            Checkout Order
+                            class="mt-4 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-30">
+                            Finalisasi order
                         </button>
                     </div>
                 </div>
@@ -302,87 +363,93 @@
         </div>
         {{-- MODAL: PRODUCT DETAIL --}}
         <div x-show="detailOpen" x-transition x-cloak
-            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="closeDetail()">
-            <div class="bg-white w-full max-w-5xl rounded-3xl overflow-hidden shadow-2xl">
+            class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-6" @click.self="closeDetail()">
+            <div class="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl md:max-h-[calc(100vh-3rem)]">
                 {{-- MODAL HEADER --}}
-                <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <div class="flex items-start justify-between border-b border-slate-100 px-5 py-4 md:px-6">
                     <div>
-                        <p class="text-[10px] uppercase tracking-[0.2em] text-slate-400">Product Detail</p>
-                        <h3 class="text-lg font-semibold text-slate-900 mt-1" x-text="detailProduct?.name"></h3>
+                        <p class="text-xs text-slate-500">Detail produk</p>
+                        <h3 class="mt-1 text-lg font-semibold leading-7 text-slate-900" x-text="detailProduct?.name"></h3>
                     </div>
                     <button @click="closeDetail()"
-                        class="w-9 h-9 rounded-full bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition flex items-center justify-center">
+                        class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900">
                         <i class="fas fa-times text-sm"></i>
                     </button>
                 </div>
                 {{-- MODAL BODY --}}
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                <div class="overflow-y-auto">
+                <div class="grid grid-cols-1 gap-0 lg:grid-cols-[0.95fr,1.05fr]">
                     {{-- IMAGE PREVIEW --}}
-                    <div class="bg-slate-50 flex items-center justify-center p-6">
-                        <div class="relative w-full">
+                    <div class="border-b border-slate-100 bg-slate-50/70 p-4 md:p-5 lg:border-b-0 lg:border-r">
+                        <div class="relative rounded-2xl border border-slate-200 bg-white p-4">
                             <img :src="detailProduct?.image"
-                                class="w-full h-[360px] object-contain rounded-2xl border border-slate-200 transition-transform duration-300"
+                                class="h-64 w-full rounded-2xl bg-slate-50 object-contain p-4 transition-transform duration-300 md:h-72"
                                 :class="detailZoom ? 'scale-125 cursor-zoom-out' : 'cursor-zoom-in'"
                                 @click="detailZoom = !detailZoom" x-on:error="$el.src=@js(asset('assets/no-image.svg'))">
                             {{-- FULLSCREEN ICON --}}
                             <button type="button" @click.stop="openImageViewer()"
-                                class="absolute bottom-3 right-3 bg-white/90 text-slate-600 px-2.5 py-2 rounded-full border border-slate-200 flex items-center justify-center hover:bg-white transition"
+                                class="absolute bottom-6 right-6 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-600 transition hover:bg-slate-50"
                                 aria-label="Lihat Gambar Penuh">
                                 <i class="fas fa-expand text-[11px]"></i>
+                                <span>Perbesar</span>
                             </button>
                         </div>
                     </div>
                     {{-- DETAIL INFO --}}
-                    <div class="p-6">
-                        <div class="flex items-center gap-3 mb-4">
-                            <span class="text-[10px] uppercase tracking-[0.2em] text-slate-400">Category</span>
-                            <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600"
+                    <div class="p-5 md:p-6">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500"
                                 x-text="detailProduct?.category_name"></span>
+                            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
+                                Harga mulai Rp <span x-text="formatNumber(detailProduct?.base_price || 0)"></span>
+                            </span>
                         </div>
+
+                        <div class="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm font-medium text-slate-700">Ringkasan</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-500 line-clamp-4"
+                                x-text="detailProduct?.description || 'Belum ada deskripsi produk.'"></p>
+                        </div>
+
                         {{-- SPECIFICATIONS --}}
-                        <div class="mb-5">
-                            <p class="text-[10px] uppercase tracking-[0.2em] text-slate-400">Specifications</p>
-                            <ul class="mt-3 space-y-2 text-sm text-slate-600">
+                        <div class="mt-5">
+                            <p class="text-sm font-medium text-slate-700">Spesifikasi</p>
+                            <div class="mt-3 overflow-hidden rounded-2xl border border-slate-200">
+                                <ul class="divide-y divide-slate-200 text-sm text-slate-600">
                                 <template x-for="spec in getSpecs(detailProduct)" :key="spec.key + spec.value + 'detail'">
-                                    <li class="flex items-start gap-2">
-                                        <span class="mt-1 w-1.5 h-1.5 rounded-full bg-slate-300"></span>
-                                        <span class="font-semibold text-slate-700" x-text="spec.key"></span>
-                                        <span class="text-slate-500">:</span>
-                                        <span x-text="spec.value"></span>
+                                    <li class="grid grid-cols-[120px,1fr] gap-3 bg-white px-4 py-3">
+                                        <span class="font-medium text-slate-500" x-text="spec.key"></span>
+                                        <span class="text-slate-800 break-words" x-text="spec.value"></span>
                                     </li>
                                 </template>
                                 <template x-if="getSpecs(detailProduct).length === 0">
-                                    <li class="text-slate-400">No specifications listed.</li>
+                                    <li class="bg-white px-4 py-4 text-slate-400">Belum ada spesifikasi produk.</li>
                                 </template>
-                            </ul>
+                                </ul>
+                            </div>
                         </div>
-                        {{-- DESCRIPTION --}}
-                        <div class="mb-6">
-                            <p class="text-[10px] uppercase tracking-[0.2em] text-slate-400">Description</p>
-                            <p class="mt-3 text-sm text-slate-600 leading-relaxed"
-                                x-text="detailProduct?.description || 'No description provided.'"></p>
-                        </div>
+
                         {{-- CTA --}}
-                        <div class="flex items-center justify-between border-t border-slate-100 pt-4">
+                        <div class="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
                             <div>
-                                <p class="text-[10px] uppercase tracking-[0.2em] text-slate-400">Starting Price</p>
-                                <p class="text-lg font-semibold text-slate-900">Rp <span
+                                <p class="text-xs text-slate-400">Harga mulai</p>
+                                <p class="mt-1 text-lg font-semibold text-slate-900">Rp <span
                                         x-text="formatNumber(detailProduct?.base_price || 0)"></span></p>
                             </div>
                             <button @click="handleAddToCart(detailProduct)"
-                                class="px-5 py-3 rounded-xl bg-slate-900 text-white text-xs uppercase tracking-[0.2em] hover:bg-black transition">
-                                Add To Cart
+                                class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800">
+                                Tambah ke order
                             </button>
                         </div>
                     </div>
+                </div>
                 </div>
             </div>
         </div>
 
         {{-- MODAL: IMAGE FULLSCREEN --}}
         <div x-show="imageViewerOpen" x-transition x-cloak
-            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-6"
-            @click.self="closeImageViewer()">
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-6" @click.self="closeImageViewer()">
             <div class="relative max-w-6xl w-full">
                 {{-- FULLSCREEN IMAGE --}}
                 <img :src="detailProduct?.image" class="w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl"
