@@ -10,7 +10,7 @@
         <p class="text-sm text-slate-500">Input komponen PC, spek kompatibilitas, dan supplier.</p>
     </div>
 
-    <form action="{{ route('products.store') }}" method="POST">
+    <form action="{{ route('products.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
@@ -41,6 +41,15 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-600 mb-1">Deskripsi</label>
                             <textarea name="description" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Foto Produk</label>
+                            <input type="file" name="image" accept="image/*"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white">
+                            @error('image')
+                            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                            @enderror
+                            <p class="text-xs text-slate-400 mt-1">Format: JPG, PNG, WebP (maks 2MB).</p>
                         </div>
                     </div>
                 </div>

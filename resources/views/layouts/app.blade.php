@@ -28,6 +28,10 @@
             border-radius: 12px;
             color: white !important;
         }
+
+        [x-cloak] {
+            display: none !important;
+        }
     </style>
 </head>
 

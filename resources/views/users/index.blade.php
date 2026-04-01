@@ -214,7 +214,7 @@
                 class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-slate-900/10 focus:border-slate-300 @error('role') @enderror"
                 required>
                 <option value="">Pilih Peran</option>
-                <option value="kasir">Kasir</option>
+                <option value="staff">Staff</option>
                 <option value="owner">Owner</option>
             </select>
             @error('role')

@@ -13,8 +13,8 @@
         document.addEventListener("DOMContentLoaded", function() {
             const options = {
                 chart: {
-                    type: 'area',
-                    height: 260,
+                    type: @json($type),
+                    height: {{ (int) $height }},
                     toolbar: {
                         show: false
                     },
@@ -58,7 +58,7 @@
                 },
 
                 xaxis: {
-                    categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    categories: @json($categories),
                     axisBorder: {
                         show: false
                     },
@@ -106,15 +106,7 @@
                     show: false
                 },
 
-                series: [{
-                        name: 'Sales',
-                        data: [30, 25, 40, 28, 45, 50]
-                    },
-                    {
-                        name: 'Revenue',
-                        data: [20, 18, 30, 22, 40, 42]
-                    }
-                ]
+                series: @json($series)
             }
 
 

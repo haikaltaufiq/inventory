@@ -50,7 +50,11 @@
                 <select name="supplier_id" id="supplier_id" class="w-full px-4 py-2 border rounded-lg @error('supplier_id') border-red-500 @enderror" required>
                     <option value="">Pilih Supplier</option>
                 </select>
+                <input type="hidden" name="product_supplier_id" id="product_supplier_id" value="{{ old('product_supplier_id') }}">
                 @error('supplier_id')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+                @error('product_supplier_id')
                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
                 <div id="supplier-info" class="mt-2 p-3 bg-blue-50 rounded text-sm" style="display: none;">
@@ -79,6 +83,22 @@
                     required
                 >
                 @error('quantity')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 font-semibold mb-2">Service Fee</label>
+                <input
+                    type="number"
+                    name="service_fee"
+                    id="service_fee"
+                    value="{{ old('service_fee', 0) }}"
+                    min="0"
+                    step="0.01"
+                    class="w-full px-4 py-2 border rounded-lg @error('service_fee') border-red-500 @enderror"
+                >
+                @error('service_fee')
                 <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
                 @enderror
             </div>
@@ -128,13 +148,16 @@
 
 <script>
 let suppliersData = [];
+const supplierApiTemplate = @json(route('products.suppliers', ['product' => '__PRODUCT_ID__']));
 
 document.addEventListener('DOMContentLoaded', function() {
     const productSelect = document.getElementById('product_id');
     const supplierSection = document.getElementById('supplier-section');
     const supplierSelect = document.getElementById('supplier_id');
+    const productSupplierInput = document.getElementById('product_supplier_id');
     const supplierInfo = document.getElementById('supplier-info');
     const quantityInput = document.getElementById('quantity');
+    const serviceFeeInput = document.getElementById('service_fee');
     const totalEstimate = document.getElementById('total_estimate');
 
     // When product changes, load suppliers
@@ -145,21 +168,27 @@ document.addEventListener('DOMContentLoaded', function() {
             supplierSection.style.display = 'none';
             supplierInfo.style.display = 'none';
             supplierSelect.innerHTML = '<option value="">Pilih Supplier</option>';
+            productSupplierInput.value = '';
             return;
         }
 
         try {
-            const response = await fetch(`/api/products/${productId}/suppliers`);
+            const supplierApiUrl = supplierApiTemplate.replace('__PRODUCT_ID__', productId);
+            const response = await fetch(supplierApiUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             suppliersData = await response.json();
 
             supplierSelect.innerHTML = '<option value="">Pilih Supplier</option>';
 
             suppliersData.forEach(supplier => {
                 const option = document.createElement('option');
-                option.value = supplier.id;
-                option.textContent = `${supplier.nama_supplier} (Stok: ${supplier.stock}, Harga: Rp ${parseInt(supplier.harga_jual).toLocaleString('id-ID')})`;
+                option.value = supplier.supplier_id;
+                option.textContent = `${supplier.nama_supplier} - ${supplier.condition} (Stok: ${supplier.stock}, Harga: Rp ${parseInt(supplier.harga_jual).toLocaleString('id-ID')})`;
                 option.dataset.stock = supplier.stock;
                 option.dataset.price = supplier.harga_jual;
+                option.dataset.productSupplierId = supplier.product_supplier_id;
                 supplierSelect.appendChild(option);
             });
 
@@ -181,9 +210,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const stock = selectedOption.dataset.stock;
         const price = selectedOption.dataset.price;
+        const productSupplierId = selectedOption.dataset.productSupplierId;
 
         document.getElementById('supplier-stock').textContent = stock;
         document.getElementById('supplier-price').textContent = 'Rp ' + parseInt(price).toLocaleString('id-ID');
+        productSupplierInput.value = productSupplierId || '';
 
         supplierInfo.style.display = 'block';
         quantityInput.max = stock;
@@ -201,12 +232,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const price = parseFloat(selectedSupplier.dataset.price) || 0;
         const quantity = parseInt(quantityInput.value) || 0;
-        const total = price * quantity;
+        const serviceFee = parseFloat(serviceFeeInput.value) || 0;
+        const total = (price * quantity) + serviceFee;
 
         totalEstimate.textContent = 'Rp ' + total.toLocaleString('id-ID');
     }
 
     quantityInput.addEventListener('input', updateTotal);
+    serviceFeeInput.addEventListener('input', updateTotal);
 });
 </script>
 @endsection

@@ -8,6 +8,8 @@ use App\Models\Supplier;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 
 class ProductController extends Controller
 {
@@ -76,6 +78,7 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'selling_price' => 'required|numeric',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'description' => 'nullable|string',
             'specs' => 'nullable|array',
             'suppliers' => 'required|array',
@@ -87,6 +90,12 @@ class ProductController extends Controller
         ]);
 
         return DB::transaction(function () use ($request, $validated) {
+            $imageUrl = null;
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('products', 'public');
+                $imageUrl = Storage::url($path);
+            }
+
             // 1. Simpan ke table products
             $product = Product::create([
                 'category_id' => $validated['category_id'],
@@ -94,6 +103,7 @@ class ProductController extends Controller
                 'selling_price' => $validated['selling_price'],
                 'description' => $validated['description'],
                 'warranty' => $request->warranty,
+                'image_url' => Schema::hasColumn('products', 'image_url') ? $imageUrl : null,
             ]);
 
             // 2. Simpan Spek (Kompatibilitas)
@@ -155,6 +165,7 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'category_id' => 'required|exists:categories,id',
             'selling_price' => 'required|numeric',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'description' => 'nullable|string',
             'specs' => 'nullable|array',
             'suppliers' => 'required|array|min:1',
@@ -166,6 +177,17 @@ class ProductController extends Controller
         ]);
 
         return DB::transaction(function () use ($request, $validated, $product) {
+            $imageUrl = $product->image_url;
+            if ($request->hasFile('image')) {
+                $path = $request->file('image')->store('products', 'public');
+                $imageUrl = Storage::url($path);
+
+                if (!empty($product->image_url)) {
+                    $oldPath = ltrim(str_replace('/storage/', '', $product->image_url), '/');
+                    Storage::disk('public')->delete($oldPath);
+                }
+            }
+
             // 1. Update data utama produk
             $product->update([
                 'category_id' => $validated['category_id'],
@@ -173,6 +195,7 @@ class ProductController extends Controller
                 'selling_price' => $validated['selling_price'],
                 'description' => $validated['description'],
                 'warranty' => $request->warranty,
+                'image_url' => Schema::hasColumn('products', 'image_url') ? $imageUrl : $product->image_url,
             ]);
 
             $product->specifications()->delete();

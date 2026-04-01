@@ -19,11 +19,8 @@
                 NATOPC
             </h1>
 
-            <div class="flex flex-1 items-center justify-center">|
-
+            <div class="flex flex-1 items-center justify-center">
                 <div class="flex flex-col items-center text-center gap-6">
-
-
                     <img
                         src="/assets/hero-illustration.svg"
                         alt="Main content"
@@ -34,8 +31,6 @@
                 Website internal untuk mengelola inventaris dan transaksi perusahaan.
             </p>
         </div>
-
-
 
         <!-- RIGHT SIDE -->
         <div class="flex w-full md:w-1/2 items-center justify-center p-6 lg:p-10">
