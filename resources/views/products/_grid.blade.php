@@ -3,7 +3,7 @@
         <div>
             <h1 class="text-2xl font-semibold tracking-tight text-slate-800">Manajemen Inventory</h1>
             <p class="mt-1 text-sm text-slate-500">Double click row untuk edit cepat. Detail produk dan supplier tetap
-                lengkap, tapi tampilannya saya jaga tetap ringkas.</p>
+                lengkap</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
@@ -34,11 +34,13 @@
         </div>
         <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
             <p class="text-xs uppercase tracking-wider text-slate-400">Inventory Value</p>
-            <h3 class="text-2xl font-semibold text-slate-900 mt-2">Rp {{ number_format($summary['nilai_inv'], 0, ',', '.') }}</h3>
+            <h3 class="text-2xl font-semibold text-slate-900 mt-2">Rp
+                {{ number_format($summary['nilai_inv'], 0, ',', '.') }}</h3>
         </div>
         <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
             <p class="text-xs uppercase tracking-wider text-slate-400">Low Stock Items</p>
-            <h3 class="text-2xl font-semibold mt-2 {{ $summary['stok_menipis'] > 0 ? 'text-rose-600' : 'text-slate-900' }}">
+            <h3
+                class="text-2xl font-semibold mt-2 {{ $summary['stok_menipis'] > 0 ? 'text-rose-600' : 'text-slate-900' }}">
                 {{ number_format($summary['stok_menipis']) }}
             </h3>
         </div>
@@ -167,7 +169,8 @@
                                                         :class="supplierTone(supplierPreviewRow.index).dot"></span>
                                                     <span class="truncate max-w-[110px]"
                                                         x-text="supplierPreviewRow.name"></span>
-                                                    <span class="opacity-70" x-text="supplierPreviewRow.condition"></span>
+                                                    <span class="opacity-70"
+                                                        x-text="supplierPreviewRow.condition"></span>
                                                 </span>
                                             </template>
                                             <span x-show="remainingSupplierCount(row) > 0"
@@ -186,16 +189,24 @@
 
                                 <td class="px-4 py-3">
                                     <div class="space-y-2" x-show="activeSupplierEntries(row).length > 0">
-                                        <template x-for="supplierEntry in activeSupplierEntries(row)" :key="`${row.client_key}-metric-${supplierEntry.index}`">
+                                        <template x-for="supplierEntry in activeSupplierEntries(row)"
+                                            :key="`${row.client_key}-metric-${supplierEntry.index}`">
                                             <div class="flex flex-wrap items-center gap-2 text-[10px]">
-                                                <span class="h-2.5 w-2.5 rounded-full flex-none" :class="supplierTone(supplierEntry.index).dot"></span>
-                                                <template x-for="metricBadge in supplierMetricBadges(row, supplierEntry, supplierEntry.index)" :key="`${row.client_key}-${supplierEntry.index}-${metricBadge.key}`">
-                                                    <span class="inline-flex items-center rounded-full px-2.5 py-1 font-medium" :class="metricBadge.className" x-text="metricBadge.label"></span>
+                                                <span class="h-2.5 w-2.5 rounded-full flex-none"
+                                                    :class="supplierTone(supplierEntry.index).dot"></span>
+                                                <template
+                                                    x-for="metricBadge in supplierMetricBadges(row, supplierEntry, supplierEntry.index)"
+                                                    :key="`${row.client_key}-${supplierEntry.index}-${metricBadge.key}`">
+                                                    <span
+                                                        class="inline-flex items-center rounded-full px-2.5 py-1 font-medium"
+                                                        :class="metricBadge.className"
+                                                        x-text="metricBadge.label"></span>
                                                 </template>
                                             </div>
                                         </template>
                                     </div>
-                                    <div x-show="activeSupplierEntries(row).length === 0" class="text-[11px] text-slate-400">
+                                    <div x-show="activeSupplierEntries(row).length === 0"
+                                        class="text-[11px] text-slate-400">
                                         Belum ada data harga supplier.
                                     </div>
                                 </td>
@@ -288,21 +299,31 @@
                                 </div>
                                 <div class="mt-3 space-y-3">
                                     <div class="flex gap-2">
-                                        <button type="button" @click="setSpecMode(activeDetailRow(), field.key, 'existing')"
-                                            :class="activeDetailRow()?.specs[field.key]?.mode === 'existing' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'"
-                                            class="rounded-lg px-3 py-1.5 text-[11px] font-medium transition">Pilih Referensi</button>
-                                        <button type="button" @click="setSpecMode(activeDetailRow(), field.key, 'new')"
-                                            :class="activeDetailRow()?.specs[field.key]?.mode === 'new' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'"
-                                            class="rounded-lg px-3 py-1.5 text-[11px] font-medium transition">Input Baru</button>
+                                        <button type="button"
+                                            @click="setSpecMode(activeDetailRow(), field.key, 'existing')"
+                                            :class="activeDetailRow()?.specs[field.key]?.mode === 'existing' ?
+                                                'bg-slate-900 text-white' :
+                                                'bg-white text-slate-600 ring-1 ring-slate-200'"
+                                            class="rounded-lg px-3 py-1.5 text-[11px] font-medium transition">Pilih
+                                            Referensi</button>
+                                        <button type="button"
+                                            @click="setSpecMode(activeDetailRow(), field.key, 'new')"
+                                            :class="activeDetailRow()?.specs[field.key]?.mode === 'new' ?
+                                                'bg-slate-900 text-white' :
+                                                'bg-white text-slate-600 ring-1 ring-slate-200'"
+                                            class="rounded-lg px-3 py-1.5 text-[11px] font-medium transition">Input
+                                            Baru</button>
                                     </div>
 
                                     <div x-show="activeDetailRow()?.specs[field.key]?.mode !== 'new'" x-cloak>
-                                        <label class="mb-1 block text-[11px] font-medium text-slate-400">Gunakan value yang sudah ada</label>
+                                        <label class="mb-1 block text-[11px] font-medium text-slate-400">Gunakan value
+                                            yang sudah ada</label>
                                         <select :value="activeDetailRow()?.specs[field.key]?.value || ''"
                                             @change="updateSpec(activeDetailRow(), field.key, $event.target.value)"
                                             class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-slate-400">
                                             <option value="">Pilih value</option>
-                                            <template x-for="option in activeDetailRow() ? specOptions(activeDetailRow(), field.key) : []"
+                                            <template
+                                                x-for="option in activeDetailRow() ? specOptions(activeDetailRow(), field.key) : []"
                                                 :key="`detail-${field.key}-${option}`">
                                                 <option :value="option" x-text="option"></option>
                                             </template>
@@ -310,13 +331,15 @@
                                     </div>
 
                                     <div x-show="activeDetailRow()?.specs[field.key]?.mode === 'new'" x-cloak>
-                                        <label class="mb-1 block text-[11px] font-medium text-slate-400">Input value baru</label>
+                                        <label class="mb-1 block text-[11px] font-medium text-slate-400">Input value
+                                            baru</label>
                                         <input :value="activeDetailRow()?.specs[field.key]?.value || ''"
                                             @input="updateSpec(activeDetailRow(), field.key, $event.target.value)"
                                             @blur="normalizeSpecEntry(activeDetailRow(), field.key)"
                                             class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-slate-400"
                                             :placeholder="field.placeholder || 'Masukkan value baru'">
-                                        <p class="mt-1 text-[11px] text-slate-400">Jika penulisannya ternyata sama dengan referensi lama, sistem akan otomatis menyamakan formatnya.</p>
+                                        <p class="mt-1 text-[11px] text-slate-400">Jika penulisannya ternyata sama
+                                            dengan referensi lama, sistem akan otomatis menyamakan formatnya.</p>
                                     </div>
                                 </div>
                             </div>
