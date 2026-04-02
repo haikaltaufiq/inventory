@@ -167,7 +167,7 @@
                                                     :class="supplierTone(supplierPreviewRow.index).badge">
                                                     <span class="h-2 w-2 rounded-full"
                                                         :class="supplierTone(supplierPreviewRow.index).dot"></span>
-                                                    <span class="truncate max-w-[110px]"
+                                                    <span class="truncate max-w-27.5"
                                                         x-text="supplierPreviewRow.name"></span>
                                                     <span class="opacity-70"
                                                         x-text="supplierPreviewRow.condition"></span>
