@@ -11,6 +11,7 @@
                 detailModalKey: null,
                 supplierModalKey: null,
                 previewModalKey: null,
+                pendingNavigationUrl: null,
 
                 boot() {
                     this.rows = this.rows.map((row) => this.prepareRow(row));
@@ -18,6 +19,8 @@
                     if (this.rows.length === 0) {
                         this.rows = [this.newRow()];
                     }
+
+                    this.registerUnsavedChangeGuard();
                 },
 
                 get dirtyCount() {
@@ -647,6 +650,56 @@
 
                 activePreviewRow() {
                     return this.rowByKey(this.previewModalKey);
+                },
+
+                registerUnsavedChangeGuard() {
+                    if (this._unsavedGuardRegistered) return;
+                    this._unsavedGuardRegistered = true;
+
+                    document.addEventListener('click', (event) => {
+                        const link = event.target.closest('a[href]');
+                        if (!link) return;
+                        if (!this.hasChanges) return;
+                        if (link.target === '_blank' || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+                        const href = link.getAttribute('href') || '';
+                        if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+
+                        const destination = new URL(href, window.location.href);
+                        const current = new URL(window.location.href);
+
+                        if (destination.href === current.href) return;
+
+                        event.preventDefault();
+                        this.pendingNavigationUrl = destination.href;
+                        openModal('modal-unsaved-navigation');
+                    }, true);
+
+                    window.addEventListener('beforeunload', (event) => {
+                        if (!this.hasChanges) return;
+                        event.preventDefault();
+                        event.returnValue = '';
+                    });
+                },
+
+                closeUnsavedNavigationModal() {
+                    this.pendingNavigationUrl = null;
+                    closeModal('modal-unsaved-navigation');
+                },
+
+                ignoreUnsavedAndNavigate() {
+                    const destination = this.pendingNavigationUrl;
+                    this.pendingNavigationUrl = null;
+                    closeModal('modal-unsaved-navigation');
+                    if (destination) {
+                        window.location.href = destination;
+                    }
+                },
+
+                saveAndStay() {
+                    this.pendingNavigationUrl = null;
+                    closeModal('modal-unsaved-navigation');
+                    this.submitForm();
                 },
 
                 hiddenFields(row) {
