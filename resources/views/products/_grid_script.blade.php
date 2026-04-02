@@ -6,9 +6,11 @@
                 categories: @json($categories->map(fn($category) => ['id' => $category->id, 'name' => $category->name])->values()),
                 suppliers: @json($suppliers->map(fn($supplier) => ['id' => $supplier->id, 'name' => $supplier->nama_supplier])->values()),
                 specTemplates: @json($specTemplates),
+                validationErrorsByRow: @json($gridErrorsByRow ?? []),
                 conditionOptions: ['New', 'Used', 'Refurbished'],
                 detailModalKey: null,
                 supplierModalKey: null,
+                previewModalKey: null,
 
                 boot() {
                     this.rows = this.rows.map((row) => this.prepareRow(row));
@@ -22,12 +24,16 @@
                     return this.rows.filter((row) => row.is_dirty || row.is_new || row.marked_for_delete).length;
                 },
 
+                get hasChanges() {
+                    return this.dirtyCount > 0;
+                },
+
                 prepareRow(row = {}) {
                     const preparedSuppliers = Array.isArray(row.suppliers) && row.suppliers.length
                         ? row.suppliers.map((supplier) => this.prepareSupplier(supplier))
                         : [this.newSupplier()];
 
-                    return {
+                    const prepared = {
                         client_key: row.client_key || this.uid(),
                         id: row.id || null,
                         name: row.name || '',
@@ -46,8 +52,13 @@
                         is_new: !!row.is_new,
                         is_dirty: !!row.is_dirty,
                         marked_for_delete: !!row.marked_for_delete,
-                        is_editing: !!row.is_editing || !!row.is_new,
+                        editing_cell: row.editing_cell || (row.is_new ? 'name' : null),
+                        server_errors: Array.isArray(row.server_errors)
+                            ? row.server_errors
+                            : (this.validationErrorsByRow[row.client_key] || []),
                     };
+
+                    return prepared;
                 },
 
                 prepareSupplier(supplier = {}) {
@@ -87,7 +98,7 @@
                         client_key: this.uid(),
                         is_new: true,
                         is_dirty: true,
-                        is_editing: true,
+                        editing_cell: 'name',
                         suppliers: [this.newSupplier()],
                     });
                 },
@@ -213,26 +224,83 @@
 
                 markDirty(row, keepOpen = false) {
                     if (!row) return;
+                    row.server_errors = [];
                     row.is_dirty = true;
-                    if (keepOpen) row.is_editing = true;
                 },
 
-                activateRow(row) {
+                rowErrors(row) {
+                    return Array.isArray(row?.server_errors) ? row.server_errors : [];
+                },
+
+                rowErrorCount(row) {
+                    return this.rowErrors(row).length;
+                },
+
+                rowHasErrors(row) {
+                    return this.rowErrorCount(row) > 0;
+                },
+
+                clearEditingCells(exceptClientKey = null) {
+                    this.rows.forEach((item) => {
+                        if (!exceptClientKey || item.client_key !== exceptClientKey) {
+                            item.editing_cell = null;
+                        }
+                    });
+                },
+
+                isCellEditing(row, cell) {
+                    return !!row && !row.marked_for_delete && row.editing_cell === cell;
+                },
+
+                activateRow(row, cell = null) {
                     if (!row || row.marked_for_delete) return;
-                    row.is_editing = true;
                     this.ensureSpecs(row);
-                    this.$nextTick(() => this.focusRow(row.client_key));
+
+                    if (!cell) {
+                        return;
+                    }
+
+                    this.clearEditingCells(row.client_key);
+                    row.editing_cell = cell;
+                    this.$nextTick(() => this.focusCell(row.client_key, cell));
                 },
 
-                focusRow(clientKey) {
-                    const input = document.querySelector(`[data-row-key="${clientKey}"] input[data-focus="name"]`);
-                    if (input) input.focus();
+                focusCell(clientKey, cell) {
+                    const input = document.querySelector(`[data-row-key="${clientKey}"] [data-cell-input="${cell}"]`);
+                    if (input) {
+                        input.focus();
+                        if (typeof input.select === 'function') {
+                            input.select();
+                        }
+                    }
+                },
+
+                stopCellEdit(row, cell = null) {
+                    if (!row) return;
+                    if (cell && row.editing_cell !== cell) return;
+                    row.editing_cell = null;
+                },
+
+                saveCell(row, cell, nextCell = null) {
+                    if (!row) return;
+
+                    if (cell === 'category') {
+                        row.category_name = this.categoryName(row);
+                        this.ensureSpecs(row);
+                    }
+
+                    if (nextCell) {
+                        this.activateRow(row, nextCell);
+                        return;
+                    }
+
+                    this.stopCellEdit(row, cell);
                 },
 
                 addRowTop() {
                     const row = this.newRow();
                     this.rows.unshift(row);
-                    this.$nextTick(() => this.focusRow(row.client_key));
+                    this.$nextTick(() => this.focusCell(row.client_key, 'name'));
                 },
 
                 addRowAfter(clientKey) {
@@ -240,7 +308,7 @@
                     const row = this.newRow();
                     if (index === -1) this.rows.push(row);
                     else this.rows.splice(index + 1, 0, row);
-                    this.$nextTick(() => this.focusRow(row.client_key));
+                    this.$nextTick(() => this.focusCell(row.client_key, 'name'));
                 },
 
                 toggleDelete(row) {
@@ -255,7 +323,7 @@
                     row.is_dirty = true;
 
                     if (row.marked_for_delete) {
-                        row.is_editing = false;
+                        row.editing_cell = null;
                     }
                 },
 
@@ -349,11 +417,11 @@
                     return this.supplierEntries(row).filter((supplier) => this.isSupplierReady(supplier));
                 },
 
-                supplierPreview(row, limit = 2) {
+                supplierPreview(row, limit = 1) {
                     return this.activeSupplierEntries(row).slice(0, limit);
                 },
 
-                remainingSupplierCount(row, limit = 2) {
+                remainingSupplierCount(row, limit = 1) {
                     return Math.max(this.activeSupplierEntries(row).length - limit, 0);
                 },
 
@@ -520,6 +588,10 @@
                 },
 
                 statusMeta(row) {
+                    if (this.rowHasErrors(row)) {
+                        return { label: 'Perlu Cek', className: 'bg-rose-100 text-rose-600' };
+                    }
+
                     const stock = this.rowStock(row);
                     if (stock > 10) return { label: 'Aman', className: 'bg-emerald-100 text-emerald-600' };
                     if (stock > 0) return { label: 'Menipis', className: 'bg-amber-100 text-amber-600' };
@@ -527,6 +599,10 @@
                 },
 
                 formatCurrency(value) {
+                    return new Intl.NumberFormat('id-ID').format(Number(value) || 0);
+                },
+
+                formatNumber(value) {
                     return new Intl.NumberFormat('id-ID').format(Number(value) || 0);
                 },
 
@@ -561,6 +637,16 @@
 
                 activeSupplierRow() {
                     return this.rowByKey(this.supplierModalKey);
+                },
+
+                openPreviewModal(row) {
+                    if (!row) return;
+                    this.previewModalKey = row.client_key;
+                    openModal('modal-product-preview');
+                },
+
+                activePreviewRow() {
+                    return this.rowByKey(this.previewModalKey);
                 },
 
                 hiddenFields(row) {
@@ -601,10 +687,10 @@
                 },
 
                 submitForm() {
+                    if (!this.hasChanges) return;
                     document.getElementById('product-grid-form').submit();
                 },
             };
         }
     </script>
 @endpush
-

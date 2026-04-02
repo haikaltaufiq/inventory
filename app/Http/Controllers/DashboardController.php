@@ -13,11 +13,16 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $currentMonthStart = now()->startOfMonth();
+        $currentMonthEnd = now()->endOfMonth();
+        $previousMonthStart = $currentMonthStart->copy()->subMonth()->startOfMonth();
+        $previousMonthEnd = $currentMonthStart->copy()->subMonth()->endOfMonth();
+
         $monthlyRows = Transaction::query()
             ->selectRaw("DATE_FORMAT(transaction_date, '%Y-%m') as month_key")
             ->selectRaw('COUNT(*) as transaction_count')
             ->selectRaw('COALESCE(SUM(final_total), 0) as revenue_total')
-            ->where('transaction_date', '>=', now()->startOfMonth()->subMonths(5)->toDateString())
+            ->where('transaction_date', '>=', $currentMonthStart->copy()->subMonths(5)->toDateString())
             ->groupBy('month_key')
             ->orderBy('month_key')
             ->get()
@@ -55,11 +60,33 @@ class DashboardController extends Controller
 
         $inventoryLabels = $inventoryRows->pluck('name')->all();
         $inventorySeries = $inventoryRows->pluck('total_stock')->map(fn($stock) => (int) $stock)->all();
+        $inventoryTotalStock = array_sum($inventorySeries);
 
-        if (empty($inventorySeries)) {
-            $inventoryLabels = ['No Stock Data'];
-            $inventorySeries = [1];
-        }
+        $totalTransactions = Transaction::count();
+        $totalRevenue = (float) Transaction::sum('final_total');
+        $totalProducts = Product::count();
+        $lowStockItems = DB::table('product_supplier')->where('stock', '<=', 5)->count();
+
+        $currentMonthTransactions = Transaction::query()
+            ->whereBetween('transaction_date', [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()])
+            ->count();
+        $previousMonthTransactions = Transaction::query()
+            ->whereBetween('transaction_date', [$previousMonthStart->toDateString(), $previousMonthEnd->toDateString()])
+            ->count();
+
+        $currentMonthRevenue = (float) Transaction::query()
+            ->whereBetween('transaction_date', [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()])
+            ->sum('final_total');
+        $previousMonthRevenue = (float) Transaction::query()
+            ->whereBetween('transaction_date', [$previousMonthStart->toDateString(), $previousMonthEnd->toDateString()])
+            ->sum('final_total');
+
+        $currentMonthProducts = Product::query()
+            ->whereBetween('created_at', [$currentMonthStart, $currentMonthEnd])
+            ->count();
+        $previousMonthProducts = Product::query()
+            ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])
+            ->count();
 
         $recentTransactions = Transaction::query()
             ->with([
@@ -89,19 +116,131 @@ class DashboardController extends Controller
             });
 
         $stats = [
-            'total_products' => Product::count(),
+            'total_products' => $totalProducts,
             'total_customers' => Customer::count(),
-            'total_transactions' => Transaction::count(),
-            'total_revenue' => (float) Transaction::sum('final_total'),
-            'low_stock_items' => DB::table('product_supplier')->where('stock', '<=', 5)->count(),
+            'total_transactions' => $totalTransactions,
+            'total_revenue' => $totalRevenue,
+            'low_stock_items' => $lowStockItems,
             'chart_labels' => $chartLabels,
             'revenue_series' => $revenueSeries,
             'transaction_series' => $transactionSeries,
             'inventory_labels' => $inventoryLabels,
             'inventory_series' => $inventorySeries,
+            'inventory_total_stock' => $inventoryTotalStock,
+            'current_month_label' => $currentMonthStart->translatedFormat('F Y'),
+            'current_month_transactions' => $currentMonthTransactions,
+            'current_month_revenue' => $currentMonthRevenue,
+            'kpis' => [
+                [
+                    'label' => 'Total Transactions',
+                    'value' => number_format($totalTransactions),
+                    'icon' => 'fa-receipt',
+                    'accent' => 'blue',
+                    'helper' => number_format($currentMonthTransactions) . ' transaksi tercatat bulan ini',
+                    'trend' => $this->buildDeltaMeta(
+                        $currentMonthTransactions,
+                        $previousMonthTransactions,
+                        'vs bulan lalu'
+                    ),
+                ],
+                [
+                    'label' => 'Total Revenue',
+                    'value' => 'Rp ' . number_format($totalRevenue, 0, ',', '.'),
+                    'icon' => 'fa-wallet',
+                    'accent' => 'emerald',
+                    'helper' => 'Rp ' . number_format($currentMonthRevenue, 0, ',', '.') . ' revenue bulan ini',
+                    'trend' => $this->buildDeltaMeta(
+                        $currentMonthRevenue,
+                        $previousMonthRevenue,
+                        'vs bulan lalu'
+                    ),
+                ],
+                [
+                    'label' => 'Total Products',
+                    'value' => number_format($totalProducts),
+                    'icon' => 'fa-boxes-stacked',
+                    'accent' => 'amber',
+                    'helper' => number_format($currentMonthProducts) . ' produk ditambahkan bulan ini',
+                    'trend' => $this->buildDeltaMeta(
+                        $currentMonthProducts,
+                        $previousMonthProducts,
+                        'produk baru vs bulan lalu'
+                    ),
+                ],
+                [
+                    'label' => 'Low Stock Items',
+                    'value' => number_format($lowStockItems),
+                    'icon' => 'fa-triangle-exclamation',
+                    'accent' => 'rose',
+                    'helper' => 'Ambang minimum stok saat ini: 5 unit',
+                    'trend' => $this->buildLowStockMeta($lowStockItems),
+                ],
+            ],
             'recent_transactions' => $recentTransactions,
         ];
 
         return view('dashboard.index', compact('stats'));
+    }
+
+    private function buildDeltaMeta(int|float $currentValue, int|float $previousValue, string $suffix): array
+    {
+        $delta = $currentValue - $previousValue;
+        $direction = $delta > 0 ? 'up' : ($delta < 0 ? 'down' : 'flat');
+        $state = $delta > 0 ? 'positive' : ($delta < 0 ? 'negative' : 'neutral');
+
+        if ($previousValue > 0) {
+            $percent = abs(($delta / $previousValue) * 100);
+        } else {
+            $percent = $currentValue > 0 ? 100 : 0;
+        }
+
+        if ($direction === 'flat') {
+            $label = 'Stabil ' . $suffix;
+        } else {
+            $label = sprintf(
+                '%s%s%% %s',
+                $direction === 'up' ? '+' : '-',
+                $this->formatPercent($percent),
+                $suffix
+            );
+        }
+
+        return [
+            'direction' => $direction,
+            'state' => $state,
+            'label' => $label,
+        ];
+    }
+
+    private function buildLowStockMeta(int $lowStockItems): array
+    {
+        if ($lowStockItems === 0) {
+            return [
+                'direction' => 'down',
+                'state' => 'positive',
+                'label' => 'Semua stok aman di atas batas minimum',
+            ];
+        }
+
+        if ($lowStockItems <= 5) {
+            return [
+                'direction' => 'flat',
+                'state' => 'neutral',
+                'label' => 'Area aman, tetap pantau item kritis',
+            ];
+        }
+
+        return [
+            'direction' => 'up',
+            'state' => 'negative',
+            'label' => 'Perlu restock prioritas secepatnya',
+        ];
+    }
+
+    private function formatPercent(float $value): string
+    {
+        $precision = $value >= 10 || floor($value) === $value ? 0 : 1;
+
+        return number_format($value, $precision, ',', '.');
     }
 }

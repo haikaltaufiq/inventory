@@ -486,29 +486,34 @@ class ProductController extends Controller
         $data = $payload;
         $data['image'] = $imageFile;
 
-        $validator = Validator::make($data, [
-            'name' => 'required|string|max:255',
-            'category_id' => 'required|exists:categories,id',
-            'warranty' => 'nullable|string|max:255',
-            'description' => 'nullable|string',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'specs' => 'nullable|array',
-            'specs.*.key' => 'nullable|string|max:100',
-            'specs.*.value' => 'nullable|string|max:255',
-            'specs.*.mode' => 'nullable|string|in:existing,new',
-            'extra_specs' => 'nullable|array',
-            'extra_specs.*.key' => 'nullable|string|max:100',
-            'extra_specs.*.value' => 'nullable|string|max:255',
-            'suppliers' => 'required|array|min:1',
-            'suppliers.*.mode' => 'nullable|string|in:existing,new',
-            'suppliers.*.supplier_id' => 'nullable|exists:suppliers,id',
-            'suppliers.*.new_supplier_name' => 'nullable|string|max:225',
-            'suppliers.*.new_supplier_address' => 'nullable|string|max:255',
-            'suppliers.*.stock' => 'required|integer|min:0',
-            'suppliers.*.harga_beli' => 'required|numeric|min:0',
-            'suppliers.*.harga_jual' => 'required|numeric|min:0',
-            'suppliers.*.condition' => 'required|string|in:New,Used,Refurbished',
-        ]);
+        $validator = Validator::make(
+            $data,
+            [
+                'name' => 'required|string|max:255',
+                'category_id' => 'required|exists:categories,id',
+                'warranty' => 'nullable|string|max:255',
+                'description' => 'nullable|string',
+                'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+                'specs' => 'nullable|array',
+                'specs.*.key' => 'nullable|string|max:100',
+                'specs.*.value' => 'nullable|string|max:255',
+                'specs.*.mode' => 'nullable|string|in:existing,new',
+                'extra_specs' => 'nullable|array',
+                'extra_specs.*.key' => 'nullable|string|max:100',
+                'extra_specs.*.value' => 'nullable|string|max:255',
+                'suppliers' => 'required|array|min:1',
+                'suppliers.*.mode' => 'nullable|string|in:existing,new',
+                'suppliers.*.supplier_id' => 'nullable|exists:suppliers,id',
+                'suppliers.*.new_supplier_name' => 'nullable|string|max:225',
+                'suppliers.*.new_supplier_address' => 'nullable|string|max:255',
+                'suppliers.*.stock' => 'required|integer|min:0',
+                'suppliers.*.harga_beli' => 'required|numeric|min:0',
+                'suppliers.*.harga_jual' => 'required|numeric|min:0',
+                'suppliers.*.condition' => 'required|string|in:New,Used,Refurbished',
+            ],
+            $this->productValidationMessages(),
+            $this->productValidationAttributes($payload)
+        );
 
         $validator->after(function ($validator) use ($payload) {
             $category = Category::query()->find($payload['category_id'] ?? null);
@@ -538,18 +543,19 @@ class ProductController extends Controller
                 if ($mode === 'new') {
                     $newName = $this->nullableTrim(data_get($supplier, 'new_supplier_name'));
                     $newAddress = $this->nullableTrim(data_get($supplier, 'new_supplier_address'));
+                    $supplierLabel = 'Supplier #' . ($index + 1);
 
                     if ($newName === null) {
                         $validator->errors()->add(
                             'suppliers.' . $index . '.new_supplier_name',
-                            'Nama supplier baru wajib diisi.'
+                            $supplierLabel . ': nama supplier baru wajib diisi.'
                         );
                     }
 
                     if ($newAddress === null) {
                         $validator->errors()->add(
                             'suppliers.' . $index . '.new_supplier_address',
-                            'Alamat supplier baru wajib diisi.'
+                            $supplierLabel . ': alamat supplier baru wajib diisi.'
                         );
                     }
 
@@ -565,11 +571,12 @@ class ProductController extends Controller
                     }
                 } else {
                     $supplierId = data_get($supplier, 'supplier_id');
+                    $supplierLabel = 'Supplier #' . ($index + 1);
 
                     if ($supplierId === null || $supplierId === '') {
                         $validator->errors()->add(
                             'suppliers.' . $index . '.supplier_id',
-                            'Pilih supplier lama atau gunakan input supplier baru.'
+                            $supplierLabel . ': pilih supplier lama atau gunakan input supplier baru.'
                         );
                     } else {
                         $supplierReference = 'existing:' . $supplierId;
@@ -585,7 +592,7 @@ class ProductController extends Controller
                 if (isset($seenSupplierConditions[$key])) {
                     $validator->errors()->add(
                         'suppliers.' . $index . '.supplier_id',
-                        'Kombinasi supplier dan kondisi harus unik pada satu produk.'
+                        'Supplier #' . ($index + 1) . ': kombinasi supplier dan kondisi harus unik pada satu produk.'
                     );
                 }
 
@@ -594,6 +601,69 @@ class ProductController extends Controller
         });
 
         return $validator;
+    }
+
+    private function productValidationMessages(): array
+    {
+        return [
+            'required' => ':attribute wajib diisi.',
+            'string' => ':attribute harus berupa teks.',
+            'array' => ':attribute harus berupa daftar.',
+            'integer' => ':attribute harus berupa angka bulat.',
+            'numeric' => ':attribute harus berupa angka.',
+            'exists' => 'Pilihan untuk :attribute tidak valid.',
+            'in' => 'Pilihan untuk :attribute tidak valid.',
+            'image' => ':attribute harus berupa file gambar.',
+            'mimes' => ':attribute harus berformat: :values.',
+            'max.string' => ':attribute maksimal :max karakter.',
+            'max.file' => 'Ukuran :attribute maksimal :max KB.',
+            'min.array' => ':attribute minimal :min item.',
+            'min.integer' => ':attribute minimal :min.',
+            'min.numeric' => ':attribute minimal :min.',
+        ];
+    }
+
+    private function productValidationAttributes(array $payload): array
+    {
+        $attributes = [
+            'name' => 'nama produk',
+            'category_id' => 'kategori produk',
+            'warranty' => 'garansi',
+            'description' => 'deskripsi',
+            'image' => 'foto produk',
+            'specs' => 'spesifikasi utama',
+            'extra_specs' => 'spesifikasi tambahan',
+            'suppliers' => 'data supplier',
+        ];
+
+        $category = Category::query()->find($payload['category_id'] ?? null);
+        $definition = $this->specDefinitionForCategory($category?->name);
+
+        foreach (($definition['fields'] ?? []) as $field) {
+            $attributes['specs.' . $field['key'] . '.key'] = 'kunci ' . Str::lower($field['label']);
+            $attributes['specs.' . $field['key'] . '.value'] = Str::lower($field['label']);
+            $attributes['specs.' . $field['key'] . '.mode'] = 'mode input ' . Str::lower($field['label']);
+        }
+
+        foreach (($payload['extra_specs'] ?? []) as $index => $spec) {
+            $prefix = 'spesifikasi tambahan #' . ($index + 1);
+            $attributes['extra_specs.' . $index . '.key'] = $prefix . ' - nama field';
+            $attributes['extra_specs.' . $index . '.value'] = $prefix . ' - isi field';
+        }
+
+        foreach (($payload['suppliers'] ?? []) as $index => $supplier) {
+            $prefix = 'supplier #' . ($index + 1);
+            $attributes['suppliers.' . $index . '.mode'] = $prefix . ' - mode input';
+            $attributes['suppliers.' . $index . '.supplier_id'] = $prefix . ' - supplier';
+            $attributes['suppliers.' . $index . '.new_supplier_name'] = $prefix . ' - nama supplier baru';
+            $attributes['suppliers.' . $index . '.new_supplier_address'] = $prefix . ' - alamat supplier baru';
+            $attributes['suppliers.' . $index . '.stock'] = $prefix . ' - stok';
+            $attributes['suppliers.' . $index . '.harga_beli'] = $prefix . ' - harga beli';
+            $attributes['suppliers.' . $index . '.harga_jual'] = $prefix . ' - harga jual';
+            $attributes['suppliers.' . $index . '.condition'] = $prefix . ' - kondisi';
+        }
+
+        return $attributes;
     }
 
     private function persistProduct(?Product $product, array $validated, ?UploadedFile $imageFile = null): Product

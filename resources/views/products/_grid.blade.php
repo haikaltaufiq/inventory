@@ -1,79 +1,170 @@
-﻿<div class="px-5 pb-8" x-data="productGrid()" x-init="boot()">
-    <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+<div class="px-4 pb-6 lg:px-5 lg:pb-8" x-data="productGrid()" x-init="boot()">
+    @php
+        $oldProducts = old('products', []);
+        $productKeys = array_keys(is_array($oldProducts) ? $oldProducts : []);
+
+        $gridErrorGroups = collect($errors->getMessages())->reduce(function (
+            array $carry,
+            array $messages,
+            string $key,
+        ) use ($oldProducts, $productKeys) {
+            if (!\Illuminate\Support\Str::startsWith($key, 'products.')) {
+                return $carry;
+            }
+
+            if (!preg_match('/^products\.([^.]+)\.(.+)$/', $key, $matches)) {
+                return $carry;
+            }
+
+            $clientKey = $matches[1];
+            $row = data_get($oldProducts, $clientKey, []);
+            $rowIndex = array_search($clientKey, $productKeys, true);
+            $rowNumber = $rowIndex === false ? null : $rowIndex + 1;
+            $productId = (int) data_get($row, 'id', 0);
+            $productName = trim((string) data_get($row, 'name', ''));
+            $title =
+                $productName !== ''
+                    ? $productName
+                    : ($productId > 0
+                        ? '#PRD-' . str_pad((string) $productId, 4, '0', STR_PAD_LEFT)
+                        : 'Produk baru');
+
+            if (!isset($carry[$clientKey])) {
+                $carry[$clientKey] = [
+                    'client_key' => $clientKey,
+                    'title' => $title,
+                    'subtitle' => $rowNumber !== null ? 'Baris ' . $rowNumber : 'Produk draft',
+                    'messages' => [],
+                ];
+            }
+
+            foreach ($messages as $message) {
+                if (!in_array($message, $carry[$clientKey]['messages'], true)) {
+                    $carry[$clientKey]['messages'][] = $message;
+                }
+            }
+
+            return $carry;
+        }, []);
+
+        $gridErrorGroups = array_values($gridErrorGroups);
+        $gridErrorsByRow = collect($gridErrorGroups)
+            ->mapWithKeys(fn(array $group) => [$group['client_key'] => $group['messages']])
+            ->all();
+        $generalErrors = collect($errors->getMessages())
+            ->reject(fn(array $messages, string $key) => \Illuminate\Support\Str::startsWith($key, 'products.'))
+            ->flatten()
+            ->unique()
+            ->values()
+            ->all();
+    @endphp
+
+    <div class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-            <h1 class="text-2xl font-semibold tracking-tight text-slate-800">Manajemen Inventory</h1>
-            <p class="mt-1 text-sm text-slate-500">Double click row untuk edit cepat. Detail produk dan supplier tetap
+            <h1 class="text-[29px] font-semibold tracking-tight text-slate-800">Manajemen Inventory</h1>
+            <p class="mt-1 text-[13px] text-slate-500">Double click row untuk edit cepat. Detail produk dan supplier
+                tetap
                 lengkap</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            <span class="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600">
+            <span class="rounded-full bg-slate-100 px-3 py-1.5 text-[11px] font-medium text-slate-600">
                 <span x-text="dirtyCount"></span> perubahan belum disimpan
             </span>
             <button type="button" @click="addRowTop()"
-                class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50">
+                class="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-[13px] font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50">
                 <i class="fas fa-plus text-[10px]"></i>
                 Tambah Baris
             </button>
-            <button type="button" @click="submitForm()"
-                class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800">
+            <button type="button" @click="submitForm()" :disabled="!hasChanges"
+                :class="hasChanges ? 'bg-slate-900 hover:bg-slate-800 text-white shadow-sm' :
+                    'bg-slate-200 text-slate-500 cursor-not-allowed'"
+                class="inline-flex items-center gap-2 rounded-xl px-5 py-2 text-[13px] font-medium transition">
                 <i class="fas fa-save text-[11px]"></i>
                 Simpan Perubahan
             </button>
         </div>
     </div>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-slate-400">Total Products</p>
-            <h3 class="text-2xl font-semibold text-slate-900 mt-2">{{ number_format($summary['total_produk']) }}</h3>
+    <div class="mb-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-400">Total Products</p>
+            <h3 class="mt-2 text-[18px] font-semibold text-slate-900">{{ number_format($summary['total_produk']) }}</h3>
         </div>
-        <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-slate-400">Total Stock</p>
-            <h3 class="text-2xl font-semibold text-slate-900 mt-2">{{ number_format($summary['total_stok']) }}</h3>
+        <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-400">Total Stock</p>
+            <h3 class="mt-2 text-[18px] font-semibold text-slate-900">{{ number_format($summary['total_stok']) }}</h3>
         </div>
-        <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-slate-400">Inventory Value</p>
-            <h3 class="text-2xl font-semibold text-slate-900 mt-2">Rp
+        <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-400">Inventory Value</p>
+            <h3 class="mt-2 text-[18px] font-semibold text-slate-900">Rp
                 {{ number_format($summary['nilai_inv'], 0, ',', '.') }}</h3>
         </div>
-        <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
-            <p class="text-xs uppercase tracking-wider text-slate-400">Low Stock Items</p>
+        <div class="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm">
+            <p class="text-[11px] uppercase tracking-[0.18em] text-slate-400">Low Stock Items</p>
             <h3
-                class="text-2xl font-semibold mt-2 {{ $summary['stok_menipis'] > 0 ? 'text-rose-600' : 'text-slate-900' }}">
+                class="mt-2 text-[18px] font-semibold {{ $summary['stok_menipis'] > 0 ? 'text-rose-600' : 'text-slate-900' }}">
                 {{ number_format($summary['stok_menipis']) }}
             </h3>
         </div>
     </div>
 
-    @if ($errors->any())
+    @if (!empty($gridErrorGroups) || !empty($generalErrors))
         <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
             <p class="text-sm font-semibold text-red-700">Masih ada data yang perlu diperbaiki sebelum disimpan.</p>
-            <ul class="mt-2 space-y-1 text-sm text-red-600">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
+
+            @if (!empty($gridErrorGroups))
+                <div class="mt-4 grid gap-3 lg:grid-cols-2">
+                    @foreach ($gridErrorGroups as $group)
+                        <div class="rounded-2xl border border-red-200 bg-white/80 p-4">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-semibold text-red-700">{{ $group['title'] }}</p>
+                                    <p class="mt-1 text-xs text-red-500">{{ $group['subtitle'] }} •
+                                        {{ count($group['messages']) }} hal perlu dicek</p>
+                                </div>
+                                <span
+                                    class="rounded-full bg-red-100 px-2.5 py-1 text-[10px] font-semibold text-red-700">
+                                    {{ count($group['messages']) }} issue
+                                </span>
+                            </div>
+                            <ul class="mt-3 space-y-1 text-sm text-red-600">
+                                @foreach ($group['messages'] as $message)
+                                    <li>{{ $message }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+
+            @if (!empty($generalErrors))
+                <ul class="mt-4 space-y-1 text-sm text-red-600">
+                    @foreach ($generalErrors as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
     @endif
 
-    <div class="mb-6 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+    <div class="mb-5 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm">
         <form action="{{ route('products.index') }}" method="GET" class="flex flex-wrap gap-3 md:flex-nowrap">
             <div class="relative flex-1">
-                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-slate-400"></i>
                 <input type="text" name="search" value="{{ request('search') }}"
                     placeholder="Cari SKU atau nama produk..."
-                    class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-4 text-sm outline-none transition focus:border-slate-400">
+                    class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-[13px] outline-none transition focus:border-slate-400">
             </div>
             <select name="category_id" onchange="this.form.submit()"
-                class="min-w-52 cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-slate-400">
+                class="min-w-48 cursor-pointer rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-[13px] outline-none transition focus:border-slate-400">
                 <option value="">Semua Kategori</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category->id }}" @selected((string) request('category_id') === (string) $category->id)>{{ $category->name }}</option>
                 @endforeach
             </select>
             <button type="submit"
-                class="rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800">Terapkan
+                class="rounded-xl bg-slate-900 px-5 py-2.5 text-[13px] font-medium text-white transition hover:bg-slate-800">Terapkan
                 Filter</button>
         </form>
     </div>
@@ -85,158 +176,192 @@
 
         <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
             <div class="overflow-x-auto">
-                <table class="min-w-full text-left text-sm">
+                <table class="min-w-[1100px] w-full text-left text-[13px] xl:table-fixed">
+                    <colgroup>
+                        <col class="w-12">
+                        <col class="w-[21%]">
+                        <col class="w-[11%]">
+                        <col class="w-[24%]">
+                        <col class="w-[11%]">
+                        <col class="w-[12%]">
+                        <col class="w-[8%]">
+                        <col class="w-[10%]">
+                    </colgroup>
                     <thead class="bg-slate-50/80 text-slate-500">
                         <tr>
-                            <th class="w-14 px-3 py-4 text-center text-[11px] font-medium uppercase tracking-wider">+
+                            <th class="w-12 px-3 py-3 text-center text-[10px] font-medium uppercase tracking-[0.16em]">+
                             </th>
-                            <th class="px-4 py-4 font-medium">Produk</th>
-                            <th class="px-4 py-4 font-medium">Kategori</th>
-                            <th class="px-4 py-4 font-medium">Ringkasan Supplier</th>
-                            <th class="px-4 py-4 font-medium">Harga & Stok</th>
-                            <th class="px-4 py-4 font-medium">Spesifikasi</th>
-                            <th class="px-4 py-4 text-center font-medium">Status</th>
-                            <th class="px-4 py-4 text-right font-medium">Aksi</th>
+                            <th class="px-3 py-3 text-[12px] font-medium">Produk</th>
+                            <th class="px-3 py-3 text-[12px] font-medium">Kategori</th>
+                            <th class="px-3 py-3 text-[12px] font-medium">Ringkasan Supplier</th>
+                            <th class="px-3 py-3 text-[12px] font-medium">Spesifikasi</th>
+                            <th class="px-3 py-3 text-right text-[12px] font-medium">Total Stok</th>
+
+                            <th class="px-3 py-3 text-center text-[12px] font-medium whitespace-nowrap">Status</th>
+                            <th class="px-3 py-3 text-right text-[12px] font-medium whitespace-nowrap">Aksi</th>
                         </tr>
                     </thead>
 
                     <template x-for="row in rows" :key="row.client_key">
                         <tbody class="group divide-y divide-slate-100" :data-row-key="row.client_key">
-                            <tr @dblclick="activateRow(row)"
-                                :class="row.marked_for_delete ? 'bg-rose-50/70 opacity-70' : (row.is_editing ?
-                                    'bg-slate-50/70' : 'hover:bg-slate-50/70')"
+                            <tr :class="row.marked_for_delete ? 'bg-rose-50/70 opacity-70' : (rowHasErrors(row) ?
+                                'bg-rose-50/40 hover:bg-rose-50/60' :
+                                (row.editing_cell ? 'bg-slate-50/60' : 'hover:bg-slate-50/60'))"
                                 class="transition">
-                                <td class="px-3 py-3 text-center">
+                                <td class="px-2.5 py-2.5 text-center align-top">
                                     <button type="button" @click="addRowAfter(row.client_key)"
-                                        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 opacity-0 transition hover:border-slate-300 hover:text-slate-900 group-hover:opacity-100">
-                                        <i class="fas fa-plus text-[11px]"></i>
+                                        class="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-400 opacity-0 transition hover:border-slate-300 hover:text-slate-900 group-hover:opacity-100">
+                                        <i class="fas fa-plus text-[10px]"></i>
                                     </button>
                                 </td>
-
-                                <td class="px-4 py-3">
-                                    <template x-if="row.is_editing && !row.marked_for_delete">
-                                        <div class="space-y-2">
-                                            <input x-model="row.name" @input="markDirty(row)" data-focus="name"
-                                                type="text"
-                                                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-slate-400"
+                                {{-- Product Name --}}
+                                <td @dblclick.stop="activateRow(row, 'name')" class="px-3 py-1 align-top cursor-cell">
+                                    <div class="space-y-1">
+                                        <template x-if="isCellEditing(row, 'name')">
+                                            <input x-model="row.name" @input="markDirty(row)"
+                                                @blur="saveCell(row, 'name')"
+                                                @keydown.enter.prevent="saveCell(row, 'name', 'category')"
+                                                @keydown.escape.prevent="stopCellEdit(row, 'name')"
+                                                data-cell-input="name" type="text"
+                                                class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[13px] outline-none transition focus:border-slate-400"
                                                 placeholder="Nama produk">
-                                            <div class="flex flex-wrap gap-2 text-[10px] text-slate-400">
-                                                <span class="font-mono"
-                                                    x-text="row.id ? `#PRD-${String(row.id).padStart(4, '0')}` : '#DRAFT'"></span>
-                                                <span x-show="row.is_dirty"
-                                                    class="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-600">Unsaved</span>
+                                        </template>
+                                        <template x-if="!isCellEditing(row, 'name')">
+                                            <div class="min-h-8.5">
+                                                <div class="text-[13px] font-semibold leading-[1.35] text-slate-800"
+                                                    x-text="row.name || 'Produk baru'"></div>
                                             </div>
+                                        </template>
+                                        <div class="flex flex-wrap gap-1.5 text-[10px] text-slate-400">
+                                            <span class="font-mono"
+                                                x-text="row.id ? `#PRD-${String(row.id).padStart(4, '0')}` : '#DRAFT'"></span>
+                                            <span x-show="row.is_dirty"
+                                                class="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-600">Unsaved</span>
+                                            <span x-show="rowErrorCount(row) > 0"
+                                                class="rounded-full bg-rose-100 px-2 py-0.5 font-medium text-rose-600">
+                                                <span x-text="`${rowErrorCount(row)} issue`"></span>
+                                            </span>
                                         </div>
-                                    </template>
-                                    <template x-if="!row.is_editing || row.marked_for_delete">
-                                        <div class="space-y-1">
-                                            <div class="font-semibold leading-tight text-slate-800"
-                                                x-text="row.name || 'Produk baru'"></div>
-                                            <div class="text-[10px] text-slate-400"
-                                                x-text="row.id ? `#PRD-${String(row.id).padStart(4, '0')}` : '#DRAFT'">
-                                            </div>
-                                        </div>
-                                    </template>
+                                    </div>
                                 </td>
-
-                                <td class="px-4 py-3">
-                                    <template x-if="row.is_editing && !row.marked_for_delete">
-                                        <select x-model="row.category_id" @change="changeCategory(row)"
-                                            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-slate-400">
+                                {{-- Category --}}
+                                <td @dblclick.stop="activateRow(row, 'category')"
+                                    class="px-3 py-2 align-top cursor-cell">
+                                    <template x-if="isCellEditing(row, 'category')">
+                                        <select x-model="row.category_id"
+                                            @change="changeCategory(row); saveCell(row, 'category')"
+                                            @blur="saveCell(row, 'category')" data-cell-input="category"
+                                            class="w-full max-w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] outline-none transition focus:border-slate-400">
                                             <option value="">Pilih kategori</option>
                                             <template x-for="category in categories" :key="category.id">
                                                 <option :value="String(category.id)" x-text="category.name"></option>
                                             </template>
                                         </select>
                                     </template>
-                                    <template x-if="!row.is_editing || row.marked_for_delete">
-                                        <span
-                                            class="rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-600"
-                                            x-text="categoryName(row)"></span>
+                                    <template x-if="!isCellEditing(row, 'category')">
+                                        <div class="min-h-8.5 flex items-start">
+                                            <span
+                                                class="rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-600"
+                                                x-text="categoryName(row)"></span>
+                                        </div>
                                     </template>
                                 </td>
+                                {{-- Supplier --}}
+                                <td class="px-3 py-1 align-top">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="min-w-0 space-y-1">
 
-                                <td class="px-4 py-3">
-                                    <div class="flex flex-col gap-2">
-                                        <span class="text-[11px] text-slate-600" x-text="supplierSummary(row)"></span>
-                                        <div class="flex flex-wrap gap-2">
-                                            <template x-for="supplierPreviewRow in supplierPreview(row)"
-                                                :key="`${row.client_key}-supplier-preview-${supplierPreviewRow.index}`">
-                                                <span
-                                                    class="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[10px] font-medium ring-1"
-                                                    :class="supplierTone(supplierPreviewRow.index).badge">
-                                                    <span class="h-2 w-2 rounded-full"
-                                                        :class="supplierTone(supplierPreviewRow.index).dot"></span>
-                                                    <span class="truncate max-w-27.5"
-                                                        x-text="supplierPreviewRow.name"></span>
-                                                    <span class="opacity-70"
-                                                        x-text="supplierPreviewRow.condition"></span>
-                                                </span>
-                                            </template>
-                                            <span x-show="remainingSupplierCount(row) > 0"
-                                                class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-500">
-                                                +<span x-text="remainingSupplierCount(row)"></span> lagi
-                                            </span>
-                                        </div>
-                                        <span x-show="hasDuplicateSupplierCondition(row)"
-                                            class="text-[10px] font-medium text-rose-500">Kombinasi supplier + kondisi
-                                            duplikat, satukan di satu baris supplier.</span>
-                                        <button type="button" @click="openSupplierModal(row)"
-                                            class="w-fit rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-slate-800">Kelola
-                                            Supplier</button>
-                                    </div>
-                                </td>
-
-                                <td class="px-4 py-3">
-                                    <div class="space-y-2" x-show="activeSupplierEntries(row).length > 0">
-                                        <template x-for="supplierEntry in activeSupplierEntries(row)"
-                                            :key="`${row.client_key}-metric-${supplierEntry.index}`">
-                                            <div class="flex flex-wrap items-center gap-2 text-[10px]">
-                                                <span class="h-2.5 w-2.5 rounded-full flex-none"
-                                                    :class="supplierTone(supplierEntry.index).dot"></span>
-                                                <template
-                                                    x-for="metricBadge in supplierMetricBadges(row, supplierEntry, supplierEntry.index)"
-                                                    :key="`${row.client_key}-${supplierEntry.index}-${metricBadge.key}`">
+                                            <div class="flex flex-wrap gap-1">
+                                                <template x-for="supplierPreviewRow in supplierPreview(row, 1)"
+                                                    :key="`${row.client_key}-supplier-preview-${supplierPreviewRow.index}`">
                                                     <span
-                                                        class="inline-flex items-center rounded-full px-2.5 py-1 font-medium"
-                                                        :class="metricBadge.className"
-                                                        x-text="metricBadge.label"></span>
+                                                        class="inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1"
+                                                        :class="supplierTone(supplierPreviewRow.index).badge">
+                                                        <span class="h-1.5 w-1.5 rounded-full"
+                                                            :class="supplierTone(supplierPreviewRow.index).dot"></span>
+                                                        <span class="truncate max-w-27.5"
+                                                            x-text="supplierPreviewRow.name"></span>
+                                                        <span class="opacity-70"
+                                                            x-text="supplierPreviewRow.condition"></span>
+                                                    </span>
                                                 </template>
+                                                <span x-show="remainingSupplierCount(row, 1) > 0"
+                                                    class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                                                    +<span x-text="remainingSupplierCount(row, 1)"></span> lagi
+                                                </span>
                                             </div>
-                                        </template>
-                                    </div>
-                                    <div x-show="activeSupplierEntries(row).length === 0"
-                                        class="text-[11px] text-slate-400">
-                                        Belum ada data harga supplier.
+                                            <span x-show="hasDuplicateSupplierCondition(row)"
+                                                class="text-[10px] font-medium text-rose-500">Kombinasi supplier +
+                                                kondisi
+                                                duplikat, satukan di satu baris supplier.</span>
+                                        </div>
+                                        <button type="button" @click="openSupplierModal(row)"
+                                            class="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-900">
+                                            <i class="fas fa-pen text-[11px]"></i>
+                                        </button>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3">
-                                    <div class="flex flex-col gap-2">
-                                        <span class="text-[11px] text-slate-500" x-text="specSummary(row)"></span>
+
+                                {{-- Specification --}}
+                                <td class="px-3 py-2 align-top">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <span class="min-w-0 text-[11px] leading-4 text-slate-500"
+                                            x-text="specSummary(row)"></span>
                                         <button type="button" @click="openDetailModal(row)"
-                                            class="w-fit rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-slate-800">Kelola
-                                            Spec</button>
+                                            class="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-900">
+                                            <i class="fas fa-pen text-[11px]"></i>
+                                        </button>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3 text-center"><span
-                                        class="rounded-full px-2.5 py-1 text-[10px] font-medium"
+                                {{-- Stock --}}
+                                <td class="px-3 py-2 align-top text-right">
+                                    <div class="min-h-8.5 flex flex-col items-end justify-start">
+                                        <span class="text-[15px] font-semibold leading-5 text-slate-900 tabular-nums"
+                                            x-text="formatNumber(rowStock(row))"></span>
+                                        <span class="mt-0.5 text-[10px] text-slate-400"
+                                            x-text="activeSupplierEntries(row).length > 0 ? `${activeSupplierEntries(row).length} supplier aktif` : 'Belum ada supplier'"></span>
+                                    </div>
+                                </td>
+                                {{-- Status --}}
+                                <td class="px-3 py-2 text-center align-top"><span
+                                        class="rounded-full px-2.5 py-0.5 text-[10px] font-medium"
                                         :class="statusMeta(row).className" x-text="statusMeta(row).label"></span></td>
 
-                                <td class="px-4 py-3">
-                                    <div class="flex justify-end">
+                                {{-- Action Button --}}
+                                <td class="px-3 py-2 align-top">
+                                    <div class="flex justify-end gap-1">
+                                        <button type="button" @click="openPreviewModal(row)"
+                                            class="rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">
+                                            <i class="fas fa-eye text-[13px]"></i>
+                                        </button>
                                         <button type="button" @click="toggleDelete(row)"
-                                            class="rounded-lg p-2 transition"
+                                            class="rounded-lg p-1.5 transition"
                                             :class="row.marked_for_delete ? 'bg-emerald-50 text-emerald-600' :
                                                 'text-red-400 hover:bg-red-50 hover:text-red-600'"><i
-                                                class="fas"
+                                                class="fas text-[13px]"
                                                 :class="row.marked_for_delete ? 'fa-rotate-left' : 'fa-trash'"></i></button>
                                     </div>
                                 </td>
                             </tr>
 
                             <tr x-show="row.marked_for_delete" x-cloak>
-                                <td colspan="8" class="bg-rose-50/80 px-6 py-4 text-sm text-rose-700">Baris ini
+                                <td colspan="8" class="bg-rose-50/80 px-5 py-3 text-[13px] text-rose-700">Baris ini
                                     akan dihapus saat tombol simpan ditekan.</td>
+                            </tr>
+                            <tr x-show="rowErrorCount(row) > 0 && !row.marked_for_delete" x-cloak>
+                                <td colspan="8" class="bg-rose-50/80 px-5 py-3">
+                                    <div class="flex flex-col gap-1.5">
+                                        <p class="text-[13px] font-semibold text-rose-700">Field yang perlu dilengkapi
+                                            untuk
+                                            produk ini</p>
+                                        <ul class="space-y-1 text-[13px] text-rose-600">
+                                            <template x-for="(message, errorIndex) in rowErrors(row)"
+                                                :key="`${row.client_key}-error-${errorIndex}`">
+                                                <li x-text="message"></li>
+                                            </template>
+                                        </ul>
+                                    </div>
+                                </td>
                             </tr>
                             <tr class="hidden">
                                 <td colspan="8"><template x-for="field in hiddenFields(row)"
@@ -523,6 +648,142 @@
                             </div>
                         </div>
                     </template>
+                </div>
+            </div>
+        </template>
+    </x-modal>
+
+    <x-modal id="modal-product-preview" title="Detail Produk" size="xl">
+        <template x-if="activePreviewRow()">
+            <div class="space-y-5">
+                <div class="grid gap-4 md:grid-cols-3">
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
+                        <p class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Produk</p>
+                        <h3 class="mt-2 text-lg font-semibold text-slate-900"
+                            x-text="activePreviewRow()?.name || 'Produk'"></h3>
+                        <div class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                            <span class="font-mono"
+                                x-text="activePreviewRow()?.id ? `#PRD-${String(activePreviewRow().id).padStart(4, '0')}` : '#DRAFT'"></span>
+                            <span class="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200"
+                                x-text="categoryName(activePreviewRow())"></span>
+                            <span class="rounded-full px-2.5 py-1 text-[10px] font-medium"
+                                :class="statusMeta(activePreviewRow()).className"
+                                x-text="statusMeta(activePreviewRow()).label"></span>
+                        </div>
+                        <p class="mt-3 text-sm leading-6 text-slate-600"
+                            x-text="activePreviewRow()?.description || 'Belum ada deskripsi produk.'"></p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                        <p class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Ringkasan</p>
+                        <div class="mt-3 space-y-3 text-sm">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-slate-500">Total stok</span>
+                                <span class="font-semibold text-slate-900 tabular-nums"
+                                    x-text="formatNumber(rowStock(activePreviewRow()))"></span>
+                            </div>
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-slate-500">Supplier aktif</span>
+                                <span class="font-semibold text-slate-900 tabular-nums"
+                                    x-text="formatNumber(activeSupplierEntries(activePreviewRow()).length)"></span>
+                            </div>
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-slate-500">Garansi</span>
+                                <span class="font-medium text-slate-900 text-right"
+                                    x-text="activePreviewRow()?.warranty || '-'"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-white">
+                    <div class="border-b border-slate-200 px-4 py-3">
+                        <h4 class="text-sm font-semibold text-slate-800">Harga per Supplier</h4>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th class="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em]">Supplier
+                                    </th>
+                                    <th class="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em]">Kondisi
+                                    </th>
+                                    <th
+                                        class="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.14em]">
+                                        Stok</th>
+                                    <th
+                                        class="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.14em]">
+                                        Harga Modal</th>
+                                    <th
+                                        class="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.14em]">
+                                        Harga Jual</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <template x-for="supplierEntry in activeSupplierEntries(activePreviewRow())"
+                                    :key="`preview-supplier-${supplierEntry.index}`">
+                                    <tr>
+                                        <td class="px-4 py-3 text-sm text-slate-800" x-text="supplierEntry.name"></td>
+                                        <td class="px-4 py-3">
+                                            <span class="rounded-full px-2.5 py-1 text-[10px] font-medium"
+                                                :class="conditionMeta(supplierEntry.condition)"
+                                                x-text="supplierEntry.condition || '-'"></span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right font-medium text-slate-900 tabular-nums"
+                                            x-text="formatNumber(supplierEntry.stock)"></td>
+                                        <td class="px-4 py-3 text-right text-slate-700 tabular-nums"
+                                            x-text="`Rp ${formatCurrency(supplierEntry.harga_beli)}`"></td>
+                                        <td class="px-4 py-3 text-right font-medium text-slate-900 tabular-nums"
+                                            x-text="`Rp ${formatCurrency(supplierEntry.harga_jual)}`"></td>
+                                    </tr>
+                                </template>
+                                <tr x-show="activeSupplierEntries(activePreviewRow()).length === 0">
+                                    <td colspan="5" class="px-4 py-6 text-center text-sm text-slate-400">Belum ada
+                                        supplier aktif untuk produk ini.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                        <h4 class="text-sm font-semibold text-slate-800">Spesifikasi Utama</h4>
+                        <div class="mt-3 space-y-2 text-sm">
+                            <template x-for="field in templateFields(activePreviewRow())"
+                                :key="`preview-field-${field.key}`">
+                                <div
+                                    class="flex items-start justify-between gap-4 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-slate-500" x-text="field.label"></span>
+                                    <span class="text-right font-medium text-slate-900"
+                                        x-text="activePreviewRow()?.specs?.[field.key]?.value || '-'"></span>
+                                </div>
+                            </template>
+                            <div x-show="templateFields(activePreviewRow()).length === 0"
+                                class="text-sm text-slate-400">
+                                Belum ada spesifikasi utama.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                        <h4 class="text-sm font-semibold text-slate-800">Spesifikasi Tambahan</h4>
+                        <div class="mt-3 space-y-2 text-sm">
+                            <template x-for="(spec, specIndex) in activePreviewRow()?.additional_specs || []"
+                                :key="`preview-extra-${specIndex}`">
+                                <div
+                                    class="flex items-start justify-between gap-4 border-b border-slate-100 pb-2 last:border-0 last:pb-0">
+                                    <span class="text-slate-500" x-text="spec.key || '-'"></span>
+                                    <span class="text-right font-medium text-slate-900"
+                                        x-text="spec.value || '-'"></span>
+                                </div>
+                            </template>
+                            <div x-show="(activePreviewRow()?.additional_specs || []).length === 0"
+                                class="text-sm text-slate-400">
+                                Belum ada spesifikasi tambahan.
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </template>
