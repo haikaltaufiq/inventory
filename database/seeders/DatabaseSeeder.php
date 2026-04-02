@@ -201,7 +201,6 @@ class DatabaseSeeder extends Seeder
             $product = Product::create([
                 'category_id' => $category->id,
                 'name' => $item['name'],
-                'selling_price' => $item['price'],
                 'description' => 'High-end component for PC Enthusiast',
                 'warranty' => '3 Years'
             ]);

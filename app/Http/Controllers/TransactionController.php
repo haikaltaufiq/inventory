@@ -47,7 +47,7 @@ class TransactionController extends Controller
                     ->all();
 
                 $suppliers = $product->suppliers
-                    ->map(function ($supplier) use ($product) {
+                    ->map(function ($supplier) {
                         return [
                             'id' => $supplier->id,
                             'supplier_id' => $supplier->id,
@@ -55,7 +55,7 @@ class TransactionController extends Controller
                             'pivot' => [
                                 'id' => $supplier->pivot->id,
                                 'stock' => (int) $supplier->pivot->stock,
-                                'harga_jual_manual' => (float) ($supplier->pivot->harga_jual_manual ?? $product->selling_price),
+                                'harga_jual_manual' => (float) $supplier->pivot->harga_jual_manual,
                                 'condition' => $supplier->pivot->condition,
                             ],
                         ];
@@ -72,7 +72,7 @@ class TransactionController extends Controller
                     'id' => $product->id,
                     'name' => $product->name,
                     'category' => ['name' => $product->category?->name ?? 'Uncategorized'],
-                    'base_price' => (float) ($basePrice ?? $product->selling_price),
+                    'base_price' => (float) ($basePrice ?? 0),
                     'socket' => $specs->get('socket'),
                     'ram_type' => $specs->get('ram_type'),
                     'image_url' => $product->image_url ?? asset('assets/no-image.svg'),
@@ -119,7 +119,7 @@ class TransactionController extends Controller
         ]);
 
         $suppliers = $product->suppliers
-            ->map(function ($supplier) use ($product) {
+            ->map(function ($supplier) {
                 return [
                     'id' => $supplier->id,
                     'supplier_id' => $supplier->id,
@@ -127,7 +127,7 @@ class TransactionController extends Controller
                     'nama_supplier' => $supplier->nama_supplier,
                     'condition' => $supplier->pivot->condition,
                     'stock' => (int) $supplier->pivot->stock,
-                    'harga_jual' => (float) ($supplier->pivot->harga_jual_manual ?? $product->selling_price),
+                    'harga_jual' => (float) $supplier->pivot->harga_jual_manual,
                 ];
             })
             ->filter(fn($supplier) => $supplier['stock'] > 0)
@@ -207,6 +207,7 @@ class TransactionController extends Controller
                         'transaction_id' => $transaction->id,
                         'product_id' => $item['product_id'],
                         'supplier_id' => $item['supplier_id'],
+                        'product_supplier_id' => $stockRow->id,
                         'quantity' => $item['qty'],
                         'price_at_transaction' => $item['price'],
                         'is_conflict' => (bool) ($item['is_conflict'] ?? false),
@@ -264,10 +265,25 @@ class TransactionController extends Controller
             foreach ($transaction->details as $detail) {
                 $stockRow = DB::table('product_supplier')
                     ->where('product_id', $detail->product_id)
-                    ->where('supplier_id', $detail->supplier_id)
-                    ->orderBy('id')
-                    ->lockForUpdate()
-                    ->first();
+                    ->where('supplier_id', $detail->supplier_id);
+
+                if (!empty($detail->product_supplier_id)) {
+                    $stockRow = (clone $stockRow)
+                        ->where('id', $detail->product_supplier_id)
+                        ->lockForUpdate()
+                        ->first();
+                } else {
+                    $stockRow = null;
+                }
+
+                if (!$stockRow) {
+                    $stockRow = DB::table('product_supplier')
+                        ->where('product_id', $detail->product_id)
+                        ->where('supplier_id', $detail->supplier_id)
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->first();
+                }
 
                 if ($stockRow) {
                     DB::table('product_supplier')
@@ -363,7 +379,7 @@ class TransactionController extends Controller
 
         $transaction->load([
             'customer:id,name,phone,address,email',
-            'details:id,transaction_id,product_id,quantity,price_at_transaction',
+            'details:id,transaction_id,product_id,product_supplier_id,quantity,price_at_transaction',
             'details.product:id,name',
         ]);
 
@@ -483,8 +499,6 @@ class TransactionController extends Controller
         }
 
         DB::transaction(function () use ($validated, $salesName) {
-            $product = Product::findOrFail($validated['product_id']);
-
             $stockQuery = DB::table('product_supplier')
                 ->where('product_id', $validated['product_id'])
                 ->where('supplier_id', $validated['supplier_id']);
@@ -505,7 +519,7 @@ class TransactionController extends Controller
                 ]);
             }
 
-            $price = (float) ($stockRow->harga_jual_manual ?? $product->selling_price);
+            $price = (float) $stockRow->harga_jual_manual;
             $subtotal = $price * (int) $validated['quantity'];
             $serviceFee = (float) ($validated['service_fee'] ?? 0);
             $finalTotal = $subtotal + $serviceFee;
@@ -525,6 +539,7 @@ class TransactionController extends Controller
                 'transaction_id' => $transaction->id,
                 'product_id' => $validated['product_id'],
                 'supplier_id' => $validated['supplier_id'],
+                'product_supplier_id' => $stockRow->id,
                 'quantity' => $validated['quantity'],
                 'price_at_transaction' => $price,
                 'is_conflict' => false,

@@ -76,11 +76,10 @@ class PcBuilderController extends Controller
             $specs = $product->specifications->pluck('spec_value', 'spec_key')->toArray();
 
             // Ambil harga jual terbaik dari supplier yang punya stok
-            // Prioritas: harga_jual_manual dari pivot, fallback ke selling_price produk
             $hargaJual = $product->suppliers
                 ->filter(fn($s) => $s->pivot->stock > 0)
                 ->min(fn($s) => $s->pivot->harga_jual_manual)
-                ?? $product->selling_price;
+                ?? 0;
 
             return [
                 'id'        => $product->id,

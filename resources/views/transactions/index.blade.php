@@ -504,8 +504,7 @@
                                 name: s.nama_supplier,
                                 condition: s.pivot ? s.pivot.condition : null,
                                 pivot_stock: Number(s.pivot ? s.pivot.stock : 0),
-                                pivot_price: Number(s.pivot ? s.pivot.harga_jual_manual : (p.base_price ??
-                                    0))
+                                pivot_price: Number(s.pivot ? s.pivot.harga_jual_manual : 0)
                             };
                         })
                     })),
