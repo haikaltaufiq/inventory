@@ -33,12 +33,15 @@
                     <p class="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-400">{{ $card['label'] }}</p>
                     <div class="mt-2 flex items-start justify-between gap-2.5">
                         <h3 class="text-lg font-semibold text-slate-900 lg:text-xl">{{ $card['value'] }}</h3>
-                        <span class="inline-flex h-7 w-7 items-center justify-center rounded-full {{ $trendMap[$card['trend']['state']] ?? $trendMap['neutral'] }}">
-                            <i class="fa-solid {{ $trendIcons[$card['trend']['direction']] ?? $trendIcons['flat'] }} text-[10px]"></i>
+                        <span
+                            class="inline-flex h-7 w-7 items-center justify-center rounded-full {{ $trendMap[$card['trend']['state']] ?? $trendMap['neutral'] }}">
+                            <i
+                                class="fa-solid {{ $trendIcons[$card['trend']['direction']] ?? $trendIcons['flat'] }} text-[10px]"></i>
                         </span>
                     </div>
                     <div class="mt-2.5 flex items-center gap-2">
-                        <span class="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-medium {{ $trendMap[$card['trend']['state']] ?? $trendMap['neutral'] }}">
+                        <span
+                            class="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-medium {{ $trendMap[$card['trend']['state']] ?? $trendMap['neutral'] }}">
                             {{ $card['trend']['label'] }}
                         </span>
                     </div>
@@ -55,7 +58,8 @@
                     </div>
                     <div class="text-right text-[11px] text-slate-500">
                         <div>{{ $stats['current_month_label'] }}</div>
-                        <div class="mt-1 font-medium text-slate-700">{{ number_format($stats['current_month_transactions']) }} trx</div>
+                        <div class="mt-1 font-medium text-slate-700">
+                            {{ number_format($stats['current_month_transactions']) }} trx</div>
                     </div>
                 </div>
 
@@ -74,7 +78,8 @@
                     </div>
                     <div class="text-right text-[11px] text-slate-500">
                         <div>Total</div>
-                        <div class="mt-1 font-medium text-slate-700">{{ number_format($stats['inventory_total_stock']) }}</div>
+                        <div class="mt-1 font-medium text-slate-700">{{ number_format($stats['inventory_total_stock']) }}
+                        </div>
                     </div>
                 </div>
 
@@ -89,7 +94,7 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[640px] text-[13px]">
+                <table class="w-full min-w-160 text-[13px]">
                     <thead class="border-b border-slate-200 text-[10px] uppercase tracking-[0.12em] text-slate-400">
                         <tr>
                             <th class="py-3 text-left font-medium">Invoice</th>
@@ -107,9 +112,11 @@
                                 <td>{{ $transaction['customer'] }}</td>
                                 <td class="text-slate-500">{{ $transaction['items'] }}</td>
                                 <td>{{ $transaction['date'] }}</td>
-                                <td class="text-right font-semibold text-slate-900">Rp {{ number_format($transaction['total'], 0, ',', '.') }}</td>
+                                <td class="text-right font-semibold text-slate-900">Rp
+                                    {{ number_format($transaction['total'], 0, ',', '.') }}</td>
                                 <td class="text-center">
-                                    <span class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium
+                                    <span
+                                        class="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium
                                         {{ $transaction['status'] === 'Completed'
                                             ? 'bg-emerald-50 text-emerald-700'
                                             : ($transaction['status'] === 'Pending'
@@ -121,7 +128,8 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="py-10 text-center text-sm text-slate-400">Belum ada transaksi untuk ditampilkan.</td>
+                                <td colspan="6" class="py-10 text-center text-sm text-slate-400">Belum ada transaksi
+                                    untuk ditampilkan.</td>
                             </tr>
                         @endforelse
                     </tbody>
