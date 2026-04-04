@@ -6,9 +6,11 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductSpecification;
 use App\Models\Supplier;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -18,47 +20,21 @@ use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
+    private const SPEC_OPTIONS_CACHE_KEY = 'products.spec_options';
+
     public function index(Request $request)
     {
-        $categories = Category::query()->orderBy('name')->get();
-        $suppliers = Supplier::query()->orderBy('nama_supplier')->get();
+        $categories = Category::query()
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+        $suppliers = Supplier::query()
+            ->select('id', 'nama_supplier')
+            ->orderBy('nama_supplier')
+            ->get();
 
-        $query = Product::with(['suppliers', 'category', 'specifications'])
-            ->withSum('suppliers as total_stok_count', 'product_supplier.stock');
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('id', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        $filteredData = (clone $query)->get();
-
-        $summary = [
-            'total_produk' => $filteredData->count(),
-            'total_stok' => 0,
-            'nilai_inv' => 0,
-            'stok_menipis' => 0,
-        ];
-
-        foreach ($filteredData as $product) {
-            foreach ($product->suppliers as $supplier) {
-                $stock = $supplier->pivot->stock;
-                $summary['total_stok'] += $stock;
-                $summary['nilai_inv'] += ($stock * $supplier->pivot->harga_beli);
-
-                if ($stock <= 10) {
-                    $summary['stok_menipis']++;
-                }
-            }
-        }
-
+        $query = $this->buildProductIndexQuery($request);
+        $summary = $this->buildProductIndexSummary($request);
         $products = $query->paginate(10)->withQueryString();
 
         return view('products.index', [
@@ -192,6 +168,8 @@ class ProductController extends Controller
             }
         });
 
+        $this->forgetProductOptionCaches();
+
         $message = trim(collect([
             $savedCount > 0 ? $savedCount . ' produk disimpan.' : null,
             $deletedCount > 0 ? $deletedCount . ' produk dihapus.' : null,
@@ -207,6 +185,7 @@ class ProductController extends Controller
     {
         $this->deleteProductImage($product);
         $product->delete();
+        $this->forgetProductOptionCaches();
 
         return redirect()
             ->route('products.index')
@@ -359,7 +338,7 @@ class ProductController extends Controller
 
     private function buildAllSpecTemplates(Collection $categories): array
     {
-        $allSpecifications = ProductSpecification::query()->get(['spec_key', 'spec_value']);
+        $allSpecifications = $this->loadAllSpecifications();
 
         return $categories
             ->mapWithKeys(fn(Category $category) => [
@@ -380,7 +359,7 @@ class ProductController extends Controller
             ];
         }
 
-        $allSpecifications ??= ProductSpecification::query()->get(['spec_key', 'spec_value']);
+        $allSpecifications ??= $this->loadAllSpecifications();
 
         $fields = collect($definition['fields'])
             ->map(function (array $field) {
@@ -690,6 +669,7 @@ class ProductController extends Controller
 
         $this->syncProductSpecifications($product, $specPayload['specifications']);
         $this->syncProductSuppliers($product, $resolvedSuppliers);
+        $this->forgetProductOptionCaches();
 
         return $product;
     }
@@ -863,6 +843,10 @@ class ProductController extends Controller
                         'nama_supplier' => $name,
                         'alamat' => $address,
                     ]);
+
+                    if ($resolvedSupplier->wasRecentlyCreated) {
+                        $this->forgetProductOptionCaches();
+                    }
 
                     $supplier['supplier_id'] = $resolvedSupplier->id;
                 }
@@ -1048,7 +1032,7 @@ class ProductController extends Controller
     {
         static $allSpecifications;
 
-        $allSpecifications ??= ProductSpecification::query()->get(['spec_key', 'spec_value']);
+        $allSpecifications ??= $this->loadAllSpecifications();
 
         $normalizedLookupKeys = $this->lookupKeysForSpecField($key)
             ->map(fn($item) => $this->normalizeIdentifier((string) $item))
@@ -1161,5 +1145,87 @@ class ProductController extends Controller
     private function toBoolean(mixed $value): bool
     {
         return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function buildProductIndexQuery(Request $request): Builder
+    {
+        $query = Product::query()
+            ->select([
+                'products.id',
+                'products.category_id',
+                'products.name',
+                'products.warranty',
+                'products.description',
+                'products.technical_specs',
+                'products.image_url',
+            ])
+            ->with([
+                'category:id,name',
+                'specifications:id,product_id,spec_key,spec_value',
+                'suppliers' => function ($query) {
+                    $query
+                        ->select('suppliers.id', 'suppliers.nama_supplier')
+                        ->withPivot(
+                            'condition',
+                            'stock',
+                            'harga_beli',
+                            'harga_jual_manual'
+                        );
+                },
+            ]);
+
+        return $this->applyProductIndexFilters($query, $request);
+    }
+
+    private function buildProductIndexSummary(Request $request): array
+    {
+        $summaryRow = $this->applyProductIndexFilters(
+            Product::query()
+                ->leftJoin('product_supplier', 'product_supplier.product_id', '=', 'products.id')
+                ->selectRaw('COUNT(DISTINCT products.id) as total_produk')
+                ->selectRaw('COALESCE(SUM(product_supplier.stock), 0) as total_stok')
+                ->selectRaw('COALESCE(SUM(product_supplier.stock * product_supplier.harga_beli), 0) as nilai_inv')
+                ->selectRaw('COALESCE(SUM(CASE WHEN product_supplier.stock <= 10 THEN 1 ELSE 0 END), 0) as stok_menipis'),
+            $request
+        )->first();
+
+        return [
+            'total_produk' => (int) ($summaryRow->total_produk ?? 0),
+            'total_stok' => (int) ($summaryRow->total_stok ?? 0),
+            'nilai_inv' => (float) ($summaryRow->nilai_inv ?? 0),
+            'stok_menipis' => (int) ($summaryRow->stok_menipis ?? 0),
+        ];
+    }
+
+    private function applyProductIndexFilters(Builder $query, Request $request): Builder
+    {
+        if ($request->filled('search')) {
+            $search = $request->search;
+
+            $query->where(function ($q) use ($search) {
+                $q->where('products.name', 'like', "%{$search}%")
+                    ->orWhere('products.id', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('products.category_id', $request->category_id);
+        }
+
+        return $query;
+    }
+
+    private function loadAllSpecifications(): Collection
+    {
+        return Cache::remember(
+            self::SPEC_OPTIONS_CACHE_KEY,
+            now()->addMinutes(10),
+            fn() => ProductSpecification::query()->get(['id', 'spec_key', 'spec_value'])
+        );
+    }
+
+    private function forgetProductOptionCaches(): void
+    {
+        Cache::forget(self::SPEC_OPTIONS_CACHE_KEY);
     }
 }

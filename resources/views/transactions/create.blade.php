@@ -31,7 +31,7 @@
                     <option value="">Pilih Produk</option>
                     @foreach($products as $product)
                         @php
-                            $totalStock = $product->suppliers->sum('pivot.stock');
+                            $totalStock = (int) ($product->total_stock ?? 0);
                         @endphp
                         @if($totalStock > 0)
                         <option value="{{ $product->id }}" {{ old('product_id') == $product->id ? 'selected' : '' }}>

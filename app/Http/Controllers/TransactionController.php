@@ -21,18 +21,28 @@ class TransactionController extends Controller
     public function index()
     {
         $salesUsers = User::query()
+            ->select('id', 'name')
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get();
 
-        $products = Product::with([
-            'category:id,name',
-            'specifications:id,product_id,spec_key,spec_value',
-            'suppliers' => function ($query) {
-                $query
-                    ->select('suppliers.id', 'nama_supplier')
-                    ->withPivot('id', 'stock', 'harga_jual_manual', 'condition');
-            },
-        ])
+        $products = Product::query()
+            ->select([
+                'products.id',
+                'products.category_id',
+                'products.name',
+                'products.image_url',
+                'products.description',
+            ])
+            ->with([
+                'category:id,name',
+                'specifications:id,product_id,spec_key,spec_value',
+                'suppliers' => function ($query) {
+                    $query
+                        ->select('suppliers.id', 'suppliers.nama_supplier')
+                        ->where('product_supplier.stock', '>', 0)
+                        ->withPivot('id', 'stock', 'harga_jual_manual', 'condition');
+                },
+            ])
             ->get()
             ->map(function ($product) {
                 $specs = $product->specifications->pluck('spec_value', 'spec_key');
@@ -60,7 +70,6 @@ class TransactionController extends Controller
                             ],
                         ];
                     })
-                    ->filter(fn($supplier) => $supplier['pivot']['stock'] > 0)
                     ->values();
 
                 $basePrice = $suppliers
@@ -95,13 +104,9 @@ class TransactionController extends Controller
             ->orderBy('name')
             ->get();
 
-        $products = Product::with([
-            'suppliers' => function ($query) {
-                $query
-                    ->select('suppliers.id', 'nama_supplier')
-                    ->withPivot('stock', 'harga_jual_manual');
-            },
-        ])
+        $products = Product::query()
+            ->select('id', 'name')
+            ->withSum('suppliers as total_stock', 'product_supplier.stock')
             ->orderBy('name')
             ->get();
 
@@ -113,7 +118,8 @@ class TransactionController extends Controller
         $product->load([
             'suppliers' => function ($query) {
                 $query
-                    ->select('suppliers.id', 'nama_supplier')
+                    ->select('suppliers.id', 'suppliers.nama_supplier')
+                    ->where('product_supplier.stock', '>', 0)
                     ->withPivot('id', 'condition', 'stock', 'harga_jual_manual');
             },
         ]);
@@ -130,7 +136,6 @@ class TransactionController extends Controller
                     'harga_jual' => (float) $supplier->pivot->harga_jual_manual,
                 ];
             })
-            ->filter(fn($supplier) => $supplier['stock'] > 0)
             ->values();
 
         return response()->json($suppliers);
@@ -302,8 +307,22 @@ class TransactionController extends Controller
 
     public function report()
     {
-        $transactions = Transaction::with(['customer', 'details.product'])
+        $transactions = Transaction::query()
+            ->select([
+                'id',
+                'customer_id',
+                'final_total',
+                'type',
+                'status',
+                'transaction_date',
+            ])
+            ->with([
+                'customer:id,name',
+                'details:id,transaction_id,product_id,quantity',
+                'details.product:id,name',
+            ])
             ->latest('transaction_date')
+            ->latest('id')
             ->get()
             ->map(function ($transaction) {
                 $productNames = $transaction->details
@@ -329,35 +348,51 @@ class TransactionController extends Controller
 
     public function downloadReport()
     {
-        $transactions = Transaction::with(['customer', 'details.product'])
-            ->latest('transaction_date')
-            ->get();
-
         $fileName = 'laporan-transaksi-' . now()->format('Ymd-His') . '.csv';
 
-        return response()->streamDownload(function () use ($transactions) {
+        return response()->streamDownload(function () {
             $handle = fopen('php://output', 'w');
             fputcsv($handle, ['Tanggal', 'Customer', 'Produk', 'Qty', 'Subtotal', 'Service Fee', 'Final Total', 'Type', 'Status']);
 
-            foreach ($transactions as $transaction) {
-                $products = $transaction->details
-                    ->pluck('product.name')
-                    ->filter()
-                    ->unique()
-                    ->implode(' | ');
+            Transaction::query()
+                ->select([
+                    'id',
+                    'customer_id',
+                    'subtotal',
+                    'service_fee',
+                    'final_total',
+                    'type',
+                    'status',
+                    'transaction_date',
+                ])
+                ->with([
+                    'customer:id,name',
+                    'details:id,transaction_id,product_id,quantity',
+                    'details.product:id,name',
+                ])
+                ->latest('transaction_date')
+                ->latest('id')
+                ->chunk(200, function ($transactions) use ($handle) {
+                    foreach ($transactions as $transaction) {
+                        $products = $transaction->details
+                            ->pluck('product.name')
+                            ->filter()
+                            ->unique()
+                            ->implode(' | ');
 
-                fputcsv($handle, [
-                    optional($transaction->transaction_date)->format('Y-m-d') ?? '',
-                    $transaction->customer?->name ?? '-',
-                    $products !== '' ? $products : '-',
-                    $transaction->details->sum('quantity'),
-                    $transaction->subtotal,
-                    $transaction->service_fee,
-                    $transaction->final_total,
-                    $transaction->type,
-                    $transaction->status,
-                ]);
-            }
+                        fputcsv($handle, [
+                            optional($transaction->transaction_date)->format('Y-m-d') ?? '',
+                            $transaction->customer?->name ?? '-',
+                            $products !== '' ? $products : '-',
+                            $transaction->details->sum('quantity'),
+                            $transaction->subtotal,
+                            $transaction->service_fee,
+                            $transaction->final_total,
+                            $transaction->type,
+                            $transaction->status,
+                        ]);
+                    }
+                });
 
             fclose($handle);
         }, $fileName, ['Content-Type' => 'text/csv']);
