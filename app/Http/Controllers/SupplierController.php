@@ -33,7 +33,7 @@ class SupplierController extends Controller
     {
         $validated = $request->validate( [
             'nama_supplier' => 'required|string|max:225',
-            'alamat' => 'required|string'
+            'alamat' => 'required|string',
         ]);
 
         Supplier::create($validated);
@@ -51,7 +51,7 @@ class SupplierController extends Controller
     {
         $validated = $request->validate([
             'nama_supplier' => 'sometimes|required|string|max:225',
-            'alamat' => 'sometimes|string'
+            'alamat' => 'sometimes|string',
         ]);
 
         $supplier->update($validated);

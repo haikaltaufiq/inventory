@@ -6,12 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\Schema;
 
 class Product extends Model
 {
     protected $fillable = [
         'category_id',
+        'brand',
         'name',
+        'letak_barang',
         'warranty',
         'description',
         'technical_specs',
@@ -36,16 +39,22 @@ class Product extends Model
     // Relasi ke Supplier dengan Pivot Data
     public function suppliers(): BelongsToMany
     {
+        $pivotFields = [
+            'condition',
+            'stock',
+            'harga_beli',
+            'harga_jual_manual',
+            'warranty_detail',
+            'note',
+            'entry_date',
+        ];
+
+        if (Schema::hasColumn('product_supplier', 'pemodal_user_id')) {
+            $pivotFields[] = 'pemodal_user_id';
+        }
+
         return $this->belongsToMany(Supplier::class, 'product_supplier')
-            ->withPivot([
-                'condition',
-                'stock',
-                'harga_beli',
-                'harga_jual_manual',
-                'warranty_detail',
-                'note',
-                'entry_date'
-            ])
+            ->withPivot($pivotFields)
             ->withTimestamps();
     }
 }

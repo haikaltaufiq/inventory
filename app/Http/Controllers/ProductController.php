@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductSpecification;
 use App\Models\Supplier;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -32,6 +33,10 @@ class ProductController extends Controller
             ->select('id', 'nama_supplier')
             ->orderBy('nama_supplier')
             ->get();
+        $users = User::query()
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
 
         $query = $this->buildProductIndexQuery($request);
         $summary = $this->buildProductIndexSummary($request);
@@ -42,6 +47,7 @@ class ProductController extends Controller
             'summary' => $summary,
             'categories' => $categories,
             'suppliers' => $suppliers,
+            'users' => $users,
             'gridRows' => $this->resolveGridRowsForIndex($products->getCollection(), $categories),
             'specTemplates' => $this->buildAllSpecTemplates($categories),
         ]);
@@ -99,6 +105,7 @@ class ProductController extends Controller
         foreach ($rows as $clientKey => $row) {
             $row = is_array($row) ? $row : [];
             $productId = data_get($row, 'id');
+            $product = !empty($productId) ? Product::query()->findOrFail($productId) : null;
             $isNew = $this->toBoolean(data_get($row, '_is_new')) || empty($productId);
             $isDirty = $this->toBoolean(data_get($row, '_dirty')) || $isNew;
             $markedForDelete = $this->toBoolean(data_get($row, '_delete'));
@@ -107,7 +114,7 @@ class ProductController extends Controller
                 if (!empty($productId)) {
                     $operations[] = [
                         'action' => 'delete',
-                        'product' => Product::query()->findOrFail($productId),
+                        'product' => $product,
                     ];
                 }
 
@@ -119,7 +126,10 @@ class ProductController extends Controller
             }
 
             $imageFile = data_get($request->allFiles(), "products.$clientKey.image");
-            $payload = $this->normalizeGridPayload($row);
+            $payload = $this->mergePersistedRequiredSpecs(
+                $this->normalizeGridPayload($row),
+                $product
+            );
             $validator = $this->makeProductValidator($payload, $imageFile);
 
             if ($validator->fails()) {
@@ -132,7 +142,7 @@ class ProductController extends Controller
 
             $operations[] = [
                 'action' => 'upsert',
-                'product' => !empty($productId) ? Product::query()->findOrFail($productId) : null,
+                'product' => $product,
                 'validated' => $validator->validated(),
                 'image' => $imageFile,
             ];
@@ -262,6 +272,7 @@ class ProductController extends Controller
                     ->map(fn($supplier) => [
                         'mode' => (string) data_get($supplier, 'mode', 'existing'),
                         'supplier_id' => (string) data_get($supplier, 'supplier_id', ''),
+                        'pemodal_user_id' => (string) data_get($supplier, 'pemodal_user_id', ''),
                         'new_supplier_name' => (string) data_get($supplier, 'new_supplier_name', ''),
                         'new_supplier_address' => (string) data_get($supplier, 'new_supplier_address', ''),
                         'condition' => (string) data_get($supplier, 'condition', 'New'),
@@ -275,8 +286,10 @@ class ProductController extends Controller
                     'client_key' => (string) $clientKey,
                     'id' => $productId > 0 ? $productId : null,
                     'name' => (string) data_get($row, 'name', ''),
+                    'brand' => (string) data_get($row, 'brand', ''),
                     'category_id' => $categoryId,
                     'category_name' => $categoryMap->get((int) $categoryId, $product?->category?->name ?? 'Pilih kategori'),
+                    'letak_barang' => (string) data_get($row, 'letak_barang', ''),
                     'warranty' => (string) data_get($row, 'warranty', ''),
                     'description' => (string) data_get($row, 'description', ''),
                     'image_url' => $product?->image_url,
@@ -302,8 +315,10 @@ class ProductController extends Controller
             'client_key' => 'existing_' . $product->id,
             'id' => $product->id,
             'name' => $product->name,
+            'brand' => $product->brand ?? '',
             'category_id' => (string) $product->category_id,
             'category_name' => $product->category?->name ?? 'No Category',
+            'letak_barang' => $product->letak_barang ?? '',
             'warranty' => $product->warranty ?? '',
             'description' => $product->description ?? '',
             'image_url' => $product->image_url,
@@ -320,6 +335,9 @@ class ProductController extends Controller
                 ->map(fn($supplier) => [
                     'mode' => 'existing',
                     'supplier_id' => (string) $supplier->id,
+                    'pemodal_user_id' => $this->supportsProductSupplierPemodalColumn()
+                        ? (string) ($supplier->pivot->pemodal_user_id ?? '')
+                        : '',
                     'new_supplier_name' => '',
                     'new_supplier_address' => '',
                     'condition' => (string) $supplier->pivot->condition,
@@ -428,7 +446,9 @@ class ProductController extends Controller
 
         return [
             'name' => data_get($row, 'name'),
+            'brand' => data_get($row, 'brand'),
             'category_id' => data_get($row, 'category_id'),
+            'letak_barang' => data_get($row, 'letak_barang'),
             'warranty' => data_get($row, 'warranty'),
             'description' => data_get($row, 'description'),
             'specs' => $specs,
@@ -444,6 +464,7 @@ class ProductController extends Controller
                 ->map(fn($supplier) => [
                     'mode' => data_get($supplier, 'mode', 'existing'),
                     'supplier_id' => data_get($supplier, 'supplier_id'),
+                    'pemodal_user_id' => data_get($supplier, 'pemodal_user_id'),
                     'new_supplier_name' => data_get($supplier, 'new_supplier_name'),
                     'new_supplier_address' => data_get($supplier, 'new_supplier_address'),
                     'stock' => data_get($supplier, 'stock'),
@@ -453,6 +474,45 @@ class ProductController extends Controller
                 ])
                 ->all(),
         ];
+    }
+
+    private function mergePersistedRequiredSpecs(array $payload, ?Product $product): array
+    {
+        if ($product === null) {
+            return $payload;
+        }
+
+        $product->loadMissing(['category', 'specifications']);
+        [$formSpecs] = $this->extractSpecFormData($product);
+
+        if ($formSpecs === []) {
+            return $payload;
+        }
+
+        $definition = $this->specDefinitionForCategory($product->category?->name);
+
+        if ($definition === null) {
+            return $payload;
+        }
+
+        foreach ($definition['fields'] as $field) {
+            if (!in_array($field['key'], config('product_specs.strict_keys', []), true)) {
+                continue;
+            }
+
+            $currentValue = $this->nullableTrim(data_get($payload, 'specs.' . $field['key'] . '.value'));
+            $storedValue = $formSpecs[$field['key']] ?? null;
+
+            if ($currentValue !== null || $storedValue === null) {
+                continue;
+            }
+
+            data_set($payload, 'specs.' . $field['key'] . '.key', $field['key']);
+            data_set($payload, 'specs.' . $field['key'] . '.value', $storedValue);
+            data_set($payload, 'specs.' . $field['key'] . '.mode', 'existing');
+        }
+
+        return $payload;
     }
 
     private function validateProductPayload(array $payload, ?UploadedFile $imageFile = null): array
@@ -469,7 +529,9 @@ class ProductController extends Controller
             $data,
             [
                 'name' => 'required|string|max:255',
+                'brand' => 'nullable|string|max:255',
                 'category_id' => 'required|exists:categories,id',
+                'letak_barang' => 'nullable|string|max:255',
                 'warranty' => 'nullable|string|max:255',
                 'description' => 'nullable|string',
                 'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
@@ -483,6 +545,7 @@ class ProductController extends Controller
                 'suppliers' => 'required|array|min:1',
                 'suppliers.*.mode' => 'nullable|string|in:existing,new',
                 'suppliers.*.supplier_id' => 'nullable|exists:suppliers,id',
+                'suppliers.*.pemodal_user_id' => 'nullable|exists:users,id',
                 'suppliers.*.new_supplier_name' => 'nullable|string|max:225',
                 'suppliers.*.new_supplier_address' => 'nullable|string|max:255',
                 'suppliers.*.stock' => 'required|integer|min:0',
@@ -495,6 +558,7 @@ class ProductController extends Controller
         );
 
         $validator->after(function ($validator) use ($payload) {
+            $supportsProductSupplierPemodal = $this->supportsProductSupplierPemodalColumn();
             $category = Category::query()->find($payload['category_id'] ?? null);
             $definition = $this->specDefinitionForCategory($category?->name);
 
@@ -517,12 +581,20 @@ class ProductController extends Controller
             foreach (($payload['suppliers'] ?? []) as $index => $supplier) {
                 $mode = $this->resolveSupplierInputMode($supplier);
                 $condition = data_get($supplier, 'condition', 'New');
+                $pemodalUserId = data_get($supplier, 'pemodal_user_id');
                 $supplierReference = null;
+                $supplierLabel = 'Supplier #' . ($index + 1);
+
+                if ($supportsProductSupplierPemodal && ($pemodalUserId === null || $pemodalUserId === '')) {
+                    $validator->errors()->add(
+                        'suppliers.' . $index . '.pemodal_user_id',
+                        $supplierLabel . ': pemodal wajib dipilih.'
+                    );
+                }
 
                 if ($mode === 'new') {
                     $newName = $this->nullableTrim(data_get($supplier, 'new_supplier_name'));
                     $newAddress = $this->nullableTrim(data_get($supplier, 'new_supplier_address'));
-                    $supplierLabel = 'Supplier #' . ($index + 1);
 
                     if ($newName === null) {
                         $validator->errors()->add(
@@ -550,7 +622,6 @@ class ProductController extends Controller
                     }
                 } else {
                     $supplierId = data_get($supplier, 'supplier_id');
-                    $supplierLabel = 'Supplier #' . ($index + 1);
 
                     if ($supplierId === null || $supplierId === '') {
                         $validator->errors()->add(
@@ -566,7 +637,7 @@ class ProductController extends Controller
                     continue;
                 }
 
-                $key = $supplierReference . '::' . $condition;
+                $key = $supplierReference . '::' . $condition . '::' . ($supportsProductSupplierPemodal ? $pemodalUserId : '');
 
                 if (isset($seenSupplierConditions[$key])) {
                     $validator->errors()->add(
@@ -606,7 +677,9 @@ class ProductController extends Controller
     {
         $attributes = [
             'name' => 'nama produk',
+            'brand' => 'brand',
             'category_id' => 'kategori produk',
+            'letak_barang' => 'letak barang',
             'warranty' => 'garansi',
             'description' => 'deskripsi',
             'image' => 'foto produk',
@@ -634,6 +707,7 @@ class ProductController extends Controller
             $prefix = 'supplier #' . ($index + 1);
             $attributes['suppliers.' . $index . '.mode'] = $prefix . ' - mode input';
             $attributes['suppliers.' . $index . '.supplier_id'] = $prefix . ' - supplier';
+            $attributes['suppliers.' . $index . '.pemodal_user_id'] = $prefix . ' - pemodal';
             $attributes['suppliers.' . $index . '.new_supplier_name'] = $prefix . ' - nama supplier baru';
             $attributes['suppliers.' . $index . '.new_supplier_address'] = $prefix . ' - alamat supplier baru';
             $attributes['suppliers.' . $index . '.stock'] = $prefix . ' - stok';
@@ -653,7 +727,9 @@ class ProductController extends Controller
 
         $attributes = [
             'category_id' => $validated['category_id'],
+            'brand' => $this->nullableTrim($validated['brand'] ?? null),
             'name' => trim($validated['name']),
+            'letak_barang' => $this->nullableTrim($validated['letak_barang'] ?? null),
             'warranty' => $this->nullableTrim($validated['warranty'] ?? null),
             'description' => $this->nullableTrim($validated['description'] ?? null),
             'technical_specs' => $this->supportsTechnicalSpecsColumn() ? $specPayload['technical_specs'] : null,
@@ -763,14 +839,15 @@ class ProductController extends Controller
 
     private function syncProductSuppliers(Product $product, array $suppliers): void
     {
+        $supportsProductSupplierPemodal = $this->supportsProductSupplierPemodalColumn();
         $processedSuppliers = [];
         $existingSuppliers = DB::table('product_supplier')
             ->where('product_id', $product->id)
             ->get()
-            ->keyBy(fn($row) => $row->supplier_id . '-' . $row->condition);
+            ->keyBy(fn($row) => $row->supplier_id . '-' . $row->condition . '-' . ($supportsProductSupplierPemodal ? ($row->pemodal_user_id ?? '') : ''));
 
         foreach ($suppliers as $supplier) {
-            $key = $supplier['supplier_id'] . '-' . ($supplier['condition'] ?? 'New');
+            $key = $supplier['supplier_id'] . '-' . ($supplier['condition'] ?? 'New') . '-' . ($supportsProductSupplierPemodal ? ($supplier['pemodal_user_id'] ?? '') : '');
 
             if (isset($processedSuppliers[$key])) {
                 $processedSuppliers[$key]['stock'] += (int) $supplier['stock'];
@@ -783,6 +860,7 @@ class ProductController extends Controller
                 'stock' => (int) $supplier['stock'],
                 'harga_beli' => (float) $supplier['harga_beli'],
                 'harga_jual_manual' => (float) $supplier['harga_jual'],
+                'pemodal_user_id' => $supportsProductSupplierPemodal ? ($supplier['pemodal_user_id'] ?? null) : null,
             ];
         }
 
@@ -792,19 +870,25 @@ class ProductController extends Controller
             $existing = $existingSuppliers->get($key);
 
             if ($existing) {
+                $updatePayload = [
+                    'stock' => $data['stock'],
+                    'harga_beli' => $data['harga_beli'],
+                    'harga_jual_manual' => $data['harga_jual_manual'],
+                    'updated_at' => now(),
+                ];
+
+                if ($supportsProductSupplierPemodal) {
+                    $updatePayload['pemodal_user_id'] = $data['pemodal_user_id'];
+                }
+
                 DB::table('product_supplier')
                     ->where('id', $existing->id)
-                    ->update([
-                        'stock' => $data['stock'],
-                        'harga_beli' => $data['harga_beli'],
-                        'harga_jual_manual' => $data['harga_jual_manual'],
-                        'updated_at' => now(),
-                    ]);
+                    ->update($updatePayload);
 
                 continue;
             }
 
-            DB::table('product_supplier')->insert([
+            $insertPayload = [
                 'product_id' => $product->id,
                 'supplier_id' => $data['supplier_id'],
                 'condition' => $data['condition'],
@@ -814,7 +898,13 @@ class ProductController extends Controller
                 'entry_date' => now()->toDateString(),
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+            ];
+
+            if ($supportsProductSupplierPemodal) {
+                $insertPayload['pemodal_user_id'] = $data['pemodal_user_id'];
+            }
+
+            DB::table('product_supplier')->insert($insertPayload);
         }
 
         $obsoleteIds = $existingSuppliers
@@ -851,7 +941,11 @@ class ProductController extends Controller
                     $supplier['supplier_id'] = $resolvedSupplier->id;
                 }
 
-                unset($supplier['mode'], $supplier['new_supplier_name'], $supplier['new_supplier_address']);
+                unset(
+                    $supplier['mode'],
+                    $supplier['new_supplier_name'],
+                    $supplier['new_supplier_address']
+                );
 
                 return $supplier;
             })
@@ -873,6 +967,17 @@ class ProductController extends Controller
         }
 
         return 'existing';
+    }
+
+    private function supportsProductSupplierPemodalColumn(): bool
+    {
+        static $supportsProductSupplierPemodal;
+
+        if ($supportsProductSupplierPemodal === null) {
+            $supportsProductSupplierPemodal = Schema::hasColumn('product_supplier', 'pemodal_user_id');
+        }
+
+        return $supportsProductSupplierPemodal;
     }
 
     private function extractSpecFormData(Product $product): array
@@ -1101,7 +1206,7 @@ class ProductController extends Controller
 
         $path = $imageFile->store('products', 'public');
 
-        return Storage::url($path);
+        return '/storage/' . ltrim($path, '/');
     }
 
     private function replaceUploadedProductImage(Product $product, ?UploadedFile $imageFile): ?string
@@ -1111,7 +1216,7 @@ class ProductController extends Controller
         }
 
         $path = $imageFile->store('products', 'public');
-        $imageUrl = Storage::url($path);
+        $imageUrl = '/storage/' . ltrim($path, '/');
 
         if (!empty($product->image_url)) {
             $oldPath = ltrim(str_replace('/storage/', '', $product->image_url), '/');
@@ -1153,7 +1258,9 @@ class ProductController extends Controller
             ->select([
                 'products.id',
                 'products.category_id',
+                'products.brand',
                 'products.name',
+                'products.letak_barang',
                 'products.warranty',
                 'products.description',
                 'products.technical_specs',
@@ -1163,14 +1270,20 @@ class ProductController extends Controller
                 'category:id,name',
                 'specifications:id,product_id,spec_key,spec_value',
                 'suppliers' => function ($query) {
+                    $pivotFields = [
+                        'condition',
+                        'stock',
+                        'harga_beli',
+                        'harga_jual_manual',
+                    ];
+
+                    if ($this->supportsProductSupplierPemodalColumn()) {
+                        $pivotFields[] = 'pemodal_user_id';
+                    }
+
                     $query
                         ->select('suppliers.id', 'suppliers.nama_supplier')
-                        ->withPivot(
-                            'condition',
-                            'stock',
-                            'harga_beli',
-                            'harga_jual_manual'
-                        );
+                        ->withPivot(...$pivotFields);
                 },
             ]);
 

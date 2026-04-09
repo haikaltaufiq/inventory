@@ -4,7 +4,11 @@
             return {
                 rows: @json($gridRows),
                 categories: @json($categories->map(fn($category) => ['id' => $category->id, 'name' => $category->name])->values()),
-                suppliers: @json($suppliers->map(fn($supplier) => ['id' => $supplier->id, 'name' => $supplier->nama_supplier])->values()),
+                suppliers: @json($suppliers->map(fn($supplier) => [
+                    'id' => $supplier->id,
+                    'name' => $supplier->nama_supplier,
+                ])->values()),
+                users: @json($users->map(fn($user) => ['id' => $user->id, 'name' => $user->name])->values()),
                 specTemplates: @json($specTemplates),
                 validationErrorsByRow: @json($gridErrorsByRow ?? []),
                 conditionOptions: ['New', 'Used', 'Refurbished'],
@@ -12,6 +16,7 @@
                 supplierModalKey: null,
                 previewModalKey: null,
                 pendingNavigationUrl: null,
+                isSubmittingForm: false,
 
                 boot() {
                     this.rows = this.rows.map((row) => this.prepareRow(row));
@@ -40,8 +45,10 @@
                         client_key: row.client_key || this.uid(),
                         id: row.id || null,
                         name: row.name || '',
+                        brand: row.brand || '',
                         category_id: row.category_id ? String(row.category_id) : '',
                         category_name: row.category_name || '',
+                        letak_barang: row.letak_barang || '',
                         warranty: row.warranty ?? '',
                         description: row.description ?? '',
                         image_url: row.image_url ?? '',
@@ -70,6 +77,7 @@
                     return {
                         mode: supplier.mode || (hasManualSupplier ? 'new' : 'existing'),
                         supplier_id: supplier.supplier_id ? String(supplier.supplier_id) : '',
+                        pemodal_user_id: supplier.pemodal_user_id ? String(supplier.pemodal_user_id) : '',
                         new_supplier_name: supplier.new_supplier_name || '',
                         new_supplier_address: supplier.new_supplier_address || '',
                         condition: supplier.condition || this.defaultCondition(),
@@ -91,6 +99,7 @@
                     return this.prepareSupplier({
                         mode: 'existing',
                         supplier_id: '',
+                        pemodal_user_id: '',
                         condition: this.defaultCondition(),
                         stock: '0',
                     });
@@ -118,6 +127,23 @@
                     return this.currentTemplate(row).options?.[key] || [];
                 },
 
+                specSelectOptions(row, key) {
+                    const options = [...this.specOptions(row, key)];
+                    const currentValue = `${row?.specs?.[key]?.value || ''}`.trim();
+
+                    if (!currentValue) {
+                        return options;
+                    }
+
+                    const matched = this.findMatchingSpecOption(options, currentValue);
+
+                    if (matched) {
+                        return options;
+                    }
+
+                    return [currentValue, ...options];
+                },
+
                 resolveSpecMode(categoryId, key, value, fallbackMode = null) {
                     if (fallbackMode === 'new' || fallbackMode === 'existing') {
                         return fallbackMode;
@@ -137,10 +163,15 @@
 
                     (template.fields || []).forEach((field) => {
                         const current = specs[field.key] || {};
+                        const resolvedMode = this.resolveSpecMode(categoryId, field.key, current.value || '', current.mode || null);
+                        const matched = resolvedMode === 'existing'
+                            ? this.findMatchingSpecOption(this.specTemplates[String(categoryId || '')]?.options?.[field.key] || [], current.value || '')
+                            : null;
+
                         next[field.key] = {
                             key: field.key,
-                            value: current.value || '',
-                            mode: this.resolveSpecMode(categoryId, field.key, current.value || '', current.mode || null),
+                            value: matched || current.value || '',
+                            mode: resolvedMode,
                         };
                     });
 
@@ -153,10 +184,15 @@
 
                     this.templateFields(row).forEach((field) => {
                         const current = previous[field.key] || {};
+                        const resolvedMode = this.resolveSpecMode(row?.category_id, field.key, current.value || '', current.mode || null);
+                        const matched = resolvedMode === 'existing'
+                            ? this.findMatchingSpecOption(this.specOptions(row, field.key), current.value || '')
+                            : null;
+
                         next[field.key] = {
                             key: field.key,
-                            value: current.value || '',
-                            mode: this.resolveSpecMode(row?.category_id, field.key, current.value || '', current.mode || null),
+                            value: matched || current.value || '',
+                            mode: resolvedMode,
                         };
                     });
 
@@ -335,6 +371,11 @@
                     return found ? found.name : '';
                 },
 
+                userName(id) {
+                    const found = this.users.find((user) => String(user.id) === String(id));
+                    return found ? found.name : '';
+                },
+
                 supplierModeLabel(supplier) {
                     return supplier?.mode === 'new' ? 'Supplier Baru' : 'Supplier Lama';
                 },
@@ -355,14 +396,20 @@
                     return '';
                 },
 
+                supplierPemodalName(supplier) {
+                    return this.userName(supplier?.pemodal_user_id) || '';
+                },
+
                 isSupplierReady(supplier) {
                     if (!supplier) return false;
 
                     if ((supplier.mode || 'existing') === 'new') {
-                        return !!`${supplier.new_supplier_name || ''}`.trim() && !!`${supplier.new_supplier_address || ''}`.trim();
+                        return !!`${supplier.new_supplier_name || ''}`.trim()
+                            && !!`${supplier.new_supplier_address || ''}`.trim()
+                            && !!`${supplier.pemodal_user_id || ''}`.trim();
                     }
 
-                    return !!supplier.supplier_id;
+                    return !!supplier.supplier_id && !!`${supplier.pemodal_user_id || ''}`.trim();
                 },
 
                 supplierReferenceKey(supplier) {
@@ -411,6 +458,7 @@
                         index,
                         name: this.supplierDisplayName(supplier, index),
                         address: this.supplierDisplayAddress(supplier),
+                        pemodalName: this.supplierPemodalName(supplier),
                         modeLabel: this.supplierModeLabel(supplier),
                         condition: supplier.condition || this.defaultCondition(),
                     }));
@@ -436,6 +484,18 @@
                     return `${entries.length} supplier aktif`;
                 },
 
+                investorSummary(row) {
+                    const investors = [...new Set(
+                        this.activeSupplierEntries(row)
+                            .map((supplier) => supplier.pemodalName)
+                            .filter((name) => `${name || ''}`.trim() !== '')
+                    )];
+
+                    if (investors.length === 0) return '-';
+                    if (investors.length === 1) return investors[0];
+                    return `${investors[0]} +${investors.length - 1}`;
+                },
+
                 supplierCardTitle(supplierRow, supplierIndex) {
                     return this.supplierDisplayName(supplierRow, supplierIndex);
                 },
@@ -451,7 +511,7 @@
                                 return false;
                             }
 
-                            const key = `${reference}::${supplier.condition}`;
+                            const key = `${reference}::${supplier.condition}::${supplier.pemodal_user_id || ''}`;
 
                             if (seen.has(key)) {
                                 return true;
@@ -517,7 +577,7 @@
 
                 conditionMeta(condition) {
                     if (condition === 'New') {
-                        return 'bg-emerald-50 text-emerald-600';
+                        return 'bg-sky-50 text-sky-600';
                     }
 
                     if (condition === 'Used') {
@@ -525,10 +585,22 @@
                     }
 
                     if (condition === 'Refurbished') {
-                        return 'bg-sky-50 text-sky-600';
+                        return 'bg-violet-50 text-violet-600';
                     }
 
                     return 'bg-slate-100 text-slate-600';
+                },
+
+                supplierPreviewBadgeClass(condition) {
+                    if (condition === 'Used') {
+                        return 'bg-amber-50 text-amber-700 ring-amber-200';
+                    }
+
+                    if (condition === 'Refurbished') {
+                        return 'bg-violet-50 text-violet-700 ring-violet-200';
+                    }
+
+                    return 'bg-sky-50 text-sky-700 ring-sky-200';
                 },
 
                 supplierTone(index = 0) {
@@ -616,6 +688,14 @@
                     this.markDirty(row, true);
                 },
 
+                pickImage(row) {
+                    if (!row) return;
+                    const input = document.querySelector(`[data-image-input="${row.client_key}"]`);
+                    if (input) {
+                        input.click();
+                    }
+                },
+
                 rowByKey(key) {
                     return this.rows.find((row) => row.client_key === key) || null;
                 },
@@ -676,6 +756,7 @@
                     }, true);
 
                     window.addEventListener('beforeunload', (event) => {
+                        if (this.isSubmittingForm) return;
                         if (!this.hasChanges) return;
                         event.preventDefault();
                         event.returnValue = '';
@@ -709,7 +790,9 @@
                         { name: `products[${row.client_key}][_dirty]`, value: row.is_dirty ? '1' : '0' },
                         { name: `products[${row.client_key}][_delete]`, value: row.marked_for_delete ? '1' : '0' },
                         { name: `products[${row.client_key}][name]`, value: row.name || '' },
+                        { name: `products[${row.client_key}][brand]`, value: row.brand || '' },
                         { name: `products[${row.client_key}][category_id]`, value: row.category_id || '' },
+                        { name: `products[${row.client_key}][letak_barang]`, value: row.letak_barang || '' },
                         { name: `products[${row.client_key}][warranty]`, value: row.warranty || '' },
                         { name: `products[${row.client_key}][description]`, value: row.description || '' },
                     ];
@@ -728,6 +811,7 @@
                     row.suppliers.forEach((supplier, index) => {
                         fields.push({ name: `products[${row.client_key}][suppliers][${index}][mode]`, value: supplier.mode || 'existing' });
                         fields.push({ name: `products[${row.client_key}][suppliers][${index}][supplier_id]`, value: supplier.supplier_id || '' });
+                        fields.push({ name: `products[${row.client_key}][suppliers][${index}][pemodal_user_id]`, value: supplier.pemodal_user_id || '' });
                         fields.push({ name: `products[${row.client_key}][suppliers][${index}][new_supplier_name]`, value: supplier.new_supplier_name || '' });
                         fields.push({ name: `products[${row.client_key}][suppliers][${index}][new_supplier_address]`, value: supplier.new_supplier_address || '' });
                         fields.push({ name: `products[${row.client_key}][suppliers][${index}][condition]`, value: supplier.condition || this.defaultCondition() });
@@ -741,6 +825,7 @@
 
                 submitForm() {
                     if (!this.hasChanges) return;
+                    this.isSubmittingForm = true;
                     document.getElementById('product-grid-form').submit();
                 },
             };
