@@ -202,9 +202,77 @@ class ProductController extends Controller
             ->with('success', 'Produk berhasil dihapus.');
     }
 
-    public function reportProduct()
+    public function reportProduct(Request $request)
     {
-        return view('laporan-product.index');
+        $categories = Category::query()
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        $reportQuery = DB::table('transaction_details')
+            ->join('transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+            ->join('products', 'transaction_details.product_id', '=', 'products.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->leftJoin('suppliers', 'transaction_details.supplier_id', '=', 'suppliers.id')
+            ->leftJoin('product_supplier', 'transaction_details.product_supplier_id', '=', 'product_supplier.id')
+            ->leftJoin('users as pemodal_users', 'product_supplier.pemodal_user_id', '=', 'pemodal_users.id')
+            ->leftJoin('customers', 'transactions.customer_id', '=', 'customers.id');
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+
+            $reportQuery->where(function ($query) use ($search) {
+                $query
+                    ->where('products.name', 'like', "%{$search}%")
+                    ->orWhere('products.brand', 'like', "%{$search}%")
+                    ->orWhere('categories.name', 'like', "%{$search}%")
+                    ->orWhere('suppliers.nama_supplier', 'like', "%{$search}%")
+                    ->orWhere('pemodal_users.name', 'like', "%{$search}%")
+                    ->orWhere('transactions.sales_name', 'like', "%{$search}%")
+                    ->orWhere('customers.name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category_id')) {
+            $reportQuery->where('products.category_id', $request->integer('category_id'));
+        }
+
+        $summary = (clone $reportQuery)
+            ->selectRaw('COUNT(*) as total_rows')
+            ->selectRaw('COALESCE(SUM(transaction_details.quantity), 0) as total_qty')
+            ->selectRaw('COUNT(DISTINCT transaction_details.product_id) as total_products')
+            ->selectRaw('COUNT(DISTINCT transactions.customer_id) as total_customers')
+            ->first();
+
+        $reportRows = (clone $reportQuery)
+            ->select([
+                'transaction_details.id',
+                'products.name as product_name',
+                'products.brand',
+                'categories.name as category_name',
+                'suppliers.nama_supplier as supplier_name',
+                'product_supplier.condition as supplier_condition',
+                'pemodal_users.name as pemodal_name',
+                'transactions.sales_name',
+                'customers.name as customer_name',
+                'transaction_details.quantity',
+                'transactions.created_at as transaction_created_at',
+            ])
+            ->orderByDesc('transactions.created_at')
+            ->orderByDesc('transaction_details.id')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('laporan-product.index', [
+            'reportRows' => $reportRows,
+            'summary' => [
+                'total_rows' => (int) ($summary->total_rows ?? 0),
+                'total_qty' => (int) ($summary->total_qty ?? 0),
+                'total_products' => (int) ($summary->total_products ?? 0),
+                'total_customers' => (int) ($summary->total_customers ?? 0),
+            ],
+            'categories' => $categories,
+        ]);
     }
 
     public function specOptions(Request $request)

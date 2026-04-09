@@ -194,9 +194,9 @@
                         <tr>
                             <th class="w-12 px-3 py-3 text-center text-[10px] font-medium uppercase tracking-[0.16em]">+
                             </th>
-                            <th class="px-3 py-3 text-[12px] font-medium">Kategori</th>
-                            <th class="px-3 py-3 text-[12px] font-medium">Brand</th>
                             <th class="px-3 py-3 text-[12px] font-medium">Produk</th>
+                            <th class="px-3 py-3 text-[12px] font-medium">Brand</th>
+                            <th class="px-3 py-3 text-[12px] font-medium">Kategori</th>
                             <th class="px-3 py-3 text-[12px] font-medium">Supplier</th>
                             <th class="px-3 py-3 text-[12px] font-medium">Spesifikasi</th>
                             <th class="px-3 py-3 text-right text-[12px] font-medium">Total Stok</th>
@@ -219,6 +219,56 @@
                                         <i class="fas fa-plus text-[10px]"></i>
                                     </button>
                                 </td>
+                                {{-- Product Name --}}
+                                <td @dblclick.stop="activateRow(row, 'name')" class="px-3 py-1 align-top cursor-cell">
+                                    <div class="space-y-1">
+                                        <template x-if="isCellEditing(row, 'name')">
+                                            <input x-model="row.name" @input="markDirty(row)"
+                                                @blur="saveCell(row, 'name')"
+                                                @keydown.enter.prevent="saveCell(row, 'name', 'category')"
+                                                @keydown.escape.prevent="stopCellEdit(row, 'name')"
+                                                data-cell-input="name" type="text"
+                                                class="w-full rounded-lg border border-slate-300 bg-white  py-1 text-[13px] outline-none transition focus:border-slate-400"
+                                                placeholder="Nama produk">
+                                        </template>
+                                        <template x-if="!isCellEditing(row, 'name')">
+                                            <div class="min-h-8.5">
+                                                <div class="text-[13px] font-semibold leading-[1.35] text-slate-800"
+                                                    x-text="row.name || 'Produk baru'"></div>
+                                            </div>
+                                        </template>
+                                        <div class="flex flex-wrap gap-1.5 text-[10px] text-slate-400">
+                                            <span class="font-mono"
+                                                x-text="row.id ? `#PRD-${String(row.id).padStart(4, '0')}` : '#DRAFT'"></span>
+                                            <span x-show="row.is_dirty"
+                                                class="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-600">Unsaved</span>
+                                            <span x-show="rowErrorCount(row) > 0"
+                                                class="rounded-full bg-rose-100 px-2 py-0.5 font-medium text-rose-600">
+                                                <span x-text="`${rowErrorCount(row)} issue`"></span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                {{-- Brand --}}
+                                <td @dblclick.stop="activateRow(row, 'brand')"
+                                    class="px-3 py-2 align-top cursor-cell">
+                                    <template x-if="isCellEditing(row, 'brand')">
+                                        <input x-model="row.brand" @input="markDirty(row)"
+                                            @blur="saveCell(row, 'brand')"
+                                            @keydown.enter.prevent="saveCell(row, 'brand')"
+                                            @keydown.escape.prevent="stopCellEdit(row, 'brand')"
+                                            data-cell-input="brand" type="text"
+                                            class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] outline-none transition focus:border-slate-400"
+                                            placeholder="Brand">
+                                    </template>
+                                    <template x-if="!isCellEditing(row, 'brand')">
+                                        <div class="min-h-8.5 flex items-start">
+                                            <span class="text-[12px] font-medium text-slate-700"
+                                                x-text="row.brand || '-'"></span>
+                                        </div>
+                                    </template>
+                                </td>
                                 {{-- Category --}}
                                 <td @dblclick.stop="activateRow(row, 'category')"
                                     class="px-3 py-2 align-top cursor-cell">
@@ -240,55 +290,6 @@
                                                 x-text="categoryName(row)"></span>
                                         </div>
                                     </template>
-                                </td>
-                                {{-- Brand --}}
-                                <td @dblclick.stop="activateRow(row, 'brand')"
-                                    class="px-3 py-2 align-top cursor-cell">
-                                    <template x-if="isCellEditing(row, 'brand')">
-                                        <input x-model="row.brand" @input="markDirty(row)"
-                                            @blur="saveCell(row, 'brand')"
-                                            @keydown.enter.prevent="saveCell(row, 'brand')"
-                                            @keydown.escape.prevent="stopCellEdit(row, 'brand')"
-                                            data-cell-input="brand" type="text"
-                                            class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[13px] outline-none transition focus:border-slate-400"
-                                            placeholder="Brand">
-                                    </template>
-                                    <template x-if="!isCellEditing(row, 'brand')">
-                                        <div class="min-h-8.5 flex items-start">
-                                            <span class="text-[12px] font-medium text-slate-700"
-                                                x-text="row.brand || '-'"></span>
-                                        </div>
-                                    </template>
-                                </td>
-                                {{-- Product Name --}}
-                                <td @dblclick.stop="activateRow(row, 'name')" class="px-3 py-1 align-top cursor-cell">
-                                    <div class="space-y-1">
-                                        <template x-if="isCellEditing(row, 'name')">
-                                            <input x-model="row.name" @input="markDirty(row)"
-                                                @blur="saveCell(row, 'name')"
-                                                @keydown.enter.prevent="saveCell(row, 'name', 'category')"
-                                                @keydown.escape.prevent="stopCellEdit(row, 'name')"
-                                                data-cell-input="name" type="text"
-                                                class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-[13px] outline-none transition focus:border-slate-400"
-                                                placeholder="Nama produk">
-                                        </template>
-                                        <template x-if="!isCellEditing(row, 'name')">
-                                            <div class="min-h-8.5">
-                                                <div class="text-[13px] font-semibold leading-[1.35] text-slate-800"
-                                                    x-text="row.name || 'Produk baru'"></div>
-                                            </div>
-                                        </template>
-                                        <div class="flex flex-wrap gap-1.5 text-[10px] text-slate-400">
-                                            <span class="font-mono"
-                                                x-text="row.id ? `#PRD-${String(row.id).padStart(4, '0')}` : '#DRAFT'"></span>
-                                            <span x-show="row.is_dirty"
-                                                class="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-600">Unsaved</span>
-                                            <span x-show="rowErrorCount(row) > 0"
-                                                class="rounded-full bg-rose-100 px-2 py-0.5 font-medium text-rose-600">
-                                                <span x-text="`${rowErrorCount(row)} issue`"></span>
-                                            </span>
-                                        </div>
-                                    </div>
                                 </td>
 
                                 {{-- Supplier --}}
