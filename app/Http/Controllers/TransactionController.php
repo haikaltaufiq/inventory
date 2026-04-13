@@ -305,97 +305,119 @@ class TransactionController extends Controller
             ->with('success', 'Transaksi berhasil dihapus.');
     }
 
-    public function report()
+    public function report(Request $request)
     {
-        $transactions = Transaction::query()
-            ->select([
-                'id',
-                'customer_id',
-                'final_total',
-                'type',
-                'status',
-                'transaction_date',
-            ])
-            ->with([
-                'customer:id,name',
-                'details:id,transaction_id,product_id,quantity',
-                'details.product:id,name',
-            ])
-            ->latest('transaction_date')
-            ->latest('id')
-            ->get()
-            ->map(function ($transaction) {
-                $productNames = $transaction->details
-                    ->pluck('product.name')
-                    ->filter()
-                    ->unique()
-                    ->implode(', ');
+        $reportQuery = $this->buildTransactionReportQuery($request);
 
-                $transaction->setRelation('product', new Product([
-                    'name' => $productNames !== '' ? $productNames : '-',
-                ]));
+        $summary = DB::query()
+            ->fromSub(clone $reportQuery, 'report_rows')
+            ->selectRaw('COUNT(*) as total_rows')
+            ->selectRaw('COALESCE(SUM(selling_total), 0) as total_selling')
+            ->selectRaw('COALESCE(SUM(service_total), 0) as total_service')
+            ->selectRaw('COALESCE(SUM(profit_total), 0) as total_profit')
+            ->first();
 
-                $transaction->quantity = (int) $transaction->details->sum('quantity');
-                $transaction->total_price = (float) $transaction->final_total;
+        $reportRows = (clone $reportQuery)
+            ->orderByDesc('transaction_date')
+            ->orderByDesc('transaction_id')
+            ->orderBy('transaction_detail_id')
+            ->paginate(15)
+            ->withQueryString();
 
-                return $transaction;
-            });
-
-        $totalRevenue = $transactions->sum('total_price');
-
-        return view('laporan-transaksi.index', compact('transactions', 'totalRevenue'));
+        return view('laporan-transaksi.index', [
+            'reportRows' => $reportRows,
+            'summary' => [
+                'total_rows' => (int) ($summary->total_rows ?? 0),
+                'total_selling' => (float) ($summary->total_selling ?? 0),
+                'total_service' => (float) ($summary->total_service ?? 0),
+                'total_profit' => (float) ($summary->total_profit ?? 0),
+            ],
+        ]);
     }
 
-    public function downloadReport()
+    public function downloadReport(Request $request)
     {
         $fileName = 'laporan-transaksi-' . now()->format('Ymd-His') . '.csv';
 
-        return response()->streamDownload(function () {
+        return response()->streamDownload(function () use ($request) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Tanggal', 'Customer', 'Produk', 'Qty', 'Subtotal', 'Service Fee', 'Final Total', 'Type', 'Status']);
+            fputcsv($handle, ['Nama Seller', 'Date', 'Nama Barang', 'Nama Customer', 'Modal', 'Harga Jual', 'Service', 'Profit']);
 
-            Transaction::query()
-                ->select([
-                    'id',
-                    'customer_id',
-                    'subtotal',
-                    'service_fee',
-                    'final_total',
-                    'type',
-                    'status',
-                    'transaction_date',
-                ])
-                ->with([
-                    'customer:id,name',
-                    'details:id,transaction_id,product_id,quantity',
-                    'details.product:id,name',
-                ])
-                ->latest('transaction_date')
-                ->latest('id')
-                ->chunk(200, function ($transactions) use ($handle) {
-                    foreach ($transactions as $transaction) {
-                        $products = $transaction->details
-                            ->pluck('product.name')
-                            ->filter()
-                            ->unique()
-                            ->implode(' | ');
+            $this->buildTransactionReportQuery($request)
+                ->orderByDesc('transaction_date')
+                ->orderByDesc('transaction_id')
+                ->orderBy('transaction_detail_id')
+                ->chunk(200, function ($rows) use ($handle) {
+                    foreach ($rows as $row) {
+                        $productName = trim((string) ($row->product_name ?? '')) !== ''
+                            ? $row->product_name . ' (Qty: ' . (int) $row->quantity . ')'
+                            : '-';
 
                         fputcsv($handle, [
-                            optional($transaction->transaction_date)->format('Y-m-d') ?? '',
-                            $transaction->customer?->name ?? '-',
-                            $products !== '' ? $products : '-',
-                            $transaction->details->sum('quantity'),
-                            $transaction->subtotal,
-                            $transaction->service_fee,
-                            $transaction->final_total,
-                            $transaction->type,
-                            $transaction->status,
+                            $row->seller_name ?: '-',
+                            $row->transaction_date ? date('d, M, Y', strtotime((string) $row->transaction_date)) : '-',
+                            $productName,
+                            $row->customer_name ?: '-',
+                            (float) $row->modal_total,
+                            (float) $row->selling_total,
+                            (float) $row->service_total,
+                            (float) $row->profit_total,
                         ]);
                     }
                 });
 
             fclose($handle);
         }, $fileName, ['Content-Type' => 'text/csv']);
+    }
+
+    private function buildTransactionReportQuery(Request $request)
+    {
+        $query = DB::table('transaction_details as transaction_details')
+            ->join('transactions as transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
+            ->leftJoin('customers as customers', 'transactions.customer_id', '=', 'customers.id')
+            ->leftJoin('products as products', 'transaction_details.product_id', '=', 'products.id')
+            ->leftJoin('product_supplier as product_supplier', 'transaction_details.product_supplier_id', '=', 'product_supplier.id')
+            ->select([
+                'transaction_details.id as transaction_detail_id',
+                'transactions.id as transaction_id',
+                'transactions.sales_name as seller_name',
+                'transactions.transaction_date',
+                'transactions.status',
+                'customers.name as customer_name',
+                'products.name as product_name',
+                'transaction_details.quantity',
+                'transaction_details.price_at_transaction as selling_price_unit',
+                'product_supplier.harga_beli as modal_price_unit',
+            ])
+            ->selectRaw('(transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0)) as modal_total')
+            ->selectRaw('(transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) as selling_total')
+            ->selectRaw('CASE
+                WHEN COALESCE(transactions.subtotal, 0) > 0
+                    THEN ROUND(COALESCE(transactions.service_fee, 0) * ((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) / transactions.subtotal), 2)
+                ELSE 0
+            END as service_total')
+            ->selectRaw('((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) - (transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0))) as profit_total');
+
+        if ($request->filled('search')) {
+            $search = trim((string) $request->input('search'));
+
+            $query->where(function ($builder) use ($search) {
+                $builder
+                    ->where('transactions.sales_name', 'like', "%{$search}%")
+                    ->orWhere('customers.name', 'like', "%{$search}%")
+                    ->orWhere('products.name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('transactions.transaction_date', '>=', $request->input('date_from'));
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('transactions.transaction_date', '<=', $request->input('date_to'));
+        }
+
+        return $query;
     }
 
     public function downloadDocument(Transaction $transaction, string $type)
