@@ -12,6 +12,8 @@ class TransactionDetail extends Model
         'product_id',
         'supplier_id',
         'product_supplier_id',
+        'item_name',
+        'item_specification',
         'quantity',
         'price_at_transaction',
         'is_conflict'

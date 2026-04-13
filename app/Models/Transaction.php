@@ -11,8 +11,13 @@ class Transaction extends Model
     protected $fillable = [
         'customer_id',
         'sales_name',
+        'transaction_mode',
         'subtotal',
         'service_fee',
+        'installation_fee',
+        'service_labor_fee',
+        'shipping_fee',
+        'marketing_fee',
         'final_total',
         'type',
         'status',
@@ -23,6 +28,10 @@ class Transaction extends Model
         'transaction_date' => 'date',
         'subtotal' => 'decimal:2',
         'service_fee' => 'decimal:2',
+        'installation_fee' => 'decimal:2',
+        'service_labor_fee' => 'decimal:2',
+        'shipping_fee' => 'decimal:2',
+        'marketing_fee' => 'decimal:2',
         'final_total' => 'decimal:2',
     ];
 

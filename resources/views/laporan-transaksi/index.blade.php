@@ -101,18 +101,22 @@
 
     <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
         <div class="overflow-x-auto">
-            <table class="min-w-[1380px] w-full text-sm">
+            <table class="min-w-[1780px] w-full text-sm">
                 <thead class="bg-slate-50 text-slate-500">
                     <tr>
                         <th class="px-4 py-4 text-left font-medium">Nama Seller</th>
                         <th class="px-4 py-4 text-left font-medium">Date</th>
+                        <th class="px-4 py-4 text-left font-medium">Tipe Transaksi</th>
                         <th class="px-4 py-4 text-left font-medium">Nama Barang</th>
+                        <th class="px-4 py-4 text-left font-medium">Spesifikasi</th>
                         <th class="px-4 py-4 text-right font-medium">Qty</th>
                         <th class="px-4 py-4 text-left font-medium">Nama Customer</th>
                         <th class="px-4 py-4 text-right font-medium">Modal</th>
                         <th class="px-4 py-4 text-right font-medium">Harga Jual</th>
-                        <th class="px-4 py-4 text-right font-medium">Service</th>
-                        <th class="px-4 py-4 text-right font-medium">Profit</th>
+                        <th class="px-4 py-4 text-right font-medium">Biaya Tambahan</th>
+                        <th class="px-4 py-4 text-right font-medium">Profit Kotor</th>
+                        <th class="px-4 py-4 text-right font-medium">Penjual 70%</th>
+                        <th class="px-4 py-4 text-right font-medium">NATOPC 30%</th>
                         <th class="px-4 py-4 text-left font-medium">Status</th>
                     </tr>
                 </thead>
@@ -126,8 +130,14 @@
                             <td class="px-4 py-4 align-top text-slate-600">
                                 {{ $row->transaction_date ? date('d, M, Y', strtotime((string) $row->transaction_date)) : '-' }}
                             </td>
+                            <td class="px-4 py-4 align-top text-slate-700">
+                                {{ $row->transaction_mode === 'rakit_pc' ? 'Rakit PC' : 'Sparepart only' }}
+                            </td>
                             <td class="px-4 py-4 align-top text-slate-900">
                                 <div class="font-medium">{{ $row->product_name ?: '-' }}</div>
+                            </td>
+                            <td class="px-4 py-4 align-top text-slate-600">
+                                {{ $row->item_specification ?: '-' }}
                             </td>
                             <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-slate-700">
                                 {{ number_format((int) $row->quantity) }}
@@ -154,8 +164,14 @@
                             <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-sky-600">
                                 Rp {{ number_format((float) $row->service_total, 0, ',', '.') }}
                             </td>
-                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums {{ (float) $row->profit_total >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
-                                Rp {{ number_format((float) $row->profit_total, 0, ',', '.') }}
+                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums {{ (float) $row->gross_profit_total >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
+                                Rp {{ number_format((float) $row->gross_profit_total, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-emerald-700">
+                                Rp {{ number_format((float) $row->seller_profit_share, 0, ',', '.') }}
+                            </td>
+                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-indigo-700">
+                                Rp {{ number_format((float) $row->natopc_profit_share, 0, ',', '.') }}
                             </td>
                             <td class="px-4 py-4 align-top">
                                 <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $row->status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
@@ -165,7 +181,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="px-4 py-10 text-center text-sm text-slate-500">
+                            <td colspan="14" class="px-4 py-10 text-center text-sm text-slate-500">
                                 Belum ada data transaksi yang sesuai filter.
                             </td>
                         </tr>

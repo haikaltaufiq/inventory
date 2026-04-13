@@ -154,7 +154,13 @@ class TransactionController extends Controller
             'transaction_data.customerName' => 'required|string|max:100',
             'transaction_data.customerPhone' => 'nullable|string|max:20',
             'transaction_data.type' => 'nullable|string|in:Invoice,Quotation,DO',
+            'transaction_data.transactionMode' => 'required|string|in:sparepart,rakit_pc',
+            'transaction_data.buildName' => 'nullable|string|max:120',
             'service_fee' => 'required|numeric|min:0',
+            'additional_fees.installation' => 'nullable|numeric|min:0',
+            'additional_fees.service_labor' => 'nullable|numeric|min:0',
+            'additional_fees.shipping' => 'nullable|numeric|min:0',
+            'additional_fees.marketing' => 'nullable|numeric|min:0',
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|exists:products,id',
             'cart.*.supplier_id' => 'required|exists:suppliers,id',
@@ -169,14 +175,34 @@ class TransactionController extends Controller
                 $customer = $this->resolveCustomer($validated['transaction_data']);
                 $cart = collect($validated['cart']);
                 $subtotal = $cart->sum(fn($item) => $item['price'] * $item['qty']);
+                $mode = $validated['transaction_data']['transactionMode'] ?? 'sparepart';
+                $pcBuildName = trim((string) ($validated['transaction_data']['buildName'] ?? ''));
+                if ($mode === 'rakit_pc' && $pcBuildName === '') {
+                    throw ValidationException::withMessages([
+                        'transaction_data.buildName' => ['Nama barang untuk transaksi Rakit PC wajib diisi.'],
+                    ]);
+                }
+
+                $installationFee = (float) data_get($validated, 'additional_fees.installation', 0);
+                $serviceLaborFee = (float) data_get($validated, 'additional_fees.service_labor', 0);
+                $shippingFee = (float) data_get($validated, 'additional_fees.shipping', 0);
+                $marketingFee = (float) data_get($validated, 'additional_fees.marketing', 0);
                 $serviceFee = (float) $validated['service_fee'];
                 $finalTotal = $subtotal + $serviceFee;
+                $pcSpecification = $mode === 'rakit_pc'
+                    ? $this->buildPcSpecification($cart->all())
+                    : null;
 
                 $transaction = Transaction::create([
                     'customer_id' => $customer->id,
                     'sales_name' => $validated['transaction_data']['sales'],
+                    'transaction_mode' => $mode,
                     'subtotal' => $subtotal,
                     'service_fee' => $serviceFee,
+                    'installation_fee' => $installationFee,
+                    'service_labor_fee' => $serviceLaborFee,
+                    'shipping_fee' => $shippingFee,
+                    'marketing_fee' => $marketingFee,
                     'final_total' => $finalTotal,
                     'status' => 'Completed',
                     'type' => $validated['transaction_data']['type'] ?? 'Invoice',
@@ -213,6 +239,8 @@ class TransactionController extends Controller
                         'product_id' => $item['product_id'],
                         'supplier_id' => $item['supplier_id'],
                         'product_supplier_id' => $stockRow->id,
+                        'item_name' => $mode === 'rakit_pc' ? $pcBuildName : null,
+                        'item_specification' => $mode === 'rakit_pc' ? $pcSpecification : null,
                         'quantity' => $item['qty'],
                         'price_at_transaction' => $item['price'],
                         'is_conflict' => (bool) ($item['is_conflict'] ?? false),
@@ -314,7 +342,7 @@ class TransactionController extends Controller
             ->selectRaw('COUNT(*) as total_rows')
             ->selectRaw('COALESCE(SUM(selling_total), 0) as total_selling')
             ->selectRaw('COALESCE(SUM(service_total), 0) as total_service')
-            ->selectRaw('COALESCE(SUM(profit_total), 0) as total_profit')
+            ->selectRaw('COALESCE(SUM(gross_profit_total), 0) as total_profit')
             ->first();
 
         $reportRows = (clone $reportQuery)
@@ -341,7 +369,7 @@ class TransactionController extends Controller
 
         return response()->streamDownload(function () use ($request) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Nama Seller', 'Date', 'Nama Barang', 'Nama Customer', 'Modal', 'Harga Jual', 'Service', 'Profit']);
+            fputcsv($handle, ['Nama Seller', 'Date', 'Tipe Transaksi', 'Nama Barang', 'Spesifikasi', 'Nama Customer', 'Modal', 'Harga Jual', 'Biaya Tambahan', 'Profit Kotor', 'Penjual 70%', 'NATOPC 30%', 'Status']);
 
             $this->buildTransactionReportQuery($request)
                 ->orderByDesc('transaction_date')
@@ -356,12 +384,17 @@ class TransactionController extends Controller
                         fputcsv($handle, [
                             $row->seller_name ?: '-',
                             $row->transaction_date ? date('d, M, Y', strtotime((string) $row->transaction_date)) : '-',
+                            $row->transaction_mode === 'rakit_pc' ? 'Rakit PC' : 'Sparepart only',
                             $productName,
+                            $row->item_specification ?: '-',
                             $row->customer_name ?: '-',
                             (float) $row->modal_total,
                             (float) $row->selling_total,
                             (float) $row->service_total,
-                            (float) $row->profit_total,
+                            (float) $row->gross_profit_total,
+                            (float) $row->seller_profit_share,
+                            (float) $row->natopc_profit_share,
+                            $row->status ?: '-',
                         ]);
                     }
                 });
@@ -377,14 +410,17 @@ class TransactionController extends Controller
             ->leftJoin('customers as customers', 'transactions.customer_id', '=', 'customers.id')
             ->leftJoin('products as products', 'transaction_details.product_id', '=', 'products.id')
             ->leftJoin('product_supplier as product_supplier', 'transaction_details.product_supplier_id', '=', 'product_supplier.id')
+            ->leftJoin('product_specifications as product_specifications', 'products.id', '=', 'product_specifications.product_id')
             ->select([
                 'transaction_details.id as transaction_detail_id',
                 'transactions.id as transaction_id',
                 'transactions.sales_name as seller_name',
+                'transactions.transaction_mode',
                 'transactions.transaction_date',
                 'transactions.status',
                 'customers.name as customer_name',
-                'products.name as product_name',
+                DB::raw('COALESCE(transaction_details.item_name, products.name) as product_name'),
+                DB::raw("COALESCE(transaction_details.item_specification, GROUP_CONCAT(CONCAT(product_specifications.spec_key, ': ', product_specifications.spec_value) SEPARATOR ', ')) as item_specification"),
                 'transaction_details.quantity',
                 'transaction_details.price_at_transaction as selling_price_unit',
                 'product_supplier.harga_beli as modal_price_unit',
@@ -396,7 +432,26 @@ class TransactionController extends Controller
                     THEN ROUND(COALESCE(transactions.service_fee, 0) * ((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) / transactions.subtotal), 2)
                 ELSE 0
             END as service_total')
-            ->selectRaw('((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) - (transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0))) as profit_total');
+            ->selectRaw('((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) - (transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0))) as gross_profit_total')
+            ->selectRaw('ROUND((((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) - (transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0))) * 0.7), 2) as seller_profit_share')
+            ->selectRaw('ROUND((((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) - (transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0))) * 0.3), 2) as natopc_profit_share')
+            ->groupBy([
+                'transaction_details.id',
+                'transactions.id',
+                'transactions.sales_name',
+                'transactions.transaction_mode',
+                'transactions.transaction_date',
+                'transactions.status',
+                'customers.name',
+                'transaction_details.item_name',
+                'transaction_details.item_specification',
+                'products.name',
+                'transaction_details.quantity',
+                'transaction_details.price_at_transaction',
+                'product_supplier.harga_beli',
+                'transactions.subtotal',
+                'transactions.service_fee',
+            ]);
 
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
@@ -405,7 +460,9 @@ class TransactionController extends Controller
                 $builder
                     ->where('transactions.sales_name', 'like', "%{$search}%")
                     ->orWhere('customers.name', 'like', "%{$search}%")
-                    ->orWhere('products.name', 'like', "%{$search}%");
+                    ->orWhere('products.name', 'like', "%{$search}%")
+                    ->orWhere('transaction_details.item_name', 'like', "%{$search}%")
+                    ->orWhere('transaction_details.item_specification', 'like', "%{$search}%");
             });
         }
 
@@ -458,6 +515,7 @@ class TransactionController extends Controller
             ->map(function ($item) {
                 return [
                     'product_id' => $item['product_id'] ?? $item['id'] ?? null,
+                    'name' => $item['name'] ?? null,
                     'supplier_id' => $item['supplier_id'] ?? null,
                     'product_supplier_id' => $item['product_supplier_id'] ?? $item['pivot_id'] ?? null,
                     'qty' => $item['qty'] ?? $item['quantity'] ?? null,
@@ -470,9 +528,41 @@ class TransactionController extends Controller
 
         return [
             'transaction_data' => $request->input('transaction_data', $request->input('transactionData', [])),
-            'service_fee' => (float) $request->input('service_fee', $request->input('serviceFee', 0)),
+            'additional_fees' => [
+                'installation' => (float) $request->input('additional_fees.installation', 0),
+                'service_labor' => (float) $request->input('additional_fees.service_labor', 0),
+                'shipping' => (float) $request->input('additional_fees.shipping', 0),
+                'marketing' => (float) $request->input('additional_fees.marketing', 0),
+            ],
+            'service_fee' => (float) $request->input('service_fee', $request->input('serviceFee', $this->sumAdditionalFees($request))),
             'cart' => $cart,
         ];
+    }
+
+    private function sumAdditionalFees(Request $request): float
+    {
+        return (float) $request->input('additional_fees.installation', 0)
+            + (float) $request->input('additional_fees.service_labor', 0)
+            + (float) $request->input('additional_fees.shipping', 0)
+            + (float) $request->input('additional_fees.marketing', 0);
+    }
+
+    private function buildPcSpecification(array $cart): string
+    {
+        $specParts = collect($cart)
+            ->map(function ($item) {
+                $name = trim((string) data_get($item, 'name', ''));
+                $qty = (int) data_get($item, 'qty', 1);
+                if ($name === '') {
+                    return null;
+                }
+
+                return $qty > 1 ? "{$name} x{$qty}" : $name;
+            })
+            ->filter()
+            ->values();
+
+        return $specParts->implode(', ');
     }
 
     private function mapDocumentTypeKey(string $type): string

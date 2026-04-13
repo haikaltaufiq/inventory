@@ -117,8 +117,23 @@
 
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                                    <label class="text-sm font-medium text-slate-600">Service fee</label>
-                                    <input type="number" min="0" step="0.01" x-model.number="serviceFee" placeholder="0"
+                                    <label class="text-sm font-medium text-slate-600">Biaya tambahan - Instalasi</label>
+                                    <input type="number" min="0" step="0.01" x-model.number="additionalFees.installation" placeholder="0"
+                                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                </div>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                    <label class="text-sm font-medium text-slate-600">Biaya tambahan - Jasa layanan</label>
+                                    <input type="number" min="0" step="0.01" x-model.number="additionalFees.service_labor" placeholder="0"
+                                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                </div>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                    <label class="text-sm font-medium text-slate-600">Biaya tambahan - Ongkos kirim</label>
+                                    <input type="number" min="0" step="0.01" x-model.number="additionalFees.shipping" placeholder="0"
+                                        class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                </div>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                    <label class="text-sm font-medium text-slate-600">Biaya tambahan - Marketing</label>
+                                    <input type="number" min="0" step="0.01" x-model.number="additionalFees.marketing" placeholder="0"
                                         class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
                                 </div>
 
@@ -145,7 +160,7 @@
                                     <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
                                 </div>
                                 <div class="flex items-center justify-between text-sm text-slate-500">
-                                    <span>Service Fee</span>
+                                    <span>Biaya tambahan</span>
                                     <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
                                 </div>
                                 <div class="flex items-center justify-between border-t border-slate-200 pt-3">
@@ -163,6 +178,20 @@
                 </div>
             </div>
         </div>
+
+        <x-modal id="modalBuildName" title="Nama Barang Rakit PC" size="sm">
+            <div class="space-y-4">
+                <p class="text-sm text-slate-500">Masukkan nama barang utama untuk transaksi Rakit PC.</p>
+                <input type="text" x-model="draftBuildName" placeholder="Contoh: PC Gaming"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                <div class="flex justify-end gap-2">
+                    <button @click="closeModal('modalBuildName')"
+                        class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Batal</button>
+                    <button @click="applyBuildName()"
+                        class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Simpan</button>
+                </div>
+            </div>
+        </x-modal>
 
         {{-- MAIN INTERFACE --}}
         <div class="flex gap-8 items-start">
@@ -206,7 +235,7 @@
                         </div>
 
                         {{-- COMPATIBILITY TOGGLE --}}
-                        <button @click="filterCompatible = !filterCompatible"
+                        <button @click="toggleCompatibility()"
                             :class="filterCompatible ? 'bg-slate-900 text-white border-slate-900' :
                                 'bg-slate-50 text-slate-600 border-slate-200'"
                             class="flex h-11 items-center gap-2 rounded-xl border px-4 text-sm transition hover:border-slate-300">
@@ -214,10 +243,26 @@
                             <span x-text="filterCompatible ? 'Compatibility aktif' : 'Match compatibility'"></span>
                         </button>
                     </div>
+                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                        <button @click="setTransactionMode('sparepart')"
+                            :class="transactionData.transactionMode === 'sparepart' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'"
+                            class="rounded-xl border px-4 py-2 text-sm transition">
+                            Sparepart only
+                        </button>
+                        <button @click="setTransactionMode('rakit_pc')"
+                            :class="transactionData.transactionMode === 'rakit_pc' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'"
+                            class="rounded-xl border px-4 py-2 text-sm transition">
+                            Rakit PC
+                        </button>
+                        <span x-show="transactionData.transactionMode === 'rakit_pc' && transactionData.buildName"
+                            class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                            Nama barang: <span class="font-medium" x-text="transactionData.buildName"></span>
+                        </span>
+                    </div>
                 </div>
 
                 {{-- PRODUCT GRID --}}
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <template x-for="product in filteredProducts" :key="product.id">
                         {{-- PRODUCT CARD --}}
                         <div
@@ -344,7 +389,7 @@
                                 <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
                             </div>
                             <div class="flex items-center justify-between text-sm text-slate-500">
-                                <span>Service Fee</span>
+                                <span>Biaya tambahan</span>
                                 <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
                             </div>
                             <div class="flex items-center justify-between border-t border-slate-200 pt-3">
@@ -473,8 +518,14 @@
                     activeCat: 'Semua',
                     filterCompatible: false,
                     // === CHECKOUT STATE ===
-                    serviceFee: 0,
+                    additionalFees: {
+                        installation: 0,
+                        service_labor: 0,
+                        shipping: 0,
+                        marketing: 0,
+                    },
                     conflictMessage: '',
+                    draftBuildName: '',
                     // === MODAL STATE ===
                     detailOpen: false,
                     detailZoom: false,
@@ -519,7 +570,9 @@
                         sales: @js($salesUsers->first()?->name ?? ''),
                         customerName: '',
                         customerPhone: '',
-                        type: 'Invoice'
+                        type: 'Invoice',
+                        transactionMode: 'sparepart',
+                        buildName: '',
                     },
 
                     // === COMPUTED: FILTERED PRODUCTS ===
@@ -540,6 +593,13 @@
                     },
 
                     // === COMPUTED: FINAL TOTAL ===
+                    get serviceFee() {
+                        return (Number(this.additionalFees.installation) || 0)
+                            + (Number(this.additionalFees.service_labor) || 0)
+                            + (Number(this.additionalFees.shipping) || 0)
+                            + (Number(this.additionalFees.marketing) || 0);
+                    },
+
                     get finalTotal() {
                         return this.subtotal + (Number(this.serviceFee) || 0);
                     },
@@ -596,6 +656,38 @@
                     },
 
                     // === COMPATIBILITY CHECK ===
+                    toggleCompatibility() {
+                        if (this.transactionData.transactionMode === 'rakit_pc') {
+                            this.filterCompatible = true;
+                            return;
+                        }
+
+                        this.filterCompatible = !this.filterCompatible;
+                    },
+
+                    setTransactionMode(mode) {
+                        this.transactionData.transactionMode = mode;
+                        if (mode === 'rakit_pc') {
+                            this.filterCompatible = true;
+                            this.draftBuildName = this.transactionData.buildName || '';
+                            openModal('modalBuildName');
+                            return;
+                        }
+
+                        this.transactionData.buildName = '';
+                    },
+
+                    applyBuildName() {
+                        const buildName = (this.draftBuildName || '').trim();
+                        if (!buildName) {
+                            alert('Nama barang rakit PC wajib diisi.');
+                            return;
+                        }
+
+                        this.transactionData.buildName = buildName;
+                        closeModal('modalBuildName');
+                    },
+
                     isProductIncompatible(p) {
                         const cartProcie = this.cart.find(i => i.category_name === 'Processor' || i.category_name === 'CPU');
                         const cartMobo = this.cart.find(i => i.category_name === 'Motherboard');
@@ -701,12 +793,19 @@
                     async submitOrder() {
                         if (!this.transactionData.sales) return alert('Sales wajib dipilih.');
                         if (!this.transactionData.customerName) return alert('Nama customer wajib diisi.');
+                        if (this.transactionData.transactionMode === 'rakit_pc' && !this.transactionData.buildName) {
+                            this.draftBuildName = '';
+                            openModal('modalBuildName');
+                            return alert('Isi nama barang untuk transaksi Rakit PC.');
+                        }
 
                         const payload = {
                             transaction_data: this.transactionData,
                             service_fee: this.serviceFee,
+                            additional_fees: this.additionalFees,
                             cart: this.cart.map(i => ({
                                 product_id: i.id,
+                                name: i.name,
                                 supplier_id: i.supplier_id,
                                 product_supplier_id: i.product_supplier_id,
                                 qty: i.qty,
