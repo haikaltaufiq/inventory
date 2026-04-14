@@ -112,8 +112,8 @@
                         <th class="px-4 py-4 text-right font-medium">Qty</th>
                         <th class="px-4 py-4 text-left font-medium">Customer</th>
                         <th class="px-4 py-4 text-left font-medium">Alamat</th>
-                        <th class="px-4 py-4 text-right font-medium">Modal</th>
-                        <th class="px-4 py-4 text-right font-medium">Jual</th>
+                        <th class="px-4 py-4 text-right font-medium">Total Modal</th>
+                        <th class="px-4 py-4 text-right font-medium">Total Jual</th>
                         <th class="px-4 py-4 text-right font-medium">Biaya Tambahan</th>
                         <th class="px-4 py-4 text-right font-medium">Profit Kotor</th>
                         <th class="px-4 py-4 text-right font-medium">Penjual</th>
@@ -188,16 +188,10 @@
                             <div class="font-semibold">
                                 Rp {{ number_format((float) $row->modal_total, 0, ',', '.') }}
                             </div>
-                            <div class="mt-1 text-xs text-slate-500">
-                                @ Rp {{ number_format((float) $row->modal_price_unit, 0, ',', '.') }}
-                            </div>
                         </td>
                         <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
                             <div class="font-semibold">
                                 Rp {{ number_format((float) $row->selling_total, 0, ',', '.') }}
-                            </div>
-                            <div class="mt-1 text-xs text-slate-500">
-                                @ Rp {{ number_format((float) $row->selling_price_unit, 0, ',', '.') }}
                             </div>
                         </td>
                         <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-sky-600">
