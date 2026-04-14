@@ -11,10 +11,12 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            $table->string('brand')->nullable();
             $table->string('name');
-            $table->decimal('selling_price', 15, 2); // Harga patokan barang BARU
-            $table->string('warranty')->nullable();  // Garansi standar resmi
+            $table->string('letak_barang')->nullable();
             $table->text('description')->nullable();
+            $table->string('image_url')->nullable();
+            $table->json('technical_specs')->nullable();
             $table->timestamps();
         });
     }
