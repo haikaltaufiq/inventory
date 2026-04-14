@@ -1,4 +1,4 @@
-﻿@push('scripts')
+@push('scripts')
     <script>
         function productGrid() {
             return {
@@ -49,7 +49,6 @@
                         category_id: row.category_id ? String(row.category_id) : '',
                         category_name: row.category_name || '',
                         letak_barang: row.letak_barang || '',
-                        warranty: row.warranty ?? '',
                         description: row.description ?? '',
                         image_url: row.image_url ?? '',
                         _imageName: '',
@@ -84,6 +83,7 @@
                         stock: supplier.stock ?? '0',
                         harga_beli: supplier.harga_beli ?? '',
                         harga_jual: supplier.harga_jual ?? '',
+                        warranty_detail: supplier.warranty_detail ?? '',
                     };
                 },
 
@@ -793,7 +793,6 @@
                         { name: `products[${row.client_key}][brand]`, value: row.brand || '' },
                         { name: `products[${row.client_key}][category_id]`, value: row.category_id || '' },
                         { name: `products[${row.client_key}][letak_barang]`, value: row.letak_barang || '' },
-                        { name: `products[${row.client_key}][warranty]`, value: row.warranty || '' },
                         { name: `products[${row.client_key}][description]`, value: row.description || '' },
                     ];
 
@@ -818,6 +817,7 @@
                         fields.push({ name: `products[${row.client_key}][suppliers][${index}][stock]`, value: supplier.stock || 0 });
                         fields.push({ name: `products[${row.client_key}][suppliers][${index}][harga_beli]`, value: supplier.harga_beli || '' });
                         fields.push({ name: `products[${row.client_key}][suppliers][${index}][harga_jual]`, value: supplier.harga_jual || '' });
+                        fields.push({ name: `products[${row.client_key}][suppliers][${index}][warranty_detail]`, value: supplier.warranty_detail || '' });
                     });
 
                     return fields;

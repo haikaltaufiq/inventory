@@ -445,13 +445,7 @@
                         <input x-model="activeDetailRow().brand" @input="markDirty(activeDetailRow())" type="text"
                             class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-slate-400">
                     </div>
-                    <div>
-                        <label
-                            class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Garansi</label>
-                        <input x-model="activeDetailRow().warranty" @input="markDirty(activeDetailRow())"
-                            type="text"
-                            class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-slate-400">
-                    </div>
+
                     <div>
                         <label class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Foto
                             Produk</label>
@@ -766,6 +760,14 @@
                                             class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400 w-full"
                                             required>
                                     </div>
+                                    <div>
+                                        <label
+                                            class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Garansi (Warranty)</label>
+                                        <input x-model="supplierRow.warranty_detail"
+                                            @input="markDirty(activeSupplierRow())" type="text"
+                                            placeholder="Detail garansi supplier"
+                                            class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400 w-full">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -822,11 +824,7 @@
                                 <span class="font-semibold text-slate-900 tabular-nums"
                                     x-text="formatNumber(activeSupplierEntries(activePreviewRow()).length)"></span>
                             </div>
-                            <div class="flex items-center justify-between gap-3">
-                                <span class="text-slate-500">Garansi</span>
-                                <span class="font-medium text-slate-900 text-right"
-                                    x-text="activePreviewRow()?.warranty || '-'"></span>
-                            </div>
+
                             <div class="flex items-center justify-between gap-3">
                                 <span class="text-slate-500">Pemodal</span>
                                 <span class="font-medium text-slate-900 text-right"
@@ -855,6 +853,8 @@
                                     </th>
                                     <th class="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em]">Kondisi
                                     </th>
+                                    <th class="px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em]">Garansi
+                                    </th>
                                     <th
                                         class="px-4 py-3 text-right text-[11px] font-medium uppercase tracking-[0.14em]">
                                         Stok</th>
@@ -878,6 +878,8 @@
                                                 :class="conditionMeta(supplierEntry.condition)"
                                                 x-text="supplierEntry.condition || '-'"></span>
                                         </td>
+                                        <td class="px-4 py-3 text-sm text-slate-700"
+                                            x-text="supplierEntry.warranty_detail || '-'"></td>
                                         <td class="px-4 py-3 text-right font-medium text-slate-900 tabular-nums"
                                             x-text="formatNumber(supplierEntry.stock)"></td>
                                         <td class="px-4 py-3 text-right text-slate-700 tabular-nums"
@@ -887,7 +889,7 @@
                                     </tr>
                                 </template>
                                 <tr x-show="activeSupplierEntries(activePreviewRow()).length === 0">
-                                    <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-400">Belum ada
+                                    <td colspan="7" class="px-4 py-6 text-center text-sm text-slate-400">Belum ada
                                         supplier aktif untuk produk ini.</td>
                                 </tr>
                             </tbody>

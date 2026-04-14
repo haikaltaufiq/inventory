@@ -426,6 +426,7 @@ class ProductController extends Controller
                         'stock' => (string) data_get($supplier, 'stock', '0'),
                         'harga_beli' => (string) data_get($supplier, 'harga_beli', ''),
                         'harga_jual' => (string) data_get($supplier, 'harga_jual', ''),
+                        'warranty_detail' => (string) data_get($supplier, 'warranty_detail', ''),
                     ])
                     ->all();
 
@@ -437,7 +438,6 @@ class ProductController extends Controller
                     'category_id' => $categoryId,
                     'category_name' => $categoryMap->get((int) $categoryId, $product?->category?->name ?? 'Pilih kategori'),
                     'letak_barang' => (string) data_get($row, 'letak_barang', ''),
-                    'warranty' => (string) data_get($row, 'warranty', ''),
                     'description' => (string) data_get($row, 'description', ''),
                     'image_url' => $product?->image_url,
                     'specs' => $specs,
@@ -466,7 +466,6 @@ class ProductController extends Controller
             'category_id' => (string) $product->category_id,
             'category_name' => $product->category?->name ?? 'No Category',
             'letak_barang' => $product->letak_barang ?? '',
-            'warranty' => $product->warranty ?? '',
             'description' => $product->description ?? '',
             'image_url' => $product->image_url,
             'specs' => collect($formSpecs)
@@ -491,6 +490,7 @@ class ProductController extends Controller
                     'stock' => (string) $supplier->pivot->stock,
                     'harga_beli' => (string) $supplier->pivot->harga_beli,
                     'harga_jual' => (string) $supplier->pivot->harga_jual_manual,
+                    'warranty_detail' => (string) ($supplier->pivot->warranty_detail ?? ''),
                 ])
                 ->values()
                 ->all(),
@@ -596,7 +596,6 @@ class ProductController extends Controller
             'brand' => data_get($row, 'brand'),
             'category_id' => data_get($row, 'category_id'),
             'letak_barang' => data_get($row, 'letak_barang'),
-            'warranty' => data_get($row, 'warranty'),
             'description' => data_get($row, 'description'),
             'specs' => $specs,
             'extra_specs' => collect(data_get($row, 'additional_specs', []))
@@ -617,6 +616,7 @@ class ProductController extends Controller
                     'stock' => data_get($supplier, 'stock'),
                     'harga_beli' => data_get($supplier, 'harga_beli'),
                     'harga_jual' => data_get($supplier, 'harga_jual'),
+                    'warranty_detail' => data_get($supplier, 'warranty_detail'),
                     'condition' => data_get($supplier, 'condition', 'New'),
                 ])
                 ->all(),
@@ -679,7 +679,6 @@ class ProductController extends Controller
                 'brand' => 'nullable|string|max:255',
                 'category_id' => 'required|exists:categories,id',
                 'letak_barang' => 'nullable|string|max:255',
-                'warranty' => 'nullable|string|max:255',
                 'description' => 'nullable|string',
                 'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
                 'specs' => 'nullable|array',
@@ -698,6 +697,7 @@ class ProductController extends Controller
                 'suppliers.*.stock' => 'required|integer|min:0',
                 'suppliers.*.harga_beli' => 'required|numeric|min:0',
                 'suppliers.*.harga_jual' => 'required|numeric|min:0',
+                'suppliers.*.warranty_detail' => 'nullable|string|max:255',
                 'suppliers.*.condition' => 'required|string|in:New,Used,Refurbished',
             ],
             $this->productValidationMessages(),
@@ -827,7 +827,6 @@ class ProductController extends Controller
             'brand' => 'brand',
             'category_id' => 'kategori produk',
             'letak_barang' => 'letak barang',
-            'warranty' => 'garansi',
             'description' => 'deskripsi',
             'image' => 'foto produk',
             'specs' => 'spesifikasi utama',
@@ -860,6 +859,7 @@ class ProductController extends Controller
             $attributes['suppliers.' . $index . '.stock'] = $prefix . ' - stok';
             $attributes['suppliers.' . $index . '.harga_beli'] = $prefix . ' - harga beli';
             $attributes['suppliers.' . $index . '.harga_jual'] = $prefix . ' - harga jual';
+            $attributes['suppliers.' . $index . '.warranty_detail'] = $prefix . ' - garansi supplier';
             $attributes['suppliers.' . $index . '.condition'] = $prefix . ' - kondisi';
         }
 
@@ -877,7 +877,6 @@ class ProductController extends Controller
             'brand' => $this->nullableTrim($validated['brand'] ?? null),
             'name' => trim($validated['name']),
             'letak_barang' => $this->nullableTrim($validated['letak_barang'] ?? null),
-            'warranty' => $this->nullableTrim($validated['warranty'] ?? null),
             'description' => $this->nullableTrim($validated['description'] ?? null),
             'technical_specs' => $this->supportsTechnicalSpecsColumn() ? $specPayload['technical_specs'] : null,
         ];
@@ -1007,6 +1006,7 @@ class ProductController extends Controller
                 'stock' => (int) $supplier['stock'],
                 'harga_beli' => (float) $supplier['harga_beli'],
                 'harga_jual_manual' => (float) $supplier['harga_jual'],
+                'warranty_detail' => $this->nullableTrim($supplier['warranty_detail'] ?? null),
                 'pemodal_user_id' => $supportsProductSupplierPemodal ? ($supplier['pemodal_user_id'] ?? null) : null,
             ];
         }
@@ -1021,6 +1021,7 @@ class ProductController extends Controller
                     'stock' => $data['stock'],
                     'harga_beli' => $data['harga_beli'],
                     'harga_jual_manual' => $data['harga_jual_manual'],
+                    'warranty_detail' => $data['warranty_detail'],
                     'updated_at' => now(),
                 ];
 
@@ -1042,6 +1043,7 @@ class ProductController extends Controller
                 'stock' => $data['stock'],
                 'harga_beli' => $data['harga_beli'],
                 'harga_jual_manual' => $data['harga_jual_manual'],
+                'warranty_detail' => $data['warranty_detail'],
                 'entry_date' => now()->toDateString(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -1408,7 +1410,6 @@ class ProductController extends Controller
                 'products.brand',
                 'products.name',
                 'products.letak_barang',
-                'products.warranty',
                 'products.description',
                 'products.technical_specs',
                 'products.image_url',
@@ -1422,6 +1423,7 @@ class ProductController extends Controller
                         'stock',
                         'harga_beli',
                         'harga_jual_manual',
+                        'warranty_detail',
                     ];
 
                     if ($this->supportsProductSupplierPemodalColumn()) {
