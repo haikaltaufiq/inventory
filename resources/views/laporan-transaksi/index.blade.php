@@ -8,7 +8,7 @@
         <div>
             <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Laporan Transaksi</h1>
             <p class="mt-1 text-sm text-slate-500">
-                Menampilkan detail transaksi per barang. Profit dihitung dari margin harga jual dikurangi modal, sedangkan service ditampilkan terpisah.
+                Laporan Transaksi Penjualan dan Service.
             </p>
         </div>
 
@@ -79,7 +79,7 @@
 
     <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
         <div class="rounded-2xl bg-white p-5 shadow-sm">
-            <p class="text-sm text-slate-500">Baris Transaksi</p>
+            <p class="text-sm text-slate-500">Jumlah transaksi</p>
             <h3 class="mt-1 text-2xl font-semibold text-slate-900">{{ number_format($summary['total_rows']) }}</h3>
         </div>
 
@@ -104,87 +104,119 @@
             <table class="min-w-[1780px] w-full text-sm">
                 <thead class="bg-slate-50 text-slate-500">
                     <tr>
-                        <th class="px-4 py-4 text-left font-medium">Nama Seller</th>
+                        <th class="px-4 py-4 text-left font-medium">Seller</th>
                         <th class="px-4 py-4 text-left font-medium">Date</th>
-                        <th class="px-4 py-4 text-left font-medium">Tipe Transaksi</th>
+                        <th class="px-4 py-4 text-left font-medium">Tipe</th>
                         <th class="px-4 py-4 text-left font-medium">Nama Barang</th>
                         <th class="px-4 py-4 text-left font-medium">Spesifikasi</th>
                         <th class="px-4 py-4 text-right font-medium">Qty</th>
-                        <th class="px-4 py-4 text-left font-medium">Nama Customer</th>
+                        <th class="px-4 py-4 text-left font-medium">Customer</th>
                         <th class="px-4 py-4 text-right font-medium">Modal</th>
-                        <th class="px-4 py-4 text-right font-medium">Harga Jual</th>
+                        <th class="px-4 py-4 text-right font-medium">Jual</th>
                         <th class="px-4 py-4 text-right font-medium">Biaya Tambahan</th>
                         <th class="px-4 py-4 text-right font-medium">Profit Kotor</th>
-                        <th class="px-4 py-4 text-right font-medium">Penjual 70%</th>
-                        <th class="px-4 py-4 text-right font-medium">NATOPC 30%</th>
+                        <th class="px-4 py-4 text-right font-medium">Penjual</th>
+                        <th class="px-4 py-4 text-right font-medium">NATOPC</th>
                         <th class="px-4 py-4 text-left font-medium">Status</th>
                     </tr>
                 </thead>
 
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($reportRows as $row)
-                        <tr class="transition hover:bg-slate-50">
-                            <td class="px-4 py-4 align-top text-slate-700">
-                                <span class="font-medium text-slate-900">{{ $row->seller_name ?: '-' }}</span>
-                            </td>
-                            <td class="px-4 py-4 align-top text-slate-600">
-                                {{ $row->transaction_date ? date('d, M, Y', strtotime((string) $row->transaction_date)) : '-' }}
-                            </td>
-                            <td class="px-4 py-4 align-top text-slate-700">
-                                {{ $row->transaction_mode === 'rakit_pc' ? 'Rakit PC' : 'Sparepart only' }}
-                            </td>
-                            <td class="px-4 py-4 align-top text-slate-900">
-                                <div class="font-medium">{{ $row->product_name ?: '-' }}</div>
-                            </td>
-                            <td class="px-4 py-4 align-top text-slate-600">
-                                {{ $row->item_specification ?: '-' }}
-                            </td>
-                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-slate-700">
-                                {{ number_format((int) $row->quantity) }}
-                            </td>
-                            <td class="px-4 py-4 align-top text-slate-700">
-                                {{ $row->customer_name ?: '-' }}
-                            </td>
-                            <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
-                                <div class="font-semibold">
-                                    Rp {{ number_format((float) $row->modal_total, 0, ',', '.') }}
-                                </div>
-                                <div class="mt-1 text-xs text-slate-500">
-                                    @ Rp {{ number_format((float) $row->modal_price_unit, 0, ',', '.') }}
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
-                                <div class="font-semibold">
-                                    Rp {{ number_format((float) $row->selling_total, 0, ',', '.') }}
-                                </div>
-                                <div class="mt-1 text-xs text-slate-500">
-                                    @ Rp {{ number_format((float) $row->selling_price_unit, 0, ',', '.') }}
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-sky-600">
-                                Rp {{ number_format((float) $row->service_total, 0, ',', '.') }}
-                            </td>
-                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums {{ (float) $row->gross_profit_total >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
-                                Rp {{ number_format((float) $row->gross_profit_total, 0, ',', '.') }}
-                            </td>
-                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-emerald-700">
-                                Rp {{ number_format((float) $row->seller_profit_share, 0, ',', '.') }}
-                            </td>
-                            <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-indigo-700">
-                                Rp {{ number_format((float) $row->natopc_profit_share, 0, ',', '.') }}
-                            </td>
-                            <td class="px-4 py-4 align-top">
-                                <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $row->status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                                    {{ $row->status ?: '-' }}
-                                </span>
-                            </td>
-                        </tr>
+                    @php
+                    $isRakit = $row->transaction_mode === 'rakit_pc';
+                    $productParts = $isRakit
+                    ? collect()
+                    : collect(explode(',', (string) ($row->product_name ?? '')))
+                    ->map(fn($item) => trim($item))
+                    ->filter()
+                    ->values();
+                    $specParts = collect(explode($isRakit ? ',' : '|', (string) ($row->item_specification ?? '')))
+                    ->map(fn($item) => trim($item))
+                    ->filter()
+                    ->values();
+                    @endphp
+                    <tr class="transition hover:bg-slate-50">
+                        <td class="px-4 py-4 align-top text-slate-700">
+                            <span class="font-medium text-slate-900">{{ $row->seller_name ?: '-' }}</span>
+                        </td>
+                        <td class="px-4 py-4 align-top text-slate-600">
+                            {{ $row->transaction_date ? date('d, M, Y', strtotime((string) $row->transaction_date)) : '-' }}
+                        </td>
+                        <td class="px-4 py-4 align-top text-slate-700">
+                            {{ $row->transaction_mode === 'rakit_pc' ? 'Rakit PC' : 'Sparepart only' }}
+                        </td>
+                        <td class="px-4 py-4 align-top text-slate-900">
+                            @if ($isRakit)
+                            <div class="font-semibold">{{ $row->product_name ?: '-' }}</div>
+                            <div class="mt-1 text-xs text-slate-500">Build PC</div>
+                            @elseif ($productParts->isNotEmpty())
+                            <ul class="space-y-1">
+                                @foreach ($productParts as $itemName)
+                                <li class="text-slate-800">{{ $loop->iteration }}. {{ $itemName }}</li>
+                                @endforeach
+                            </ul>
+                            @else
+                            <span>-</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-4 align-top text-slate-600">
+                            @if ($specParts->isNotEmpty())
+                            <ul class="space-y-1">
+                                @foreach ($specParts as $spec)
+                                <li class="text-slate-700">{{ $spec }}</li>
+                                @endforeach
+                            </ul>
+                            @else
+                            <span>-</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-slate-700">
+                            {{ number_format((int) $row->quantity) }}
+                        </td>
+                        <td class="px-4 py-4 align-top text-slate-700">
+                            {{ $row->customer_name ?: '-' }}
+                        </td>
+                        <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
+                            <div class="font-semibold">
+                                Rp {{ number_format((float) $row->modal_total, 0, ',', '.') }}
+                            </div>
+                            <div class="mt-1 text-xs text-slate-500">
+                                @ Rp {{ number_format((float) $row->modal_price_unit, 0, ',', '.') }}
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
+                            <div class="font-semibold">
+                                Rp {{ number_format((float) $row->selling_total, 0, ',', '.') }}
+                            </div>
+                            <div class="mt-1 text-xs text-slate-500">
+                                @ Rp {{ number_format((float) $row->selling_price_unit, 0, ',', '.') }}
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-sky-600">
+                            Rp {{ number_format((float) $row->service_total, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-4 text-right align-top font-semibold tabular-nums {{ (float) $row->gross_profit_total >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
+                            Rp {{ number_format((float) $row->gross_profit_total, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-emerald-700">
+                            Rp {{ number_format((float) $row->seller_profit_share, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-indigo-700">
+                            Rp {{ number_format((float) $row->natopc_profit_share, 0, ',', '.') }}
+                        </td>
+                        <td class="px-4 py-4 align-top">
+                            <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-medium {{ $row->status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                {{ $row->status ?: '-' }}
+                            </span>
+                        </td>
+                    </tr>
                     @empty
-                        <tr>
-                            <td colspan="14" class="px-4 py-10 text-center text-sm text-slate-500">
-                                Belum ada data transaksi yang sesuai filter.
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="14" class="px-4 py-10 text-center text-sm text-slate-500">
+                            Belum ada data transaksi yang sesuai filter.
+                        </td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>

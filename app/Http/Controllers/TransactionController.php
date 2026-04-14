@@ -348,7 +348,6 @@ class TransactionController extends Controller
         $reportRows = (clone $reportQuery)
             ->orderByDesc('transaction_date')
             ->orderByDesc('transaction_id')
-            ->orderBy('transaction_detail_id')
             ->paginate(15)
             ->withQueryString();
 
@@ -374,12 +373,9 @@ class TransactionController extends Controller
             $this->buildTransactionReportQuery($request)
                 ->orderByDesc('transaction_date')
                 ->orderByDesc('transaction_id')
-                ->orderBy('transaction_detail_id')
                 ->chunk(200, function ($rows) use ($handle) {
                     foreach ($rows as $row) {
-                        $productName = trim((string) ($row->product_name ?? '')) !== ''
-                            ? $row->product_name . ' (Qty: ' . (int) $row->quantity . ')'
-                            : '-';
+                        $productName = trim((string) ($row->product_name ?? '')) !== '' ? $row->product_name : '-';
 
                         fputcsv($handle, [
                             $row->seller_name ?: '-',
@@ -405,73 +401,128 @@ class TransactionController extends Controller
 
     private function buildTransactionReportQuery(Request $request)
     {
-        $query = DB::table('transaction_details as transaction_details')
-            ->join('transactions as transactions', 'transaction_details.transaction_id', '=', 'transactions.id')
-            ->leftJoin('customers as customers', 'transactions.customer_id', '=', 'customers.id')
-            ->leftJoin('products as products', 'transaction_details.product_id', '=', 'products.id')
-            ->leftJoin('product_supplier as product_supplier', 'transaction_details.product_supplier_id', '=', 'product_supplier.id')
-            ->leftJoin('product_specifications as product_specifications', 'products.id', '=', 'product_specifications.product_id')
+        $lineSub = $this->buildTransactionReportLineSubquery($request);
+
+        return DB::query()
+            ->fromSub($lineSub, 'lines')
+            ->groupBy('lines.transaction_id')
             ->select([
-                'transaction_details.id as transaction_detail_id',
-                'transactions.id as transaction_id',
-                'transactions.sales_name as seller_name',
-                'transactions.transaction_mode',
-                'transactions.transaction_date',
-                'transactions.status',
-                'customers.name as customer_name',
-                DB::raw('COALESCE(transaction_details.item_name, products.name) as product_name'),
-                DB::raw("COALESCE(transaction_details.item_specification, GROUP_CONCAT(CONCAT(product_specifications.spec_key, ': ', product_specifications.spec_value) SEPARATOR ', ')) as item_specification"),
-                'transaction_details.quantity',
-                'transaction_details.price_at_transaction as selling_price_unit',
-                'product_supplier.harga_beli as modal_price_unit',
+                DB::raw('MIN(lines.transaction_detail_id) as transaction_detail_id'),
+                'lines.transaction_id',
+                DB::raw('MAX(lines.seller_name) as seller_name'),
+                DB::raw('MAX(lines.transaction_mode) as transaction_mode'),
+                DB::raw('MAX(lines.transaction_date) as transaction_date'),
+                DB::raw('MAX(lines.status) as status'),
+                DB::raw('MAX(lines.customer_name) as customer_name'),
+                DB::raw("CASE MAX(lines.transaction_mode)
+                    WHEN 'rakit_pc' THEN MAX(lines.item_name)
+                    ELSE GROUP_CONCAT(lines.sparepart_line_nama ORDER BY lines.transaction_detail_id SEPARATOR ', ')
+                END as product_name"),
+                DB::raw("CASE MAX(lines.transaction_mode)
+                    WHEN 'rakit_pc' THEN GROUP_CONCAT(lines.line_specification ORDER BY lines.transaction_detail_id SEPARATOR ', ')
+                    ELSE GROUP_CONCAT(lines.line_specification ORDER BY lines.transaction_detail_id SEPARATOR ' | ')
+                END as item_specification"),
+                DB::raw('SUM(lines.quantity) as quantity'),
+                DB::raw('CASE WHEN SUM(lines.quantity) > 0 THEN SUM(lines.modal_line) / SUM(lines.quantity) ELSE 0 END as modal_price_unit'),
+                DB::raw('CASE WHEN SUM(lines.quantity) > 0 THEN SUM(lines.selling_line) / SUM(lines.quantity) ELSE 0 END as selling_price_unit'),
+                DB::raw('SUM(lines.modal_line) as modal_total'),
+                DB::raw('SUM(lines.selling_line) as selling_total'),
+                DB::raw('SUM(lines.service_line) as service_total'),
+                DB::raw('SUM(lines.gross_line) as gross_profit_total'),
+                DB::raw('SUM(lines.seller_line) as seller_profit_share'),
+                DB::raw('SUM(lines.natopc_line) as natopc_profit_share'),
+            ]);
+    }
+
+    /**
+     * Satu baris per transaction_detail (untuk diagregasi per transaksi di laporan).
+     */
+    private function buildTransactionReportLineSubquery(Request $request)
+    {
+        $query = DB::table('transaction_details as td')
+            ->join('transactions as t', 'td.transaction_id', '=', 't.id')
+            ->leftJoin('customers as c', 't.customer_id', '=', 'c.id')
+            ->leftJoin('products as p', 'td.product_id', '=', 'p.id')
+            ->leftJoin('product_supplier as ps', 'td.product_supplier_id', '=', 'ps.id')
+            ->leftJoin('product_specifications as pspec', 'p.id', '=', 'pspec.product_id')
+            ->select([
+                'td.id as transaction_detail_id',
+                'td.transaction_id',
+                't.sales_name as seller_name',
+                't.transaction_mode',
+                't.transaction_date',
+                't.status',
+                'c.name as customer_name',
+                'td.item_name',
+                DB::raw('COALESCE(NULLIF(TRIM(td.item_name), \'\'), p.name) as sparepart_line_nama'),
+                DB::raw("CASE
+                    WHEN t.transaction_mode = 'rakit_pc' THEN p.name
+                    ELSE COALESCE(
+                        td.item_specification,
+                        GROUP_CONCAT(CONCAT(pspec.spec_key, ': ', pspec.spec_value) SEPARATOR ', ')
+                    )
+                END as line_specification"),
+                'td.quantity',
+                'td.price_at_transaction',
+                'ps.harga_beli',
             ])
-            ->selectRaw('(transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0)) as modal_total')
-            ->selectRaw('(transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) as selling_total')
+            ->selectRaw('(td.quantity * COALESCE(ps.harga_beli, 0)) as modal_line')
+            ->selectRaw('(td.quantity * COALESCE(td.price_at_transaction, 0)) as selling_line')
             ->selectRaw('CASE
-                WHEN COALESCE(transactions.subtotal, 0) > 0
-                    THEN ROUND(COALESCE(transactions.service_fee, 0) * ((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) / transactions.subtotal), 2)
+                WHEN COALESCE(t.subtotal, 0) > 0
+                    THEN ROUND(COALESCE(t.service_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / t.subtotal), 2)
                 ELSE 0
-            END as service_total')
-            ->selectRaw('((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) - (transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0))) as gross_profit_total')
-            ->selectRaw('ROUND((((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) - (transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0))) * 0.7), 2) as seller_profit_share')
-            ->selectRaw('ROUND((((transaction_details.quantity * COALESCE(transaction_details.price_at_transaction, 0)) - (transaction_details.quantity * COALESCE(product_supplier.harga_beli, 0))) * 0.3), 2) as natopc_profit_share')
+            END as service_line')
+            ->selectRaw('((td.quantity * COALESCE(td.price_at_transaction, 0)) - (td.quantity * COALESCE(ps.harga_beli, 0))) as gross_line')
+            ->selectRaw('ROUND((((td.quantity * COALESCE(td.price_at_transaction, 0)) - (td.quantity * COALESCE(ps.harga_beli, 0))) * 0.7), 2) as seller_line')
+            ->selectRaw('ROUND((((td.quantity * COALESCE(td.price_at_transaction, 0)) - (td.quantity * COALESCE(ps.harga_beli, 0))) * 0.3), 2) as natopc_line')
             ->groupBy([
-                'transaction_details.id',
-                'transactions.id',
-                'transactions.sales_name',
-                'transactions.transaction_mode',
-                'transactions.transaction_date',
-                'transactions.status',
-                'customers.name',
-                'transaction_details.item_name',
-                'transaction_details.item_specification',
-                'products.name',
-                'transaction_details.quantity',
-                'transaction_details.price_at_transaction',
-                'product_supplier.harga_beli',
-                'transactions.subtotal',
-                'transactions.service_fee',
+                'td.id',
+                'td.transaction_id',
+                't.sales_name',
+                't.transaction_mode',
+                't.transaction_date',
+                't.status',
+                'c.name',
+                't.subtotal',
+                't.service_fee',
+                'td.item_name',
+                'td.item_specification',
+                'p.name',
+                'td.quantity',
+                'td.price_at_transaction',
+                'ps.harga_beli',
             ]);
 
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
+            $like = '%' . $search . '%';
 
-            $query->where(function ($builder) use ($search) {
-                $builder
-                    ->where('transactions.sales_name', 'like', "%{$search}%")
-                    ->orWhere('customers.name', 'like', "%{$search}%")
-                    ->orWhere('products.name', 'like', "%{$search}%")
-                    ->orWhere('transaction_details.item_name', 'like', "%{$search}%")
-                    ->orWhere('transaction_details.item_specification', 'like', "%{$search}%");
+            $query->where(function ($w) use ($like) {
+                $w->where('t.sales_name', 'like', $like)
+                    ->orWhere('c.name', 'like', $like)
+                    ->orWhere('p.name', 'like', $like)
+                    ->orWhere('td.item_name', 'like', $like)
+                    ->orWhere('td.item_specification', 'like', $like)
+                    ->orWhereIn('td.transaction_id', function ($sub) use ($like) {
+                        $sub->from('transaction_details as td2')
+                            ->leftJoin('products as p2', 'p2.id', '=', 'td2.product_id')
+                            ->select('td2.transaction_id')
+                            ->where(function ($q) use ($like) {
+                                $q->where('p2.name', 'like', $like)
+                                    ->orWhere('td2.item_name', 'like', $like)
+                                    ->orWhere('td2.item_specification', 'like', $like);
+                            });
+                    });
             });
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('transactions.transaction_date', '>=', $request->input('date_from'));
+            $query->whereDate('t.transaction_date', '>=', $request->input('date_from'));
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('transactions.transaction_date', '<=', $request->input('date_to'));
+            $query->whereDate('t.transaction_date', '<=', $request->input('date_to'));
         }
 
         return $query;
@@ -549,9 +600,18 @@ class TransactionController extends Controller
 
     private function buildPcSpecification(array $cart): string
     {
+        $productIds = collect($cart)->pluck('product_id')->filter()->unique()->values()->all();
+        $namesById = $productIds === []
+            ? collect()
+            : Product::query()->whereIn('id', $productIds)->pluck('name', 'id');
+
         $specParts = collect($cart)
-            ->map(function ($item) {
+            ->map(function ($item) use ($namesById) {
                 $name = trim((string) data_get($item, 'name', ''));
+                if ($name === '') {
+                    $pid = data_get($item, 'product_id');
+                    $name = $pid ? trim((string) ($namesById[$pid] ?? '')) : '';
+                }
                 $qty = (int) data_get($item, 'qty', 1);
                 if ($name === '') {
                     return null;
