@@ -113,6 +113,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/create', [TransactionController::class, 'create'])->name('create');
         Route::post('/', [TransactionController::class, 'store'])->name('store');
         Route::get('/{transaction}/document/{type}', [TransactionController::class, 'downloadDocument'])->name('document');
+        Route::post('/{transaction}/desc', [TransactionController::class, 'updateDesc'])->name('updateDesc');
+        Route::post('/{transaction}/warranty', [TransactionController::class, 'updateWarranty'])->name('updateWarranty');
         Route::delete('/{transaction}', [TransactionController::class, 'destroy'])->name('destroy');
     });
 

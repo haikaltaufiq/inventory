@@ -369,7 +369,7 @@ class TransactionController extends Controller
 
         return response()->streamDownload(function () use ($request) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Nama Seller', 'Date', 'Tipe Transaksi', 'Nama Barang', 'Spesifikasi', 'Nama Customer', 'Modal', 'Harga Jual', 'Biaya Tambahan', 'Profit Kotor', 'Penjual 70%', 'NATOPC 30%', 'Status']);
+            fputcsv($handle, ['Nama Seller', 'Date', 'Tipe Transaksi', 'Nama Barang', 'Spesifikasi', 'Nama Customer', 'Modal', 'Harga Jual', 'Biaya Tambahan', 'Profit Kotor', 'Penjual 70%', 'NATOPC 30%', 'Status', 'Desc', 'Garansi']);
 
             $this->buildTransactionReportQuery($request)
                 ->orderByDesc('transaction_date')
@@ -377,6 +377,7 @@ class TransactionController extends Controller
                 ->chunk(200, function ($rows) use ($handle) {
                     foreach ($rows as $row) {
                         $productName = trim((string) ($row->product_name ?? '')) !== '' ? $row->product_name : '-';
+                        $warrantyString = str_replace('<br>', ', ', (string) $row->warranty_details_list);
 
                         fputcsv($handle, [
                             $row->seller_name ?: '-',
@@ -392,6 +393,8 @@ class TransactionController extends Controller
                             (float) $row->seller_profit_share,
                             (float) $row->natopc_profit_share,
                             $row->status ?: '-',
+                            $row->transaction_desc ?: '-',
+                            $warrantyString === 'Kosong' ? '-' : $warrantyString,
                         ]);
                     }
                 });
@@ -434,6 +437,8 @@ class TransactionController extends Controller
                 DB::raw('SUM(lines.gross_line) as gross_profit_total'),
                 DB::raw('SUM(lines.seller_line) as seller_profit_share'),
                 DB::raw('SUM(lines.natopc_line) as natopc_profit_share'),
+                DB::raw('MAX(lines.transaction_description) as transaction_desc'),
+                DB::raw("GROUP_CONCAT(COALESCE(NULLIF(TRIM(lines.warranty_detail), ''), 'Kosong') ORDER BY lines.transaction_detail_id SEPARATOR '<br>') as warranty_details_list"),
             ]);
     }
 
@@ -470,6 +475,8 @@ class TransactionController extends Controller
                 'td.quantity',
                 'td.price_at_transaction',
                 'ps.harga_beli',
+                't.description as transaction_description',
+                'ps.warranty_detail',
             ])
             ->selectRaw('(td.quantity * COALESCE(ps.harga_beli, 0)) as modal_line')
             ->selectRaw('(td.quantity * COALESCE(td.price_at_transaction, 0)) as selling_line')
@@ -499,6 +506,8 @@ class TransactionController extends Controller
                 'td.quantity',
                 'td.price_at_transaction',
                 'ps.harga_beli',
+                't.description',
+                'ps.warranty_detail',
             ]);
 
         if ($request->filled('search')) {
@@ -780,5 +789,39 @@ class TransactionController extends Controller
         return redirect()
             ->route('transactions.index')
             ->with('success', 'Transaksi berhasil disimpan.');
+    }
+
+    public function updateDesc(Request $request, Transaction $transaction)
+    {
+        $request->validate([
+            'description' => 'nullable|string'
+        ]);
+
+        $transaction->update([
+            'description' => $request->description
+        ]);
+
+        return back()->with('success', 'Catatan transaksi (Desc) berhasil diperbarui.');
+    }
+
+    public function updateWarranty(Request $request, Transaction $transaction)
+    {
+        $request->validate([
+            'warranty' => 'nullable|string'
+        ]);
+
+        $transaction->load('details');
+        
+        DB::transaction(function () use ($transaction, $request) {
+            foreach ($transaction->details as $detail) {
+                if ($detail->product_supplier_id) {
+                    DB::table('product_supplier')
+                        ->where('id', $detail->product_supplier_id)
+                        ->update(['warranty_detail' => $request->warranty]);
+                }
+            }
+        });
+
+        return back()->with('success', 'Garansi (db supplier) berhasil diperbarui untuk transaksi ini.');
     }
 }

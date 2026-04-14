@@ -119,6 +119,8 @@
                         <th class="px-4 py-4 text-right font-medium">Penjual</th>
                         <th class="px-4 py-4 text-right font-medium">NATOPC</th>
                         <th class="px-4 py-4 text-left font-medium">Status</th>
+                        <th class="px-4 py-4 text-left font-medium">Desc</th>
+                        <th class="px-4 py-4 text-left font-medium">Garansi</th>
                     </tr>
                 </thead>
 
@@ -211,10 +213,26 @@
                                 {{ $row->status ?: '-' }}
                             </span>
                         </td>
+                        <td class="px-4 py-4 align-top">
+                            <div class="flex items-start gap-2">
+                                <span class="text-slate-700 whitespace-pre-wrap max-w-[150px]">{{ $row->transaction_desc ?: '-' }}</span>
+                                <button type="button" onclick="openDescModal({{ $row->transaction_id }}, '{{ htmlspecialchars((string) $row->transaction_desc, ENT_QUOTES) }}')" class="p-1 text-slate-400 hover:text-slate-700">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 align-top">
+                            <div class="flex items-start gap-2">
+                                <span class="text-slate-700 max-w-[150px]">{!! $row->warranty_details_list === 'Kosong' ? '-' : $row->warranty_details_list !!}</span>
+                                <button type="button" onclick="openWarrantyModal({{ $row->transaction_id }}, '{{ htmlspecialchars(str_replace('<br>', ' ', (string) $row->warranty_details_list), ENT_QUOTES) }}')" class="p-1 text-slate-400 hover:text-slate-700">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="15" class="px-4 py-10 text-center text-sm text-slate-500">
+                        <td colspan="17" class="px-4 py-10 text-center text-sm text-slate-500">
                             Belum ada data transaksi yang sesuai filter.
                         </td>
                     </tr>
@@ -228,4 +246,49 @@
         {{ $reportRows->links() }}
     </div>
 </div>
+
+<x-modal id="descModal" title="Edit Catatan Transaksi">
+    <form id="descForm" method="POST" action="">
+        @csrf
+        <div class="mb-4">
+            <label class="mb-2 block text-sm font-medium text-slate-700">Catatan (Desc)</label>
+            <textarea name="description" id="descInput" rows="3" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none"></textarea>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button type="button" onclick="closeModal('descModal')" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Simpan</button>
+        </div>
+    </form>
+</x-modal>
+
+<x-modal id="warrantyModal" title="Edit Garansi (Semua Item di Transaksi Ini)">
+    <form id="warrantyForm" method="POST" action="">
+        @csrf
+        <div class="mb-4">
+            <label class="mb-2 block text-sm font-medium text-slate-700">Tahun Garansi</label>
+            <input type="text" name="warranty" id="warrantyInput" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none" placeholder="Misal: 1 Tahun">
+            <p class="mt-2 text-xs text-amber-600">Peringatan: Menyimpan form ini akan memperbarui status masa garansi bagi SEMUA item stock supplier yang disertakan dalam transaksi ini.</p>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button type="button" onclick="closeModal('warrantyModal')" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Simpan</button>
+        </div>
+    </form>
+</x-modal>
+
+<script>
+    function openDescModal(transactionId, desc) {
+        document.getElementById('descForm').action = `/transactions/${transactionId}/desc`;
+        document.getElementById('descInput').value = desc;
+        document.getElementById('descModal').classList.remove('hidden');
+        document.getElementById('descModal').classList.add('flex');
+    }
+    
+    function openWarrantyModal(transactionId, warranty) {
+        document.getElementById('warrantyForm').action = `/transactions/${transactionId}/warranty`;
+        document.getElementById('warrantyInput').value = warranty === 'Kosong' ? '' : warranty;
+        document.getElementById('warrantyModal').classList.remove('hidden');
+        document.getElementById('warrantyModal').classList.add('flex');
+    }
+</script>
 @endsection
