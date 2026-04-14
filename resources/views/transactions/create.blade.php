@@ -26,6 +26,18 @@
             </div>
 
             <div class="mb-4">
+                <label class="block text-gray-700 font-semibold mb-2">Alamat Customer</label>
+                <textarea
+                    name="customer_address"
+                    rows="2"
+                    placeholder="Alamat customer (opsional)"
+                    class="w-full px-4 py-2 border rounded-lg @error('customer_address') border-red-500 @enderror">{{ old('customer_address') }}</textarea>
+                @error('customer_address')
+                <p class="text-red-500 text-sm mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="mb-4">
                 <label class="block text-gray-700 font-semibold mb-2">Produk</label>
                 <select name="product_id" id="product_id" class="w-full px-4 py-2 border rounded-lg @error('product_id') border-red-500 @enderror" required>
                     <option value="">Pilih Produk</option>

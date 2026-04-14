@@ -101,7 +101,7 @@
 
     <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
         <div class="overflow-x-auto">
-            <table class="min-w-[1780px] w-full text-sm">
+            <table class="min-w-[1900px] w-full text-sm">
                 <thead class="bg-slate-50 text-slate-500">
                     <tr>
                         <th class="px-4 py-4 text-left font-medium">Seller</th>
@@ -111,6 +111,7 @@
                         <th class="px-4 py-4 text-left font-medium">Spesifikasi</th>
                         <th class="px-4 py-4 text-right font-medium">Qty</th>
                         <th class="px-4 py-4 text-left font-medium">Customer</th>
+                        <th class="px-4 py-4 text-left font-medium">Alamat</th>
                         <th class="px-4 py-4 text-right font-medium">Modal</th>
                         <th class="px-4 py-4 text-right font-medium">Jual</th>
                         <th class="px-4 py-4 text-right font-medium">Biaya Tambahan</th>
@@ -175,7 +176,13 @@
                             {{ number_format((int) $row->quantity) }}
                         </td>
                         <td class="px-4 py-4 align-top text-slate-700">
-                            {{ $row->customer_name ?: '-' }}
+                            <div class="font-medium text-slate-900">{{ $row->customer_name ?: '-' }}</div>
+                            <div class="mt-1 text-xs text-slate-500">
+                                {{ $row->customer_phone ?: '-' }}
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 align-top text-slate-700">
+                            {{ $row->customer_address ?: '-' }}
                         </td>
                         <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
                             <div class="font-semibold">
@@ -213,7 +220,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="14" class="px-4 py-10 text-center text-sm text-slate-500">
+                        <td colspan="15" class="px-4 py-10 text-center text-sm text-slate-500">
                             Belum ada data transaksi yang sesuai filter.
                         </td>
                     </tr>

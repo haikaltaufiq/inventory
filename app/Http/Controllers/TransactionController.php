@@ -153,6 +153,7 @@ class TransactionController extends Controller
             'transaction_data.sales' => 'required|string|max:100',
             'transaction_data.customerName' => 'required|string|max:100',
             'transaction_data.customerPhone' => 'nullable|string|max:20',
+            'transaction_data.customerAddress' => 'nullable|string|max:500',
             'transaction_data.type' => 'nullable|string|in:Invoice,Quotation,DO',
             'transaction_data.transactionMode' => 'required|string|in:sparepart,rakit_pc',
             'transaction_data.buildName' => 'nullable|string|max:120',
@@ -414,6 +415,8 @@ class TransactionController extends Controller
                 DB::raw('MAX(lines.transaction_date) as transaction_date'),
                 DB::raw('MAX(lines.status) as status'),
                 DB::raw('MAX(lines.customer_name) as customer_name'),
+                DB::raw('MAX(lines.customer_phone) as customer_phone'),
+                DB::raw('MAX(lines.customer_address) as customer_address'),
                 DB::raw("CASE MAX(lines.transaction_mode)
                     WHEN 'rakit_pc' THEN MAX(lines.item_name)
                     ELSE GROUP_CONCAT(lines.sparepart_line_nama ORDER BY lines.transaction_detail_id SEPARATOR ', ')
@@ -453,6 +456,8 @@ class TransactionController extends Controller
                 't.transaction_date',
                 't.status',
                 'c.name as customer_name',
+                'c.phone as customer_phone',
+                'c.address as customer_address',
                 'td.item_name',
                 DB::raw('COALESCE(NULLIF(TRIM(td.item_name), \'\'), p.name) as sparepart_line_nama'),
                 DB::raw("CASE
@@ -484,6 +489,8 @@ class TransactionController extends Controller
                 't.transaction_date',
                 't.status',
                 'c.name',
+                'c.phone',
+                'c.address',
                 't.subtotal',
                 't.service_fee',
                 'td.item_name',
@@ -501,6 +508,8 @@ class TransactionController extends Controller
             $query->where(function ($w) use ($like) {
                 $w->where('t.sales_name', 'like', $like)
                     ->orWhere('c.name', 'like', $like)
+                    ->orWhere('c.phone', 'like', $like)
+                    ->orWhere('c.address', 'like', $like)
                     ->orWhere('p.name', 'like', $like)
                     ->orWhere('td.item_name', 'like', $like)
                     ->orWhere('td.item_specification', 'like', $like)
@@ -639,6 +648,7 @@ class TransactionController extends Controller
     {
         $name = trim((string) ($transactionData['customerName'] ?? ''));
         $phone = trim((string) ($transactionData['customerPhone'] ?? ''));
+        $address = trim((string) ($transactionData['customerAddress'] ?? ''));
 
         $customerQuery = Customer::query();
 
@@ -655,6 +665,9 @@ class TransactionController extends Controller
             if ($phone !== '') {
                 $customer->phone = $phone;
             }
+            if ($address !== '') {
+                $customer->address = $address;
+            }
             $customer->save();
 
             return $customer;
@@ -668,7 +681,7 @@ class TransactionController extends Controller
             'name' => $name !== '' ? $name : 'Customer POS',
             'email' => $email,
             'phone' => $phone !== '' ? $phone : 'N/A-' . now()->format('YmdHis'),
-            'address' => '-',
+            'address' => $address !== '' ? $address : '-',
         ]);
     }
 
@@ -691,6 +704,7 @@ class TransactionController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
+            'customer_address' => 'nullable|string|max:500',
             'product_id' => 'required|exists:products,id',
             'supplier_id' => 'required|exists:suppliers,id',
             'product_supplier_id' => 'nullable|exists:product_supplier,id',
@@ -706,6 +720,12 @@ class TransactionController extends Controller
         }
 
         DB::transaction(function () use ($validated, $salesName) {
+            if (!empty($validated['customer_address'])) {
+                Customer::query()
+                    ->whereKey($validated['customer_id'])
+                    ->update(['address' => $validated['customer_address']]);
+            }
+
             $stockQuery = DB::table('product_supplier')
                 ->where('product_id', $validated['product_id'])
                 ->where('supplier_id', $validated['supplier_id']);
