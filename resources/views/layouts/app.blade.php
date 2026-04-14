@@ -78,7 +78,14 @@
                     <span class="ml-3 {{ request()->routeIs('transactions.*') ? 'font-semibold' : 'font-normal' }} text-sm">Transaksi</span>
                 </a>
 
-
+                <a href="{{ route('spec-presets.index') }}" class="flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('spec-presets.*') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 3v6" />
+                        <path d="M16.76 3a2 2 0 0 1 1.8 1.1l2.23 4.479a2 2 0 0 1 .21.891V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.472a2 2 0 0 1 .211-.894L5.45 4.1A2 2 0 0 1 7.24 3z" />
+                        <path d="M3.054 9.013h17.893" />
+                    </svg>
+                    <span class="ml-3 {{ request()->routeIs('products.*') ? 'font-semibold' : 'font-normal' }} text-sm">Spec</span>
+                </a>
 
                 <a href="{{ route('products.index') }}" class="flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('products.*') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

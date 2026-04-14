@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\SpecValuePresetController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
@@ -139,4 +140,16 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Spec Value Presets
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('spec-presets')->name('spec-presets.')->group(function () {
+        Route::get('/',          [SpecValuePresetController::class, 'index'])->name('index');
+        Route::post('/',         [SpecValuePresetController::class, 'store'])->name('store');
+        Route::post('/import',   [SpecValuePresetController::class, 'importFromProducts'])->name('import');
+        Route::delete('/{specValuePreset}', [SpecValuePresetController::class, 'destroy'])->name('destroy');
+    });
 });

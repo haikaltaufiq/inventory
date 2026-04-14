@@ -574,16 +574,61 @@
                         <template
                             x-for="(extraSpec, extraIndex) in activeDetailRow() ? activeDetailRow().additional_specs : []"
                             :key="`modal-extra-${extraIndex}`">
-                            <div
-                                class="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-[0.9fr,1.1fr,auto]">
-                                <input x-model="extraSpec.key" @input="markDirty(activeDetailRow())" type="text"
-                                    placeholder="Key"
-                                    class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
-                                <input x-model="extraSpec.value" @input="markDirty(activeDetailRow())" type="text"
-                                    placeholder="Value"
-                                    class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
-                                <button type="button" @click="removeExtraSpec(activeDetailRow(), extraIndex)"
-                                    class="rounded-xl bg-white px-3 py-2.5 text-sm text-red-500 ring-1 ring-slate-200 transition hover:bg-red-50">Hapus</button>
+                            {{-- BARU --}}
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-xs font-medium text-slate-500">
+                                        Spec #<span x-text="extraIndex + 1"></span>
+                                    </span>
+                                    <button type="button" @click="removeExtraSpec(activeDetailRow(), extraIndex)"
+                                        class="rounded-lg px-3 py-1.5 text-xs text-red-500 ring-1 ring-slate-200 bg-white transition hover:bg-red-50">
+                                        Hapus
+                                    </button>
+                                </div>
+
+                                {{-- Key: select dari known keys --}}
+                                <div>
+                                    <label class="mb-1 block text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                                        Nama Field (Key)
+                                    </label>
+                                    <select x-model="extraSpec._selectedKey"
+                                        @change="onExtraSpecKeySelect(activeDetailRow(), extraSpec, extraSpec._selectedKey)"
+                                        class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
+                                        <option value="">-- Pilih nama field --</option>
+                                        <template x-for="knownKey in allKnownSpecKeys" :key="knownKey.key">
+                                            <option :value="knownKey.key"
+                                                :selected="extraSpec._selectedKey === knownKey.key"
+                                                x-text="`${knownKey.label}  ·  ${knownKey.key}`"></option>
+                                        </template>
+                                        <option value="__custom__">Lainnya (tulis sendiri)</option>
+                                    </select>
+
+                                    {{-- Custom key input, hanya muncul kalau pilih "Lainnya" --}}
+                                    <div x-show="extraSpec._selectedKey === '__custom__'" x-cloak class="mt-2 space-y-1">
+                                        <input x-model="extraSpec.key"
+                                            @input="markDirty(activeDetailRow())"
+                                            type="text"
+                                            placeholder="Contoh: refresh_rate, panel_type, tdp_watt"
+                                            class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
+                                        <p class="text-[11px] text-slate-400">
+                                            Gunakan huruf kecil + underscore.
+                                            Contoh: <code class="bg-slate-100 px-1 rounded">refresh_rate</code>,
+                                            <code class="bg-slate-100 px-1 rounded">panel_type</code>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {{-- Value --}}
+                                <div>
+                                    <label class="mb-1 block text-[11px] font-medium text-slate-400 uppercase tracking-wider">
+                                        Nilai (Value)
+                                    </label>
+                                    <input x-model="extraSpec.value"
+                                        @input="markDirty(activeDetailRow())"
+                                        type="text"
+                                        placeholder="Masukkan nilai"
+                                        class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
+                                </div>
                             </div>
                         </template>
                     </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductSpecification;
+use App\Models\SpecValuePreset;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -364,6 +365,10 @@ class ProductController extends Controller
         return response()->json($this->buildSpecTemplatePayload($category));
     }
 
+    // =========================================================================
+    // Grid / index helpers
+    // =========================================================================
+
     private function resolveGridRowsForIndex(Collection $products, Collection $categories): array
     {
         $oldProducts = session()->getOldInput('products');
@@ -501,6 +506,10 @@ class ProductController extends Controller
         ];
     }
 
+    // =========================================================================
+    // Spec template builder
+    // =========================================================================
+
     private function buildAllSpecTemplates(Collection $categories): array
     {
         $allSpecifications = $this->loadAllSpecifications();
@@ -550,15 +559,14 @@ class ProductController extends Controller
                 ->unique()
                 ->values();
 
+            // $item bisa ProductSpecification (dari produk) atau stdClass (dari preset)
+            // keduanya punya property spec_key dan spec_value
             $options[$field['key']] = $allSpecifications
-                ->filter(function (ProductSpecification $specification) use ($lookupKeys) {
-                    return $lookupKeys->contains($this->normalizeIdentifier($specification->spec_key))
-                        && $this->nullableTrim($specification->spec_value) !== null;
+                ->filter(function ($item) use ($lookupKeys) {
+                    return $lookupKeys->contains($this->normalizeIdentifier($item->spec_key))
+                        && $this->nullableTrim($item->spec_value) !== null;
                 })
-                ->map(fn(ProductSpecification $specification) => $this->normalizeSpecValue(
-                    $field['key'],
-                    $specification->spec_value
-                ))
+                ->map(fn($item) => $this->normalizeSpecValue($field['key'], $item->spec_value))
                 ->filter()
                 ->unique()
                 ->sort()
@@ -572,6 +580,10 @@ class ProductController extends Controller
             'options' => $options,
         ];
     }
+
+    // =========================================================================
+    // Payload normalization & validation
+    // =========================================================================
 
     private function normalizeGridPayload(array $row): array
     {
@@ -866,6 +878,10 @@ class ProductController extends Controller
         return $attributes;
     }
 
+    // =========================================================================
+    // Persist
+    // =========================================================================
+
     private function persistProduct(?Product $product, array $validated, ?UploadedFile $imageFile = null): Product
     {
         $category = Category::query()->findOrFail($validated['category_id']);
@@ -1116,16 +1132,9 @@ class ProductController extends Controller
         return 'existing';
     }
 
-    private function supportsProductSupplierPemodalColumn(): bool
-    {
-        static $supportsProductSupplierPemodal;
-
-        if ($supportsProductSupplierPemodal === null) {
-            $supportsProductSupplierPemodal = Schema::hasColumn('product_supplier', 'pemodal_user_id');
-        }
-
-        return $supportsProductSupplierPemodal;
-    }
+    // =========================================================================
+    // Spec key / value helpers
+    // =========================================================================
 
     private function extractSpecFormData(Product $product): array
     {
@@ -1298,12 +1307,14 @@ class ProductController extends Controller
             return null;
         }
 
-        return $allSpecifications
-            ->first(function (ProductSpecification $specification) use ($normalizedLookupKeys, $comparableValue) {
-                return $normalizedLookupKeys->contains($this->normalizeIdentifier($specification->spec_key))
-                    && $this->normalizeComparableValue((string) $specification->spec_value) === $comparableValue;
-            })
-            ?->spec_value;
+        // $item bisa ProductSpecification atau stdClass (dari preset)
+        // keduanya punya property spec_key dan spec_value
+        $matched = $allSpecifications->first(function ($item) use ($normalizedLookupKeys, $comparableValue) {
+            return $normalizedLookupKeys->contains($this->normalizeIdentifier($item->spec_key))
+                && $this->normalizeComparableValue((string) $item->spec_value) === $comparableValue;
+        });
+
+        return $matched?->spec_value;
     }
 
     private function lookupKeysForSpecField(string $key): Collection
@@ -1334,16 +1345,9 @@ class ProductController extends Controller
             ->toString();
     }
 
-    private function nullableTrim(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $trimmed = trim(preg_replace('/\s+/', ' ', (string) $value));
-
-        return $trimmed === '' ? null : $trimmed;
-    }
+    // =========================================================================
+    // Image helpers
+    // =========================================================================
 
     private function storeUploadedProductImage(?UploadedFile $imageFile): ?string
     {
@@ -1383,21 +1387,9 @@ class ProductController extends Controller
         Storage::disk('public')->delete($oldPath);
     }
 
-    private function supportsTechnicalSpecsColumn(): bool
-    {
-        static $supportsTechnicalSpecs;
-
-        if ($supportsTechnicalSpecs === null) {
-            $supportsTechnicalSpecs = Schema::hasColumn('products', 'technical_specs');
-        }
-
-        return $supportsTechnicalSpecs;
-    }
-
-    private function toBoolean(mixed $value): bool
-    {
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
-    }
+    // =========================================================================
+    // Query helpers
+    // =========================================================================
 
     private function buildProductIndexQuery(Request $request): Builder
     {
@@ -1475,17 +1467,82 @@ class ProductController extends Controller
         return $query;
     }
 
+    // =========================================================================
+    // Cache & misc
+    // =========================================================================
+
+    /**
+     * Gabungkan nilai dari dua sumber:
+     * 1. product_specifications  — nilai dari produk yang sudah pernah disimpan
+     * 2. spec_value_presets      — nilai yang di-manage lewat halaman manajemen preset
+     *
+     * Kedua sumber punya property spec_key & spec_value,
+     * sehingga bisa dipakai secara seragam di seluruh controller.
+     */
     private function loadAllSpecifications(): Collection
     {
         return Cache::remember(
             self::SPEC_OPTIONS_CACHE_KEY,
             now()->addMinutes(10),
-            fn() => ProductSpecification::query()->get(['id', 'spec_key', 'spec_value'])
+            function () {
+                $fromProducts = ProductSpecification::query()
+                    ->get(['id', 'spec_key', 'spec_value']);
+
+                // Preset dikonversi ke stdClass dengan property yang sama
+                // supaya bisa diakses dengan ->spec_key dan ->spec_value
+                $fromPresets = SpecValuePreset::query()
+                    ->get(['id', 'spec_key', 'spec_value'])
+                    ->map(fn($preset) => (object) [
+                        'id' => 'preset_' . $preset->id,
+                        'spec_key' => $preset->spec_key,
+                        'spec_value' => $preset->spec_value,
+                    ]);
+
+                return $fromProducts->concat($fromPresets);
+            }
         );
     }
 
     private function forgetProductOptionCaches(): void
     {
         Cache::forget(self::SPEC_OPTIONS_CACHE_KEY);
+    }
+
+    private function supportsProductSupplierPemodalColumn(): bool
+    {
+        static $supportsProductSupplierPemodal;
+
+        if ($supportsProductSupplierPemodal === null) {
+            $supportsProductSupplierPemodal = Schema::hasColumn('product_supplier', 'pemodal_user_id');
+        }
+
+        return $supportsProductSupplierPemodal;
+    }
+
+    private function supportsTechnicalSpecsColumn(): bool
+    {
+        static $supportsTechnicalSpecs;
+
+        if ($supportsTechnicalSpecs === null) {
+            $supportsTechnicalSpecs = Schema::hasColumn('products', 'technical_specs');
+        }
+
+        return $supportsTechnicalSpecs;
+    }
+
+    private function nullableTrim(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim(preg_replace('/\s+/', ' ', (string) $value));
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function toBoolean(mixed $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
     }
 }

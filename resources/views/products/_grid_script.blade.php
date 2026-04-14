@@ -28,6 +28,21 @@
                     this.registerUnsavedChangeGuard();
                 },
 
+                // untuk key
+                get allKnownSpecKeys() {
+                    const seen = new Set();
+                    const result = [];
+                    Object.values(this.specTemplates).forEach((template) => {
+                        (template.fields || []).forEach((field) => {
+                            if (!seen.has(field.key)) {
+                                seen.add(field.key);
+                                result.push({ key: field.key, label: field.label });
+                            }
+                        });
+                    });
+                    return result.sort((a, b) => a.label.localeCompare(b.label));
+                },
+
                 get dirtyCount() {
                     return this.rows.filter((row) => row.is_dirty || row.is_new || row.marked_for_delete).length;
                 },
@@ -54,10 +69,15 @@
                         image_url: row.image_url ?? '',
                         _imageName: '',
                         specs: this.normalizeSpecs(row.specs || {}, row.category_id),
-                        additional_specs: Array.isArray(row.additional_specs) ? row.additional_specs.map((spec) => ({
-                            key: spec.key || '',
-                            value: spec.value || '',
-                        })) : [],
+                        additional_specs: Array.isArray(row.additional_specs) ? row.additional_specs.map((spec) => {
+                            const key = spec.key || '';
+                            const isKnown = this.allKnownSpecKeys.some((k) => k.key === key);
+                            return {
+                                key: key,
+                                value: spec.value || '',
+                                _selectedKey: key === '' ? '' : (isKnown ? key : '__custom__'),
+                            };
+                        }) : [],
                         suppliers: preparedSuppliers,
                         is_new: !!row.is_new,
                         is_dirty: !!row.is_dirty,
@@ -542,8 +562,17 @@
 
                 addExtraSpec(row) {
                     if (!row) return;
-                    row.additional_specs.push({ key: '', value: '' });
+                    row.additional_specs.push({ key: '', value: '', _selectedKey: '' });
                     this.markDirty(row, true);
+                },
+
+                onExtraSpecKeySelect(row, extraSpec, selectedValue) {
+                    if (selectedValue !== '__custom__') {
+                        extraSpec.key = selectedValue;
+                    } else {
+                        extraSpec.key = '';
+                    }
+                    this.markDirty(row);
                 },
 
                 removeExtraSpec(row, index) {
