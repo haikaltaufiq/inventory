@@ -1,4 +1,4 @@
-﻿@push('scripts')
+@push('scripts')
     <script>
         function productGrid() {
             return {
@@ -574,7 +574,7 @@
                     }
                     this.markDirty(row);
                 },
-
+                
                 removeExtraSpec(row, index) {
                     if (!row) return;
                     row.additional_specs.splice(index, 1);

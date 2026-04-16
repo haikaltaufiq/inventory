@@ -44,6 +44,7 @@ return new class extends Migration
         });
 
         Schema::table('product_specifications', function (Blueprint $table) {
+            $table->dropForeign(['product_id']);
             $table->dropIndex('product_specifications_product_spec_key_idx');
         });
 

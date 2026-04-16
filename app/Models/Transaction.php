@@ -21,7 +21,8 @@ class Transaction extends Model
         'final_total',
         'type',
         'status',
-        'transaction_date'
+        'transaction_date',
+        'description'
     ];
 
     protected $casts = [

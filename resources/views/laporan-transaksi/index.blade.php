@@ -112,13 +112,16 @@
                         <th class="px-4 py-4 text-right font-medium">Qty</th>
                         <th class="px-4 py-4 text-left font-medium">Customer</th>
                         <th class="px-4 py-4 text-left font-medium">Alamat</th>
-                        <th class="px-4 py-4 text-right font-medium">Modal</th>
-                        <th class="px-4 py-4 text-right font-medium">Jual</th>
+                        <th class="px-4 py-4 text-right font-medium">Total Modal</th>
+                        <th class="px-4 py-4 text-right font-medium">Total Jual</th>
                         <th class="px-4 py-4 text-right font-medium">Biaya Tambahan</th>
                         <th class="px-4 py-4 text-right font-medium">Profit Kotor</th>
                         <th class="px-4 py-4 text-right font-medium">Penjual</th>
                         <th class="px-4 py-4 text-right font-medium">NATOPC</th>
                         <th class="px-4 py-4 text-left font-medium">Status</th>
+                        <th class="px-4 py-4 text-left font-medium">Desc</th>
+                        <th class="px-4 py-4 text-left font-medium">Garansi</th>
+                        <th class="px-4 py-4 text-center font-medium">Aksi</th>
                     </tr>
                 </thead>
 
@@ -149,28 +152,21 @@
                         </td>
                         <td class="px-4 py-4 align-top text-slate-900">
                             @if ($isRakit)
-                            <div class="font-semibold">{{ $row->product_name ?: '-' }}</div>
+                            <div class="font-semibold line-clamp-1 max-w-[150px]">{{ $row->product_name ?: '-' }}</div>
                             <div class="mt-1 text-xs text-slate-500">Build PC</div>
                             @elseif ($productParts->isNotEmpty())
-                            <ul class="space-y-1">
-                                @foreach ($productParts as $itemName)
-                                <li class="text-slate-800">{{ $loop->iteration }}. {{ $itemName }}</li>
-                                @endforeach
-                            </ul>
+                            <div class="font-semibold line-clamp-1 max-w-[150px]">{{ $productParts->first() }}</div>
+                            @if($productParts->count() > 1)
+                            <div class="mt-1 text-xs text-slate-500 whitespace-nowrap">+ {{ $productParts->count() - 1 }} part lainnya</div>
+                            @endif
                             @else
                             <span>-</span>
                             @endif
                         </td>
                         <td class="px-4 py-4 align-top text-slate-600">
-                            @if ($specParts->isNotEmpty())
-                            <ul class="space-y-1">
-                                @foreach ($specParts as $spec)
-                                <li class="text-slate-700">{{ $spec }}</li>
-                                @endforeach
-                            </ul>
-                            @else
-                            <span>-</span>
-                            @endif
+                            <div class="line-clamp-2 max-w-[150px] text-xs">
+                                {{ $specParts->isNotEmpty() ? implode(', ', $specParts->toArray()) : '-' }}
+                            </div>
                         </td>
                         <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-slate-700">
                             {{ number_format((int) $row->quantity) }}
@@ -182,22 +178,18 @@
                             </div>
                         </td>
                         <td class="px-4 py-4 align-top text-slate-700">
-                            {{ $row->customer_address ?: '-' }}
+                            <div class="line-clamp-2 max-w-[120px] text-xs">
+                                {{ $row->customer_address ?: '-' }}
+                            </div>
                         </td>
                         <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
                             <div class="font-semibold">
                                 Rp {{ number_format((float) $row->modal_total, 0, ',', '.') }}
                             </div>
-                            <div class="mt-1 text-xs text-slate-500">
-                                @ Rp {{ number_format((float) $row->modal_price_unit, 0, ',', '.') }}
-                            </div>
                         </td>
                         <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
                             <div class="font-semibold">
                                 Rp {{ number_format((float) $row->selling_total, 0, ',', '.') }}
-                            </div>
-                            <div class="mt-1 text-xs text-slate-500">
-                                @ Rp {{ number_format((float) $row->selling_price_unit, 0, ',', '.') }}
                             </div>
                         </td>
                         <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-sky-600">
@@ -217,10 +209,41 @@
                                 {{ $row->status ?: '-' }}
                             </span>
                         </td>
+                        <td class="px-4 py-4 align-top">
+                            <div class="flex items-start gap-2">
+                                <span class="text-slate-700 text-xs line-clamp-2 max-w-[150px]">{{ $row->transaction_desc ?: '-' }}</span>
+                                <button type="button" onclick="openDescModal({{ $row->transaction_id }}, '{{ htmlspecialchars((string) $row->transaction_desc, ENT_QUOTES) }}')" class="p-1 text-slate-400 hover:text-slate-700 shrink-0">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 align-top">
+                            @php
+                                $warranties = explode('<br>', (string) $row->warranty_details_list);
+                                $wCount = count($warranties);
+                                $wFirst = $warranties[0] === 'Kosong' ? '-' : $warranties[0];
+                            @endphp
+                            <div class="flex items-start gap-2">
+                                <div>
+                                    <span class="text-slate-700 text-xs font-medium max-w-[150px] line-clamp-1 break-words">{{ $wFirst }}</span>
+                                    @if($wCount > 1)
+                                    <div class="mt-1 text-[10px] text-slate-500 whitespace-nowrap">+ {{ $wCount - 1 }} lainnya</div>
+                                    @endif
+                                </div>
+                                <button type="button" onclick="openWarrantyModal({{ $row->transaction_id }}, '{{ htmlspecialchars($wFirst === '-' ? '' : $wFirst, ENT_QUOTES) }}')" class="p-1 text-slate-400 hover:text-slate-700 shrink-0">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 align-top text-center w-20">
+                            <button type="button" onclick="openDetailModal({{ $row->transaction_id }})" class="flex items-center justify-center h-8 w-max rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-200 transition-all whitespace-nowrap gap-1.5 px-3 mx-auto font-semibold text-xs shadow-sm">
+                                <i class="fas fa-eye"></i> Detail
+                            </button>
+                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="15" class="px-4 py-10 text-center text-sm text-slate-500">
+                        <td colspan="18" class="px-4 py-10 text-center text-sm text-slate-500">
                             Belum ada data transaksi yang sesuai filter.
                         </td>
                     </tr>
@@ -234,4 +257,198 @@
         {{ $reportRows->links() }}
     </div>
 </div>
+
+<x-modal id="descModal" title="Edit Catatan Transaksi">
+    <form id="descForm" method="POST" action="">
+        @csrf
+        <div class="mb-4">
+            <label class="mb-2 block text-sm font-medium text-slate-700">Catatan (Desc)</label>
+            <textarea name="description" id="descInput" rows="3" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none"></textarea>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button type="button" onclick="closeModal('descModal')" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Simpan</button>
+        </div>
+    </form>
+</x-modal>
+
+<x-modal id="warrantyModal" title="Edit Garansi (Semua Item di Transaksi Ini)">
+    <form id="warrantyForm" method="POST" action="">
+        @csrf
+        <div class="mb-4">
+            <label class="mb-2 block text-sm font-medium text-slate-700">Tahun Garansi</label>
+            <input type="text" name="warranty" id="warrantyInput" class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none" placeholder="Misal: 1 Tahun">
+            <p class="mt-2 text-xs text-amber-600">Peringatan: Menyimpan form ini akan memperbarui status masa garansi bagi SEMUA item stock supplier yang disertakan dalam transaksi ini.</p>
+        </div>
+        <div class="flex justify-end gap-3">
+            <button type="button" onclick="closeModal('warrantyModal')" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
+            <button type="submit" class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Simpan</button>
+        </div>
+    </form>
+</x-modal>
+
+<x-modal id="detailModal" title="Info Detail Transaksi" size="lg">
+    <div id="detailContent" class="space-y-6">
+        <!-- Rendered via JS -->
+    </div>
+</x-modal>
+
+<script>
+    const reportData = @json($reportRows->items());
+
+    function openDetailModal(id) {
+        const data = reportData.find(r => r.transaction_id === id);
+        if(!data) return;
+
+        const rp = (num) => 'Rp ' + Number(num).toLocaleString('id-ID');
+
+        let html = `
+            <div class="grid grid-cols-2 gap-4 text-sm bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div><span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider mb-1">Tanggal</span> <span class="font-semibold text-slate-900">${data.transaction_date || '-'}</span></div>
+                <div><span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider mb-1">Seller</span> <span class="font-semibold text-slate-900">${data.seller_name || '-'}</span></div>
+                <div class="col-span-2 border-t border-slate-200 mt-2 pt-3"></div>
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider mb-1">Info Customer</span> 
+                    <span class="font-semibold text-slate-900 block">${data.customer_name || '-'}</span>
+                    <span class="text-slate-600 block mt-0.5">${data.customer_phone || '-'}</span>
+                </div>
+                <div>
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider mb-1">Alamat</span> 
+                    <p class="text-slate-700 leading-relaxed">${data.customer_address || '-'}</p>
+                </div>
+            </div>
+            
+            <div class="mt-5 text-sm bg-slate-50 p-4 rounded-xl border border-slate-100">
+                ${generateProductsHtml(data)}
+            </div>
+
+            <div class="mt-6 text-sm">
+                <h4 class="font-bold text-slate-800 text-base mb-3 border-b border-slate-100 pb-2">Rincian Finansial</h4>
+                <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-100">
+                    <div class="grid grid-cols-2 gap-y-3 gap-x-6">
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Total Modal</span> 
+                            <span class="font-semibold text-slate-800">${rp(data.modal_total)}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Total Jual</span> 
+                            <span class="font-bold text-slate-900">${rp(data.selling_total)}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Biaya Tambahan</span> 
+                            <span class="font-bold text-sky-600">${rp(data.service_total)}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Profit Kotor</span> 
+                            <span class="font-black ${data.gross_profit_total >= 0 ? 'text-emerald-600' : 'text-rose-600'}">${rp(data.gross_profit_total)}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Laba Penjual (70%)</span> 
+                            <span class="font-bold text-teal-700">${rp(data.seller_profit_share)}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Laba NATOPC (30%)</span> 
+                            <span class="font-bold text-indigo-700">${rp(data.natopc_profit_share)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-6 grid grid-cols-1 gap-4 text-sm">
+                <div class="bg-amber-50 rounded-xl p-4 border border-amber-200/60 shadow-sm relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 text-amber-200/40 opacity-50"><i class="fas fa-sticky-note text-6xl"></i></div>
+                    <span class="text-amber-800 font-black block mb-2 relative z-10"><i class="fas fa-edit mr-1.5"></i> Catatan Lengkap (Desc)</span> 
+                    <p class="text-amber-900 text-xs leading-relaxed whitespace-pre-wrap relative z-10">${data.transaction_desc || '- Belum ada catatan -'}</p>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('detailContent').innerHTML = html;
+        document.getElementById('detailModal').classList.remove('hidden');
+        document.getElementById('detailModal').classList.add('flex');
+    }
+
+    function generateProductsHtml(data) {
+        let partsHtml = '';
+        let wParts = String(data.warranty_details_list || '').split('<br>');
+
+        if (data.transaction_mode === 'rakit_pc') {
+            let specs = String(data.item_specification || '').split(', ');
+            
+            partsHtml = `<div class="mb-4 border-b border-slate-200/60 pb-4 flex justify-between items-start gap-4">
+                <div class="flex-1">
+                    <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider mb-1">Nama Build PC (Rakit)</span> 
+                    <p class="font-black text-indigo-900 text-base leading-relaxed">${data.product_name || '-'}</p>
+                </div>
+                <div class="w-1/4 text-right bg-indigo-100/50 p-2.5 rounded-xl border border-indigo-100">
+                    <span class="text-indigo-600 block text-[10px] uppercase font-bold tracking-wider mb-1">Total Qty</span> 
+                    <span class="font-black text-2xl text-indigo-900">${data.quantity}</span>
+                </div>
+            </div>
+            `;
+
+            if (specs.length === 0 || (specs.length === 1 && specs[0] === '-')) {
+                 partsHtml += `<p class="text-sm text-slate-500 italic">Tidak ada rincian komponen</p>`;
+            } else {
+                partsHtml += `<span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider mb-2 mt-4 inline-flex items-center gap-1.5"><i class="fas fa-list text-slate-400"></i> Rincian Komponen & Garansi</span><ul class="space-y-4">`;
+                specs.forEach((spec, idx) => {
+                    let wr = wParts[idx] && wParts[idx] !== 'Kosong' ? wParts[idx] : '-';
+                    partsHtml += `
+                        <li class="flex items-start gap-3 border-b border-slate-200/60 pb-3 last:border-0 last:pb-0">
+                            <span class="text-slate-500 font-bold block pt-0.5 w-4 shrink-0 text-sm">${idx + 1}.</span>
+                            <div class="flex-1">
+                                <p class="text-slate-800 text-[13px] font-semibold leading-relaxed break-words">${spec.trim()}</p>
+                                <p class="text-[11px] text-slate-500 mt-1 inline-flex items-center gap-1"><i class="fas fa-shield-alt text-slate-400"></i> Garansi: <span class="font-medium text-slate-700">${wr}</span></p>
+                            </div>
+                        </li>
+                    `;
+                });
+                partsHtml += `</ul>`;
+            }
+        } else {
+            let items = String(data.product_name || '').split(', ');
+            let specs = String(data.item_specification || '').split(' | ');
+            
+            partsHtml = `
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Daftar Barang & Garansi (Sparepart)</span>
+                <span class="bg-indigo-100/50 text-indigo-800 px-3 py-1 flex items-center gap-2 rounded-full text-[10px] uppercase font-bold tracking-wider border border-indigo-200/60">Qty Total: <span class="text-sm font-black text-indigo-900">${data.quantity}</span></span>
+            </div>
+            <ul class="space-y-4">`;
+
+            items.forEach((item, idx) => {
+                let sp = specs[idx] || '-';
+                let wr = wParts[idx] && wParts[idx] !== 'Kosong' ? wParts[idx] : '-';
+                
+                partsHtml += `
+                    <li class="flex items-start gap-3 border-b border-slate-200/60 pb-3 last:border-0 last:pb-0">
+                        <span class="text-slate-500 font-bold block pt-0.5 w-4 shrink-0 text-sm">${idx + 1}.</span>
+                        <div class="flex-1">
+                            <p class="text-slate-800 text-[14px] font-bold leading-snug break-words">${item.trim()}</p>
+                            ${sp !== '-' ? `<p class="text-[12px] text-slate-600 mt-0.5 leading-relaxed break-words"><span class="font-medium">Spec:</span> ${sp.trim()}</p>` : ''}
+                            <p class="text-[11px] text-slate-500 mt-1.5 inline-flex items-center gap-1"><i class="fas fa-shield-alt text-slate-400"></i> Garansi: <span class="font-medium text-slate-700">${wr}</span></p>
+                        </div>
+                    </li>
+                `;
+            });
+            partsHtml += `</ul>`;
+        }
+        
+        return partsHtml;
+    }
+
+    function openDescModal(transactionId, desc) {
+        document.getElementById('descForm').action = `/transactions/${transactionId}/desc`;
+        document.getElementById('descInput').value = desc;
+        document.getElementById('descModal').classList.remove('hidden');
+        document.getElementById('descModal').classList.add('flex');
+    }
+    
+    function openWarrantyModal(transactionId, warranty) {
+        document.getElementById('warrantyForm').action = `/transactions/${transactionId}/warranty`;
+        document.getElementById('warrantyInput').value = warranty === 'Kosong' ? '' : warranty;
+        document.getElementById('warrantyModal').classList.remove('hidden');
+        document.getElementById('warrantyModal').classList.add('flex');
+    }
+</script>
 @endsection

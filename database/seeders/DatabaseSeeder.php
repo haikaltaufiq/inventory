@@ -350,7 +350,6 @@ class DatabaseSeeder extends Seeder
                 'name'           => $item['name'],
                 'letak_barang'   => $item['letak_barang'],
                 'description'    => 'High-end component for PC Enthusiast',
-                'warranty'       => '3 Years',
                 'technical_specs' => $allSpecs,  // simpan ke JSON column juga
             ]);
 
