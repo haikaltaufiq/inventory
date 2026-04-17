@@ -99,14 +99,66 @@
                     </div>
 
                     <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                        <label class="text-sm font-medium text-slate-600">Customer</label>
-                        <div class="mt-2 grid grid-cols-1 gap-3">
-                            <input type="text" x-model="transactionData.customerName" placeholder="Nama Lengkap Customer"
-                                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
-                            <input type="text" x-model="transactionData.customerPhone" placeholder="Nomor WhatsApp (628...)"
-                                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
-                            <textarea x-model="transactionData.customerAddress" rows="2" placeholder="Alamat Customer"
-                                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400"></textarea>
+
+                        <!-- SELECT -->
+                        <div>
+                            <label class="text-sm font-medium mt-3 text-slate-600">Pilih Customer</label>
+
+                            <div class="flex gap-2">
+                                <select x-model="selectedCustomerId"
+                                    @change="selectCustomer"
+                                    class="w-full rounded-xl border px-4 py-3 text-sm">
+
+                                    <option value="">-- Customer Baru / Pilih --</option>
+
+                                    <template x-for="cust in customers" :key="cust.id">
+                                        <option :value="cust.id" x-text="cust.name"></option>
+                                    </template>
+                                </select>
+
+                                <button type="button"
+                                    @click="resetCustomer"
+                                    class="px-3 py-2 bg-red-500 text-white rounded-xl text-sm">
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                class="w-5 h-5 mt-0.5 text-blue-500"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M12 20h.01M12 4a8 8 0 100 16 8 8 0 000-16z" />
+                            </svg>
+
+                            <p>
+                                Jika customer belum terdaftar, silakan isi data pada form di bawah ini untuk menambahkan customer baru.
+                            </p>
+                        </div>
+
+                        <!-- NAMA -->
+                        <div class="mt-3">
+                            <label class="text-sm">Nama</label>
+                            <input type="text"
+                                x-model="transactionData.customerName"
+                                class="w-full border rounded-xl px-4 py-3">
+                        </div>
+
+                        <!-- PHONE -->
+                        <div class="mt-3">
+                            <label class="text-sm">No HP</label>
+                            <input type="text"
+                                x-model="transactionData.customerPhone"
+                                class="w-full border rounded-xl px-4 py-3">
+                        </div>
+
+                        <!-- ADDRESS -->
+                        <div class="mt-3">
+                            <label class="text-sm">Alamat</label>
+                            <textarea
+                                x-model="transactionData.customerAddress"
+                                class="w-full border rounded-xl px-4 py-3"></textarea>
                         </div>
                     </div>
 

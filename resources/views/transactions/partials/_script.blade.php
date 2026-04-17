@@ -15,12 +15,14 @@
             },
             conflictMessage: '',
             draftBuildName: '',
+            selectedCustomerId: '',
             // === MODAL STATE ===
             detailOpen: false,
             detailZoom: false,
             imageViewerOpen: false,
             detailProduct: null,
             // === DATA SOURCES ===
+            customers: @json($customers),
             categories: @json($categories),
             products: @json($products).map(p => ({
                 id: p.id,
@@ -57,6 +59,7 @@
             // === TRANSACTION FORM ===
             transactionData: {
                 sales: @js($salesUsers->first()?->name ?? ''),
+                customer_id: null,
                 customerName: '',
                 customerPhone: '',
                 customerAddress: '',
@@ -277,6 +280,28 @@
             // === CART: REMOVE ===
             removeFromCart(cartId) {
                 this.cart = this.cart.filter(i => i.cartId !== cartId);
+            },
+
+            selectCustomer() {
+                if (!this.selectedCustomerId) return;
+
+                const cust = this.customers.find(c => c.id == this.selectedCustomerId);
+
+                if (!cust) return;
+
+                this.transactionData.customer_id = cust.id;
+                this.transactionData.customerName = cust.name;
+                this.transactionData.customerPhone = cust.phone;
+                this.transactionData.customerAddress = cust.address;
+            },
+
+            resetCustomer() {
+                this.selectedCustomerId = '';
+
+                this.transactionData.customer_id = null;
+                this.transactionData.customerName = '';
+                this.transactionData.customerPhone = '';
+                this.transactionData.customerAddress = '';
             },
 
             // === SUBMIT ORDER ===

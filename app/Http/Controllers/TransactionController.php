@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\TransactionRequest;
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Repositories\TransactionRepository;
@@ -26,8 +27,9 @@ class TransactionController extends Controller
         $salesUsers = $this->repository->getSalesUsers();
         $products = $this->repository->getProductsForIndex();
         $categories = $this->repository->getCategories();
+        $customers = Customer::select('id','name','phone','address')->get();
 
-        return view('transactions.index', compact('products', 'categories', 'salesUsers'));
+        return view('transactions.index', compact('products', 'categories', 'salesUsers', 'customers'));
     }
 
     public function create()
@@ -54,7 +56,7 @@ class TransactionController extends Controller
             }
 
             $transaction = $this->service->storeTransaction($request->validated());
-            
+
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (\Throwable $exception) {
@@ -152,7 +154,7 @@ class TransactionController extends Controller
     public function updateDesc(Request $request, Transaction $transaction)
     {
         $request->validate(['description' => 'nullable|string']);
-        
+
         $this->service->updateDescription($transaction, $request->description);
 
         return back()->with('success', 'Catatan transaksi (Desc) berhasil diperbarui.');
