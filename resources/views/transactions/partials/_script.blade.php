@@ -341,21 +341,20 @@
                     });
 
                     const result = await response.json();
-                    if (response.ok && result.status === 'success') {
-                        if (result.document_url) {
-                            const iframe = document.createElement('iframe');
-                            iframe.style.display = 'none';
-                            iframe.src = result.document_url;
-                            document.body.appendChild(iframe);
-                        }
 
-                        setTimeout(() => {
-                            window.location.href = result.redirect;
-                        }, 800);
+                    if (response.ok && result.status === 'success') {
+                        // ✅ Kirim document_url sebagai parameter ke-3
+                        openPaymentModal(
+                            result.transaction_id,
+                            'Rp ' + this.formatNumber(this.finalTotal),
+                            result.document_url   // ← ini yang baru, untuk download invoice setelah bayar
+                        );
                     } else {
                         alert('Gagal: ' + (result.message || 'Terjadi kesalahan.'));
                     }
+
                 } catch (error) {
+                    console.error('submitOrder error:', error);
                     alert('Tidak dapat terhubung ke server.');
                 }
             }

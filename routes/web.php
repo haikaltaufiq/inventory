@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\MidtransWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\PcBuilderController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\SupplierController;
 */
 
 Route::redirect('/', '/auth/login');
+Route::post('/api/midtrans/webhook', [MidtransWebhookController::class, 'handle'])->name('midtrans.webhook');
 
 /*
 |--------------------------------------------------------------------------
@@ -117,6 +119,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/{transaction}/desc', [TransactionController::class, 'updateDesc'])->name('updateDesc');
         Route::post('/{transaction}/warranty', [TransactionController::class, 'updateWarranty'])->name('updateWarranty');
         Route::delete('/{transaction}', [TransactionController::class, 'destroy'])->name('destroy');
+
+        Route::get('/{transaction}/snap-token', [TransactionController::class, 'getSnapToken'])->name('transactions.snap-token');
+        Route::get('/{transaction}/payment-status', [TransactionController::class, 'checkPaymentStatus'])->name('transactions.payment-status');
     });
 
     /*
@@ -142,6 +147,8 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings/midtrans', [SettingsController::class, 'saveMidtrans'])->name('settings.midtrans.save');
+    Route::get('/settings/test-connection', [SettingsController::class, 'testConnection'])->name('settings.test');
 
     /*
     |--------------------------------------------------------------------------

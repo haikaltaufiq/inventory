@@ -20,4 +20,6 @@
 
 @include('transactions.partials._script')
 
+@include('transactions.partials._modal_payment')
+
 @endsection

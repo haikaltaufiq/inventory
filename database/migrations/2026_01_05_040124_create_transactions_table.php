@@ -24,6 +24,13 @@ return new class extends Migration
             $table->enum('status', ['Pending', 'Completed', 'Cancelled'])->default('Pending');
             $table->text('description')->nullable();
             $table->date('transaction_date');
+
+            // Kolom untuk integrasi Midtrans
+            $table->string('snap_token')->nullable();
+            $table->string('payment_url')->nullable();
+            $table->string('payment_status')->default('unpaid');
+            //
+
             $table->timestamps();
         });
     }

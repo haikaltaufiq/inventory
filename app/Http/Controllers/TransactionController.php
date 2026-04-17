@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Repositories\TransactionRepository;
 use App\Services\TransactionReportService;
 use App\Services\TransactionService;
+use \App\Services\MidtransService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -19,7 +20,8 @@ class TransactionController extends Controller
     public function __construct(
         private TransactionRepository $repository,
         private TransactionService $service,
-        private TransactionReportService $reportService
+        private TransactionReportService $reportService,
+        private MidtransService $midtrans
     ) {}
 
     public function index()
@@ -167,5 +169,48 @@ class TransactionController extends Controller
         $this->service->updateWarranty($transaction, $request->warranty);
 
         return back()->with('success', 'Garansi (db supplier) berhasil diperbarui untuk transaksi ini.');
+    }
+
+    // 2. Tambah method baru getSnapToken():
+    // ─────────────────────────────────────────────────────────────────
+
+    public function getSnapToken(Transaction $transaction)
+    {
+        // Pastikan hanya transaksi yang belum dibayar
+        if ($transaction->payment_status === 'paid') {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Transaksi ini sudah lunas.',
+            ], 422);
+        }
+
+        try {
+            $result = $this->midtrans->createSnapToken($transaction);
+
+            return response()->json([
+                'status'     => 'success',
+                'snap_token' => $result['snap_token'],
+                'client_key' => $result['client_key'],
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('getSnapToken failed', ['message' => $e->getMessage()]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal membuat token pembayaran: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // 3. Tambah method checkPaymentStatus():
+    // ─────────────────────────────────────────────────────────────────
+
+    public function checkPaymentStatus(Transaction $transaction)
+    {
+        return response()->json([
+            'status'         => 'success',
+            'payment_status' => $transaction->payment_status,
+        ]);
     }
 }
