@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('customer_id')->constrained()->onDelete('cascade');
-            $table->string('sales_name'); // Dari transactionData.sales di UI
+            $table->string('sales_name');
             $table->string('transaction_mode', 30)->default('sparepart');
             $table->decimal('subtotal', 15, 2);
             $table->decimal('service_fee', 15, 2)->default(0);

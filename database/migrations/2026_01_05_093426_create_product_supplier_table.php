@@ -20,7 +20,7 @@ return new class extends Migration
             $table->enum('condition', ['New', 'Used', 'Refurbished'])->default('New');
             $table->integer('stock')->default(0);
             $table->decimal('harga_beli', 15, 2);
-            $table->decimal('harga_jual_manual', 15, 2)->nullable(); // Overide harga buat barang bekas
+            $table->decimal('harga_jual_manual', 15, 2)->nullable();
 
             $table->string('warranty_detail')->nullable();
             $table->text('note')->nullable();

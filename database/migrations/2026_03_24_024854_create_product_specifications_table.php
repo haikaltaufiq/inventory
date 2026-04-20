@@ -14,8 +14,8 @@ return new class extends Migration
         Schema::create('product_specifications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
-            $table->string('spec_key');   // Contoh: 'socket', 'ram_type'
-            $table->string('spec_value'); // Contoh: 'LGA1700', 'DDR5'
+            $table->string('spec_key');
+            $table->string('spec_value');
             $table->timestamps();
 
             $table->index(['spec_key', 'spec_value']);
