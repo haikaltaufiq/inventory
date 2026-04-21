@@ -3,114 +3,157 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\Category;
 use Illuminate\Http\Request;
 
 class PcBuilderController extends Controller
 {
+    // =========================================================================
+    // CANONICAL SPEC KEYS
+    // Harus persis sama dengan spec_key yang tersimpan di product_specifications
+    // dan yang didefinisikan di config/product_specs.php.
+    // =========================================================================
+    private const COMPAT_KEYS = [
+        'socket_type'   => 'socket_type',   // Mobo ↔ CPU & CPU Cooler
+        'ram_type'      => 'ram_type',       // Mobo (via ram_type_slot) ↔ RAM
+        'total_wattage' => 'total_wattage',  // PSU — validasi kecukupan daya
+    ];
+
+    // =========================================================================
+    // CATEGORY MAP
+    // Resolve nama kategori dari JS ke nama yang ada di tabel categories.
+    // Solusi untuk inkonsistensi nama: VGA / GPU / VGA Card, dst.
+    // =========================================================================
+    private const CATEGORY_MAP = [
+        'Motherboard'  => ['Motherboard'],
+        'Processor'    => ['Processor'],
+        'RAM'          => ['RAM'],
+        'VGA'          => ['VGA', 'GPU', 'VGA Card'],
+        'Storage'      => ['Storage', 'Storage (SSD/HDD)'],
+        'Power Supply' => ['Power Supply', 'Power_Supply'],
+        'CPU Cooler'   => ['CPU Cooler'],
+        'Casing'       => ['Casing'],
+    ];
+
     public function index()
     {
         return view('pc-builder.index');
     }
 
-    /**
-     * Endpoint AJAX untuk PC Builder.
-     * Dipanggil setiap kali user memilih komponen.
-     *
-     * Alur baru (Motherboard-first):
-     *   1. Motherboard dipilih bebas (tidak ada filter)
-     *   2. CPU difilter by socket dari Motherboard
-     *   3. RAM difilter by ram_type dari Motherboard
-     *   4. VGA, Storage bebas dipilih setelah CPU ada
-     *   5. PSU bebas dipilih setelah CPU + VGA ada
-     *
-     * Query params yang diterima:
-     *   - type     : nama kategori yang dicari (misal: 'Motherboard', 'Processor', 'RAM')
-     *   - socket   : filter socket — sekarang dikirim dari Motherboard untuk filter CPU
-     *   - ram_type : filter tipe RAM — dikirim dari Motherboard untuk filter RAM
-     *
-     * Response: JSON array of products dengan spec-nya
-     */
+    // =========================================================================
+    // GET COMPATIBLE
+    //
+    // Satu endpoint AJAX untuk semua jenis komponen.
+    //
+    // Query params yang diterima:
+    //   type         - nama kategori (Motherboard / Processor / RAM / VGA / dst)
+    //   socket_type  - filter Processor & CPU Cooler berdasarkan socket
+    //   ram_type     - filter RAM berdasarkan tipe (value dari ram_type_slot mobo)
+    //   min_wattage  - filter PSU, hanya tampilkan total_wattage >= nilai ini
+    // =========================================================================
     public function getCompatible(Request $request)
     {
-        $type    = $request->type;      // Nama kategori yang dicari
-        $socket  = $request->socket;    // Nilai socket (dari Motherboard yang dipilih)
-        $ramType = $request->ram_type;  // Nilai ram_type (dari Motherboard yang dipilih)
+        $request->validate([
+            'type'        => 'required|string|max:100',
+            'socket_type' => 'nullable|string|max:100',
+            'ram_type'    => 'nullable|string|max:100',
+            'min_wattage' => 'nullable|integer|min:0',
+        ]);
 
-        // Cari produk berdasarkan kategori
-        $query = Product::whereHas('category', function ($q) use ($type) {
-            $q->where('name', $type);
-        })->with(['specifications', 'suppliers']);
+        $type       = $request->string('type')->toString();
+        $socketType = $request->string('socket_type')->toString() ?: null;
+        $ramType    = $request->string('ram_type')->toString() ?: null;
+        $minWattage = $request->integer('min_wattage') ?: null;
 
-        // ============================================================
-        // FILTER SOCKET
-        // Sebelumnya: hanya untuk Motherboard (filter dari CPU)
-        // Sekarang: untuk Processor juga (filter dari Motherboard)
-        // ============================================================
-        if ($socket && in_array($type, ['Processor', 'Motherboard', 'CPU Cooler'])) {
-            $query->whereHas('specifications', function ($q) use ($socket) {
-                $q->where('spec_key', 'socket')
-                  ->where('spec_value', $socket);
-            });
+        $categoryNames = self::CATEGORY_MAP[$type] ?? [$type];
+
+        $query = Product::query()
+            ->whereHas('category', fn($q) => $q->whereIn('name', $categoryNames))
+            ->with(['specifications', 'suppliers']);
+
+        // =====================================================================
+        // FILTER SOCKET TYPE
+        // Diterapkan ke Processor dan CPU Cooler.
+        // Value-nya dari mobo.socket_type yang dikirim JS.
+        // =====================================================================
+        if ($socketType && in_array($type, ['Processor', 'CPU Cooler'], true)) {
+            $query->whereHas('specifications', fn($q) =>
+                $q->where('spec_key', self::COMPAT_KEYS['socket_type'])
+                  ->where('spec_value', $socketType)
+            );
         }
 
-        // ============================================================
+        // =====================================================================
         // FILTER RAM TYPE
-        // Tidak berubah — RAM tetap difilter by ram_type dari Motherboard
-        // ============================================================
+        // Diterapkan ke RAM.
+        // Value-nya dari mobo.ram_type_slot, dicocokkan ke ram_type di tabel RAM.
+        // =====================================================================
         if ($ramType && $type === 'RAM') {
-            $query->whereHas('specifications', function ($q) use ($ramType) {
-                $q->where('spec_key', 'ram_type')
-                  ->where('spec_value', $ramType);
-            });
+            $query->whereHas('specifications', fn($q) =>
+                $q->where('spec_key', self::COMPAT_KEYS['ram_type'])
+                  ->where('spec_value', $ramType)
+            );
         }
 
-        // Hanya tampilkan produk yang punya stok > 0
-        $query->whereHas('suppliers', function ($q) {
-            $q->where('product_supplier.stock', '>', 0);
-        });
+        // =====================================================================
+        // FILTER PSU WATTAGE
+        // spec_value tersimpan sebagai string → CAST ke UNSIGNED untuk
+        // perbandingan numerik yang benar.
+        // =====================================================================
+        if ($minWattage && $type === 'Power Supply') {
+            $query->whereHas('specifications', fn($q) =>
+                $q->where('spec_key', self::COMPAT_KEYS['total_wattage'])
+                  ->whereRaw('CAST(spec_value AS UNSIGNED) >= ?', [$minWattage])
+            );
+        }
 
-        $products = $query->get()->map(function ($product) {
-            // Ubah specifications collection jadi key-value array
-            // supaya mudah dibaca di JavaScript: specs.socket, specs.ram_type, dll
-            $specs = $product->specifications->pluck('spec_value', 'spec_key')->toArray();
+        // Hanya produk dengan stok > 0
+        $query->whereHas('suppliers', fn($q) =>
+            $q->where('product_supplier.stock', '>', 0)
+        );
 
-            // Ambil harga jual terbaik dari supplier yang punya stok
-            $hargaJual = $product->suppliers
-                ->filter(fn($s) => $s->pivot->stock > 0)
-                ->min(fn($s) => $s->pivot->harga_jual_manual)
-                ?? 0;
-
-            return [
-                'id'        => $product->id,
-                'name'      => $product->name,
-                'price'     => $hargaJual,
-                'price_fmt' => 'Rp ' . number_format($hargaJual, 0, ',', '.'),
-                'specs'     => $specs,
-
-                // Expose spec penting ke level atas untuk chaining kompatibilitas di JS
-                // Motherboard: punya socket (untuk filter CPU) dan ram_type (untuk filter RAM)
-                // CPU: punya socket (untuk validasi) dan tdp (untuk estimasi PSU)
-                // VGA: punya tdp (untuk estimasi PSU)
-                // PSU: punya wattage (untuk validasi kecukupan daya)
-                'socket'   => $specs['socket']   ?? null,
-                'ram_type' => $specs['ram_type'] ?? null,
-                'tdp'      => $specs['tdp']      ?? null,
-                'wattage'  => $specs['wattage']  ?? null,
-            ];
-        });
-
-        return response()->json($products);
+        return response()->json(
+            $query->get()->map(fn($p) => $this->formatProduct($p))
+        );
     }
 
-    /**
-     * Endpoint khusus untuk ambil semua Motherboard.
-     * Ini adalah entry point baru PC Builder — tidak butuh filter apapun.
-     * Sebelumnya entry point adalah CPU (getCpuList),
-     * sekarang diganti dengan Motherboard.
-     */
-    public function getMotherboardList()
+    // =========================================================================
+    // FORMAT PRODUCT
+    //
+    // Konversi Eloquent model ke array yang dikonsumsi JavaScript.
+    //
+    // Spec penting di-expose ke level atas supaya JS bisa baca langsung
+    // sebagai product.socket_type, product.ram_type_slot, dst.
+    // (bukan product.specs.socket_type — lebih bersih dan tidak ambigu)
+    // =========================================================================
+    private function formatProduct($product): array
     {
-        return $this->getCompatible(new Request(['type' => 'Motherboard']));
+        $specs = $product->specifications
+            ->pluck('spec_value', 'spec_key')
+            ->toArray();
+
+        $hargaJual = $product->suppliers
+            ->filter(fn($s) => $s->pivot->stock > 0)
+            ->min(fn($s) => $s->pivot->harga_jual_manual) ?? 0;
+
+        return [
+            'id'        => $product->id,
+            'name'      => $product->name,
+            'brand'     => $product->brand ?? '',
+            'price'     => (int) $hargaJual,
+            'price_fmt' => 'Rp ' . number_format((int) $hargaJual, 0, ',', '.'),
+            'specs'     => $specs,
+
+            // Mobo
+            'socket_type'   => $specs['socket_type']   ?? null,
+            'ram_type_slot' => $specs['ram_type_slot'] ?? null,
+            // CPU
+            'tdp_watt'      => isset($specs['tdp_watt'])      ? (int) $specs['tdp_watt']      : null,
+            // RAM
+            'ram_type'      => $specs['ram_type']      ?? null,
+            // VGA
+            'min_psu_watt'  => isset($specs['min_psu_watt'])  ? (int) $specs['min_psu_watt']  : null,
+            // PSU
+            'total_wattage' => isset($specs['total_wattage']) ? (int) $specs['total_wattage'] : null,
+        ];
     }
-}
+}   
