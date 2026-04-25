@@ -20,19 +20,17 @@ class PcBuilderController extends Controller
 
     // =========================================================================
     // CATEGORY MAP
-    // Resolve nama kategori dari JS ke nama yang ada di tabel categories.
-    // Solusi untuk inkonsistensi nama: VGA / GPU / VGA Card, dst.
     // =========================================================================
-    private const CATEGORY_MAP = [
-        'Motherboard'  => ['Motherboard'],
-        'Processor'    => ['Processor'],
-        'RAM'          => ['RAM'],
-        'VGA'          => ['VGA', 'GPU', 'VGA Card'],
-        'Storage'      => ['Storage', 'Storage (SSD/HDD)'],
-        'Power Supply' => ['Power Supply', 'Power_Supply'],
-        'CPU Cooler'   => ['CPU Cooler'],
-        'Casing'       => ['Casing'],
-    ];
+    private function getCategoryNames(string $type): array
+    {
+        foreach (config('product_specs.categories', []) as $catConfig) {
+            $labels = $catConfig['labels'] ?? [];
+            if (in_array($type, $labels, true)) {
+                return $labels;
+            }
+        }
+        return [$type];
+    }
 
     public function index()
     {
@@ -64,7 +62,7 @@ class PcBuilderController extends Controller
         $ramType    = $request->string('ram_type')->toString() ?: null;
         $minWattage = $request->integer('min_wattage') ?: null;
 
-        $categoryNames = self::CATEGORY_MAP[$type] ?? [$type];
+        $categoryNames = $this->getCategoryNames($type);
 
         $query = Product::query()
             ->whereHas('category', fn($q) => $q->whereIn('name', $categoryNames))
@@ -156,4 +154,4 @@ class PcBuilderController extends Controller
             'total_wattage' => isset($specs['total_wattage']) ? (int) $specs['total_wattage'] : null,
         ];
     }
-}   
+}

@@ -1,4 +1,4 @@
-<x-modal id="modal-product-preview" title="Detail Produk" size="xl">
+{{-- <x-modal id="modal-product-preview" title="Detail Produk" size="xl">
     <template x-if="activePreviewRow()">
         <div class="space-y-5">
             <div class="grid gap-4 md:grid-cols-3">
@@ -148,4 +148,4 @@
             </div>
         </div>
     </template>
-</x-modal>
+</x-modal> --}}
