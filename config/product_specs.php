@@ -12,16 +12,23 @@
  *
  * ALUR DATA:
  *   config ini
- *     → ProductController      → form input produk (field & dropdown)
+ *     → ProductController         → form input produk (field & dropdown)
  *     → SpecValuePresetController → halaman manajemen nilai spec
- *     → PcBuilderController    → filter kompatibilitas simulasi (via product_specifications)
+ *     → PcBuilderController       → filter kompatibilitas simulasi
+ *                                   (via spec_value_presets + product_spec_value)
+ *
+ * ARSITEKTUR SPEC YANG DIPAKAI:
+ *   spec_value_presets          → satu-satunya tempat nilai spec tersimpan
+ *   product_spec_value (pivot)  → menghubungkan produk ke preset
+ *   product_specifications      → SUDAH DIHAPUS, tidak dipakai lagi
  *
  * ATURAN PENTING:
- *   - Setiap 'key' di sini HARUS sama persis dengan spec_key di tabel product_specifications
- *   - Kalau tambah field baru → tambah juga preset awal di DatabaseSeeder atau
- *     input manual via halaman Manajemen Nilai Spesifikasi
- *   - Kalau tambah kategori baru → tambah juga di CATEGORY_MAP PcBuilderController
- *     (atau lebih baik: biarkan controller baca otomatis dari 'labels' di sini)
+ *   - Setiap 'key' di sini HARUS sama persis dengan spec_key di tabel
+ *     spec_value_presets (bukan lagi product_specifications)
+ *   - Kalau tambah field baru → tambah preset awal via halaman Manajemen
+ *     Nilai Spesifikasi, atau lewat SpecValuePreset::firstOrCreate() di seeder
+ *   - Kalau tambah kategori baru → cukup tambah di sini, PcBuilderController
+ *     sudah membaca otomatis dari 'labels'
  * =============================================================================
  */
 

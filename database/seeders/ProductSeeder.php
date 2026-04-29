@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
+use App\Models\SpecValuePreset;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -907,7 +908,6 @@ class ProductSeeder extends Seeder
         // =====================================================================
         // INSERT SEMUA PRODUK
         // =====================================================================
-
         foreach ($products as $item) {
             $category = Category::where('name', $item['category'])->first();
 
@@ -916,27 +916,29 @@ class ProductSeeder extends Seeder
                 continue;
             }
 
-            // Skip kalau produk sudah ada (by name)
             if (Product::where('name', $item['name'])->exists()) {
                 $this->command->line("Skip (sudah ada): {$item['name']}");
                 continue;
             }
 
+            // 'technical_specs' DIHAPUS — tidak ada kolom ini di tabel products baru
             $product = Product::create([
-                'category_id'     => $category->id,
-                'brand'           => $item['brand'],
-                'name'            => $item['name'],
-                'letak_barang'    => $item['letak'],
-                'description'     => "{$item['brand']} {$item['name']}",
-                'technical_specs' => $item['specs'],
+                'category_id'  => $category->id,
+                'brand'        => $item['brand'],
+                'name'         => $item['name'],
+                'letak_barang' => $item['letak'],
+                'description'  => "{$item['brand']} {$item['name']}",
             ]);
 
-            // Simpan spec ke product_specifications
+            // Simpan spec ke spec_value_presets lalu hubungkan via pivot
             foreach ($item['specs'] as $key => $value) {
-                $product->specifications()->create([
-                    'spec_key'   => $key,
-                    'spec_value' => $value,
-                ]);
+                $preset = SpecValuePreset::firstOrCreate(
+                    ['spec_key' => $key, 'spec_value' => strtoupper((string) $value)]
+                );
+
+                // attach() aman meski sudah ada karena unique constraint di pivot
+                // Atau pakai syncWithoutDetaching supaya tidak duplikat:
+                $product->specs()->syncWithoutDetaching([$preset->id]);
             }
 
             // Attach supplier

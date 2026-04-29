@@ -13,7 +13,6 @@ return new class extends Migration
             $table->string('spec_key', 100)->index();
             $table->string('spec_value', 255);
             $table->timestamps();
-
             $table->unique(['spec_key', 'spec_value']);
         });
     }

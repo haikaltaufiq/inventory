@@ -6,7 +6,6 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -34,7 +33,7 @@ class TransactionService
             $marketingFee = (float) data_get($validated, 'additional_fees.marketing', 0);
             $serviceFee = (float) $validated['service_fee'];
             $finalTotal = $subtotal + $serviceFee;
-            
+
             $pcSpecification = $mode === 'rakit_pc'
                 ? $this->buildPcSpecification($cart->all())
                 : null;
@@ -157,7 +156,7 @@ class TransactionService
             DB::table('product_supplier')
                 ->where('id', $stockRow->id)
                 ->decrement('stock', $validated['quantity']);
-                
+
             return $transaction;
         });
     }
@@ -211,7 +210,7 @@ class TransactionService
     public function updateWarranty(Transaction $transaction, ?string $warranty): void
     {
         $transaction->load('details');
-        
+
         DB::transaction(function () use ($transaction, $warranty) {
             foreach ($transaction->details as $detail) {
                 if ($detail->product_supplier_id) {
