@@ -4,6 +4,9 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Exports\ExportTransactionReport;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\Response;
 
 class TransactionReportService
 {
@@ -36,44 +39,24 @@ class TransactionReportService
         ];
     }
 
-    public function downloadReport(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function downloadReport(Request $request): Response
     {
-        $fileName = 'laporan-transaksi-' . now()->format('Ymd-His') . '.csv';
+        $fileName = 'laporan-transaksi-' . now()->format('Ymd-His') . '.xlsx';
+        $query = $this->buildTransactionReportLineSubquery($request);
+        $filters = $request->only(['date_from', 'date_to', 'search']);
 
-        return response()->streamDownload(function () use ($request) {
-            $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Nama Seller', 'Date', 'Tipe Transaksi', 'Nama Barang', 'Spesifikasi', 'Nama Customer', 'Modal', 'Harga Jual', 'Biaya Tambahan', 'Profit Kotor', 'Penjual 70%', 'NATOPC 30%', 'Status', 'Desc', 'Garansi']);
+        // 1. Bersihin buffer sampe ke akar-akarnya bjir
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
 
-            $this->buildTransactionReportQuery($request)
-                ->orderByDesc('transaction_date')
-                ->orderByDesc('transaction_id')
-                ->chunk(200, function ($rows) use ($handle) {
-                    foreach ($rows as $row) {
-                        $productName = trim((string) ($row->product_name ?? '')) !== '' ? $row->product_name : '-';
-                        $warrantyString = str_replace('<br>', ', ', (string) $row->warranty_details_list);
-
-                        fputcsv($handle, [
-                            $row->seller_name ?: '-',
-                            $row->transaction_date ? date('d, M, Y', strtotime((string) $row->transaction_date)) : '-',
-                            $row->transaction_mode === 'rakit_pc' ? 'Rakit PC' : 'Sparepart only',
-                            $productName,
-                            $row->item_specification ?: '-',
-                            $row->customer_name ?: '-',
-                            (float) $row->modal_total,
-                            (float) $row->selling_total,
-                            (float) $row->service_total,
-                            (float) $row->gross_profit_total,
-                            (float) $row->seller_profit_share,
-                            (float) $row->natopc_profit_share,
-                            $row->status ?: '-',
-                            $row->transaction_desc ?: '-',
-                            $warrantyString === 'Kosong' ? '-' : $warrantyString,
-                        ]);
-                    }
-                });
-
-            fclose($handle);
-        }, $fileName, ['Content-Type' => 'text/csv']);
+        // 2. Pake download manual biar kita bisa kontrol Header-nya
+        return response()->streamDownload(function () use ($query, $filters) {
+            echo Excel::raw(new ExportTransactionReport($query, $filters), \Maatwebsite\Excel\Excel::XLSX);
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+        ]);
     }
 
     private function buildTransactionReportQuery(Request $request)
@@ -134,6 +117,7 @@ class TransactionReportService
                 'c.phone as customer_phone',
                 'c.address as customer_address',
                 'td.item_name',
+                'p.name as product_line_name',
                 DB::raw('COALESCE(NULLIF(TRIM(td.item_name), \'\'), p.name) as sparepart_line_nama'),
                 DB::raw("CASE
                     WHEN t.transaction_mode = 'rakit_pc' THEN p.name
@@ -145,6 +129,11 @@ class TransactionReportService
                 'td.quantity',
                 'td.price_at_transaction',
                 'ps.harga_beli',
+                't.service_fee',
+                't.installation_fee',
+                't.service_labor_fee',
+                't.shipping_fee',
+                't.marketing_fee',
                 't.description as transaction_description',
                 'ps.warranty_detail',
             ])
@@ -176,6 +165,10 @@ class TransactionReportService
                 'td.quantity',
                 'td.price_at_transaction',
                 'ps.harga_beli',
+                't.installation_fee',
+                't.service_labor_fee',
+                't.shipping_fee',
+                't.marketing_fee',
                 't.description',
                 'ps.warranty_detail',
             ]);

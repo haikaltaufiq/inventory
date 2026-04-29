@@ -107,6 +107,7 @@
                     <span class="ml-3 {{ request()->routeIs('customers.*') ? 'font-semibold' : 'font-normal' }}">Pelanggan</span>
                 </a>
 
+                {{-- Pembatasan Akses Halaman --}}
                 @if(auth()->user()->role === 'owner')
                 <a href="{{ route('supplier.index') }}" class="flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('supplier.*') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-truck-icon lucide-truck">
