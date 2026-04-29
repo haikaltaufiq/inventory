@@ -60,7 +60,7 @@ class ProductGridService
                 $this->normalizeGridPayload($row),
                 $product
             );
-            
+
             $validator = $this->makeProductValidator($payload, $imageFile);
 
             if ($validator->fails()) {
@@ -216,7 +216,7 @@ class ProductGridService
 
     private function serializeProductForGrid(Product $product): array
     {
-        $product->loadMissing(['category', 'suppliers', 'specifications']);
+        $product->loadMissing(['category', 'suppliers', 'specs']);
         [$formSpecs, $additionalSpecs] = $this->specService->extractSpecFormData($product);
 
         return [
@@ -318,7 +318,7 @@ class ProductGridService
             return $payload;
         }
 
-        $product->loadMissing(['category', 'specifications']);
+        $product->loadMissing(['category', 'specs']);
         [$formSpecs] = $this->specService->extractSpecFormData($product);
 
         if ($formSpecs === []) {

@@ -11,14 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('product_specifications', function (Blueprint $table) {
+        Schema::create('product_spec_value', function (Blueprint $table) {
             $table->id();
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
-            $table->string('spec_key');
-            $table->string('spec_value');
+            $table->foreignId('spec_value_preset_id')->constrained()->onDelete('cascade');
             $table->timestamps();
-
-            $table->index(['spec_key', 'spec_value']);
+            $table->unique(['product_id', 'spec_value_preset_id']);
         });
     }
 
@@ -27,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('product_specifications');
+        schema::dropIfExists('product_spec_value');
     }
 };

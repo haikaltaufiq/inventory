@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('letak_barang')->nullable();
             $table->text('description')->nullable();
             $table->string('image_url')->nullable();
-            $table->json('technical_specs')->nullable();
             $table->timestamps();
         });
     }

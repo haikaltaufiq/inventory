@@ -6,7 +6,6 @@ use App\Http\Requests\ProductRequest;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
-use App\Models\ProductSpecification;
 use App\Models\User;
 use App\Repositories\ProductRepository;
 use App\Services\ProductGridService;

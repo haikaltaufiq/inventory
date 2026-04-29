@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Facades\Schema;
 
@@ -15,14 +14,8 @@ class Product extends Model
         'brand',
         'name',
         'letak_barang',
-        'warranty',
         'description',
-        'technical_specs',
-        'image_url'
-    ];
-
-    protected $casts = [
-        'technical_specs' => 'array',
+        'image_url',
     ];
 
     public function category(): BelongsTo
@@ -30,13 +23,18 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-    // Ini buat simpan 'socket', 'ram_type' dll
-    public function specifications(): HasMany
+    /**
+     * Specs produk melalui pivot product_spec_value → spec_value_presets.
+     * Menggantikan specifications() HasMany yang lama.
+     */
+    public function specs(): BelongsToMany
     {
-        return $this->hasMany(ProductSpecification::class);
+        return $this->belongsToMany(
+            SpecValuePreset::class,
+            'product_spec_value'
+        )->withTimestamps();
     }
 
-    // Relasi ke Supplier dengan Pivot Data
     public function suppliers(): BelongsToMany
     {
         $pivotFields = [

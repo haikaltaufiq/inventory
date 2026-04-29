@@ -7,49 +7,22 @@ use Illuminate\Http\Request;
 
 class PcBuilderController extends Controller
 {
-    // =========================================================================
-    // CANONICAL SPEC KEYS
-    // Harus persis sama dengan spec_key yang tersimpan di product_specifications
-    // dan yang didefinisikan di config/product_specs.php.
-    // =========================================================================
-    private const COMPAT_KEYS = [
-        'socket_type'   => 'socket_type',   // Mobo ↔ CPU & CPU Cooler
-        'ram_type'      => 'ram_type',       // Mobo (via ram_type_slot) ↔ RAM
-        'total_wattage' => 'total_wattage',  // PSU — validasi kecukupan daya
-    ];
-
-    // =========================================================================
-    // CATEGORY MAP
-    // Resolve nama kategori dari JS ke nama yang ada di tabel categories.
-    // Solusi untuk inkonsistensi nama: VGA / GPU / VGA Card, dst.
-    // =========================================================================
-    private const CATEGORY_MAP = [
-        'Motherboard'  => ['Motherboard'],
-        'Processor'    => ['Processor'],
-        'RAM'          => ['RAM'],
-        'VGA'          => ['VGA', 'GPU', 'VGA Card'],
-        'Storage'      => ['Storage', 'Storage (SSD/HDD)'],
-        'Power Supply' => ['Power Supply', 'Power_Supply'],
-        'CPU Cooler'   => ['CPU Cooler'],
-        'Casing'       => ['Casing'],
-    ];
+    private function getCategoryNames(string $type): array
+    {
+        foreach (config('product_specs.categories', []) as $catConfig) {
+            $labels = $catConfig['labels'] ?? [];
+            if (in_array($type, $labels, true)) {
+                return $labels;
+            }
+        }
+        return [$type];
+    }
 
     public function index()
     {
         return view('pc-builder.index');
     }
 
-    // =========================================================================
-    // GET COMPATIBLE
-    //
-    // Satu endpoint AJAX untuk semua jenis komponen.
-    //
-    // Query params yang diterima:
-    //   type         - nama kategori (Motherboard / Processor / RAM / VGA / dst)
-    //   socket_type  - filter Processor & CPU Cooler berdasarkan socket
-    //   ram_type     - filter RAM berdasarkan tipe (value dari ram_type_slot mobo)
-    //   min_wattage  - filter PSU, hanya tampilkan total_wattage >= nilai ini
-    // =========================================================================
     public function getCompatible(Request $request)
     {
         $request->validate([
@@ -64,49 +37,47 @@ class PcBuilderController extends Controller
         $ramType    = $request->string('ram_type')->toString() ?: null;
         $minWattage = $request->integer('min_wattage') ?: null;
 
-        $categoryNames = self::CATEGORY_MAP[$type] ?? [$type];
+        $categoryNames = $this->getCategoryNames($type);
 
         $query = Product::query()
             ->whereHas('category', fn($q) => $q->whereIn('name', $categoryNames))
-            ->with(['specifications', 'suppliers']);
+            ->with(['specs', 'suppliers']);
 
         // =====================================================================
-        // FILTER SOCKET TYPE
-        // Diterapkan ke Processor dan CPU Cooler.
-        // Value-nya dari mobo.socket_type yang dikirim JS.
+        // FILTER SOCKET TYPE — Processor & CPU Cooler
+        // specs() sekarang ke spec_value_presets via pivot,
+        // tapi whereHas tetap bisa query spec_key / spec_value di tabel preset.
         // =====================================================================
         if ($socketType && in_array($type, ['Processor', 'CPU Cooler'], true)) {
-            $query->whereHas('specifications', fn($q) =>
-                $q->where('spec_key', self::COMPAT_KEYS['socket_type'])
+            $query->whereHas('specs', fn($q) =>
+                $q->where('spec_key', 'socket_type')
                   ->where('spec_value', $socketType)
             );
         }
 
         // =====================================================================
         // FILTER RAM TYPE
-        // Diterapkan ke RAM.
-        // Value-nya dari mobo.ram_type_slot, dicocokkan ke ram_type di tabel RAM.
+        // BUG LAMA: pakai $socketType — seharusnya $ramType ✓
         // =====================================================================
         if ($ramType && $type === 'RAM') {
-            $query->whereHas('specifications', fn($q) =>
-                $q->where('spec_key', self::COMPAT_KEYS['ram_type'])
-                  ->where('spec_value', $ramType)
+            $query->whereHas('specs', fn($q) =>
+                $q->where('spec_key', 'ram_type')
+                  ->where('spec_value', $ramType) // ← fix: $ramType bukan $socketType
             );
         }
 
         // =====================================================================
         // FILTER PSU WATTAGE
-        // spec_value tersimpan sebagai string → CAST ke UNSIGNED untuk
-        // perbandingan numerik yang benar.
+        // BUG LAMA: pakai ->where('spec_value', $socketType) — harusnya
+        // perbandingan numerik CAST(spec_value AS UNSIGNED) >= $minWattage ✓
         // =====================================================================
         if ($minWattage && $type === 'Power Supply') {
-            $query->whereHas('specifications', fn($q) =>
-                $q->where('spec_key', self::COMPAT_KEYS['total_wattage'])
-                  ->whereRaw('CAST(spec_value AS UNSIGNED) >= ?', [$minWattage])
+            $query->whereHas('specs', fn($q) =>
+                $q->where('spec_key', 'total_wattage')
+                  ->whereRaw('CAST(spec_value AS UNSIGNED) >= ?', [$minWattage]) // ← fix
             );
         }
 
-        // Hanya produk dengan stok > 0
         $query->whereHas('suppliers', fn($q) =>
             $q->where('product_supplier.stock', '>', 0)
         );
@@ -116,18 +87,11 @@ class PcBuilderController extends Controller
         );
     }
 
-    // =========================================================================
-    // FORMAT PRODUCT
-    //
-    // Konversi Eloquent model ke array yang dikonsumsi JavaScript.
-    //
-    // Spec penting di-expose ke level atas supaya JS bisa baca langsung
-    // sebagai product.socket_type, product.ram_type_slot, dst.
-    // (bukan product.specs.socket_type — lebih bersih dan tidak ambigu)
-    // =========================================================================
     private function formatProduct($product): array
     {
-        $specs = $product->specifications
+        // specs() sekarang return koleksi SpecValuePreset (punya spec_key & spec_value)
+        // pluck() tetap bekerja persis sama
+        $specs = $product->specs
             ->pluck('spec_value', 'spec_key')
             ->toArray();
 
@@ -142,18 +106,12 @@ class PcBuilderController extends Controller
             'price'     => (int) $hargaJual,
             'price_fmt' => 'Rp ' . number_format((int) $hargaJual, 0, ',', '.'),
             'specs'     => $specs,
-
-            // Mobo
             'socket_type'   => $specs['socket_type']   ?? null,
             'ram_type_slot' => $specs['ram_type_slot'] ?? null,
-            // CPU
-            'tdp_watt'      => isset($specs['tdp_watt'])      ? (int) $specs['tdp_watt']      : null,
-            // RAM
+            'tdp_watt'      => isset($specs['tdp_watt'])     ? (int) $specs['tdp_watt']     : null,
             'ram_type'      => $specs['ram_type']      ?? null,
-            // VGA
-            'min_psu_watt'  => isset($specs['min_psu_watt'])  ? (int) $specs['min_psu_watt']  : null,
-            // PSU
-            'total_wattage' => isset($specs['total_wattage']) ? (int) $specs['total_wattage'] : null,
+            'min_psu_watt'  => isset($specs['min_psu_watt']) ? (int) $specs['min_psu_watt'] : null,
+            'total_wattage' => isset($specs['total_wattage'])? (int) $specs['total_wattage']: null,
         ];
     }
-}   
+}

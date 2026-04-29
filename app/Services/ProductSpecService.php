@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
-use App\Models\ProductSpecification;
+use App\Models\SpecValuePreset;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -12,10 +12,15 @@ class ProductSpecService
 {
     private const SPEC_OPTIONS_CACHE_KEY = 'products.spec_options';
 
+    /**
+     * Membangun payload spec dari form input.
+     * Mengembalikan 'preset_ids' siap untuk ->specs()->sync().
+     * TIDAK lagi mengembalikan 'technical_specs' (kolom sudah dihapus).
+     */
     public function buildSpecificationPayload(array $validated, string $categoryName): array
     {
         $definition = $this->specDefinitionForCategory($categoryName);
-        $baseSpecs = collect();
+        $baseSpecs  = collect();
 
         if ($definition !== null) {
             foreach ($definition['fields'] as $field) {
@@ -34,7 +39,7 @@ class ProductSpecService
 
         $extraSpecs = collect($validated['extra_specs'] ?? [])
             ->mapWithKeys(function (array $spec) {
-                $key = $this->normalizeCustomSpecKey($spec['key'] ?? null);
+                $key   = $this->normalizeCustomSpecKey($spec['key'] ?? null);
                 $value = $this->normalizeSpecValue($key ?? 'custom', $spec['value'] ?? null);
 
                 if ($key === null || $value === null) {
@@ -44,51 +49,67 @@ class ProductSpecService
                 return [$key => $value];
             });
 
-        $technicalSpecs = $baseSpecs
-            ->merge($extraSpecs)
-            ->all();
-
         $compatibilityAliases = collect(config('product_specs.compatibility_aliases', []))
             ->flatMap(function (array $aliases, string $sourceKey) use ($baseSpecs) {
                 if (!$baseSpecs->has($sourceKey)) {
                     return [];
                 }
 
-                return collect($aliases)->mapWithKeys(function (string $alias) use ($baseSpecs, $sourceKey) {
-                    return [$alias => $baseSpecs->get($sourceKey)];
-                });
+                return collect($aliases)->mapWithKeys(fn(string $alias) => [
+                    $alias => $baseSpecs->get($sourceKey),
+                ]);
             });
 
-        $specifications = collect($technicalSpecs)
-            ->merge($compatibilityAliases)
-            ->map(function ($value, $key) {
-                return [
-                    'spec_key' => $key,
-                    'spec_value' => $value,
-                ];
-            })
+        // Gabungkan semua spec (base + extra + alias)
+        $allSpecs = collect($baseSpecs)
+            ->merge($extraSpecs)
+            ->merge($compatibilityAliases);
+
+        // Upsert ke spec_value_presets, kumpulkan ID-nya untuk sync pivot
+        $presetIds = $allSpecs
+            ->map(fn($value, $key) =>
+                SpecValuePreset::firstOrCreate(
+                    ['spec_key' => $key, 'spec_value' => $value]
+                )->id
+            )
             ->values()
             ->all();
 
+        // Kembalikan juga flat key-value untuk keperluan lain (misal: display)
         return [
-            'technical_specs' => $technicalSpecs,
-            'specifications' => $specifications,
+            'preset_ids' => $presetIds,
+            'specs_flat' => $allSpecs->all(), // pengganti 'technical_specs'
         ];
     }
 
+    /**
+     * Sync spec ke pivot.
+     * Panggil dari ProductService::createProduct / updateProduct.
+     *
+     *   $payload = $this->productSpecService->buildSpecificationPayload(...);
+     *   $this->productSpecService->syncSpecs($product, $payload);
+     */
+    public function syncSpecs(Product $product, array $payload): void
+    {
+        $product->specs()->sync($payload['preset_ids'] ?? []);
+
+        // Invalidate cache supaya dropdown ikut refresh
+        Cache::forget(self::SPEC_OPTIONS_CACHE_KEY);
+    }
+
+    /**
+     * Mengekstrak data spec untuk form edit produk.
+     * Membaca dari specs() BelongsToMany (menggantikan specifications() HasMany).
+     */
     public function extractSpecFormData(Product $product): array
     {
         $definition = $this->specDefinitionForCategory($product->category?->name);
-        $rawSpecs = collect($product->technical_specs ?? []);
 
-        if ($rawSpecs->isEmpty()) {
-            $rawSpecs = $product->specifications
-                ->mapWithKeys(function (ProductSpecification $specification) {
-                    return [$specification->spec_key => $specification->spec_value];
-                });
-        }
+        // Gunakan relasi specs() (BelongsToMany → SpecValuePreset)
+        $rawSpecs = $product->specs
+            ->mapWithKeys(fn($preset) => [$preset->spec_key => $preset->spec_value]);
 
-        $formSpecs = [];
+        $formSpecs       = [];
         $additionalSpecs = [];
 
         foreach ($rawSpecs as $key => $value) {
@@ -110,7 +131,7 @@ class ProductSpecService
             }
 
             $additionalSpecs[] = [
-                'key' => $this->displaySpecKey($key),
+                'key'   => $this->displaySpecKey($key),
                 'value' => $normalizedValue,
             ];
         }
@@ -133,7 +154,7 @@ class ProductSpecService
 
             if ($labels->contains($normalizedCategory)) {
                 return [
-                    'key' => $configKey,
+                    'key'    => $configKey,
                     'fields' => $definition['fields'] ?? [],
                 ];
             }
@@ -142,17 +163,38 @@ class ProductSpecService
         return null;
     }
 
+    /**
+     * Memuat semua spec yang tersedia untuk dropdown form produk.
+     *
+     * SEBELUM: join ProductSpecification + SpecValuePreset (2 sumber).
+     * SEKARANG: cukup dari SpecValuePreset saja — satu sumber kebenaran.
+     */
+    public function loadAllSpecifications(): Collection
+    {
+        return Cache::remember(
+            self::SPEC_OPTIONS_CACHE_KEY,
+            now()->addMinutes(10),
+            fn() => SpecValuePreset::query()->get(['id', 'spec_key', 'spec_value'])
+        );
+    }
+
+    // =========================================================================
+    // Private helpers (tidak berubah dari versi sebelumnya)
+    // =========================================================================
+
     private function canonicalSpecKey(string $key, ?array $definition = null): ?string
     {
-        $normalizedKey = $this->normalizeIdentifier($key);
-        $definitions = $definition !== null
+        $normalizedKey  = $this->normalizeIdentifier($key);
+        $definitions    = $definition !== null
             ? [$definition]
-            : array_map(function ($configKey, $configDefinition) {
-                return [
-                    'key' => $configKey,
+            : array_map(
+                fn($configKey, $configDefinition) => [
+                    'key'    => $configKey,
                     'fields' => $configDefinition['fields'] ?? [],
-                ];
-            }, array_keys(config('product_specs.categories', [])), config('product_specs.categories', []));
+                ],
+                array_keys(config('product_specs.categories', [])),
+                config('product_specs.categories', [])
+            );
 
         foreach ($definitions as $currentDefinition) {
             foreach ($currentDefinition['fields'] ?? [] as $field) {
@@ -191,11 +233,7 @@ class ProductSpecService
 
         $matchedExisting = $this->matchExistingSpecValue($key, $trimmed);
 
-        if ($matchedExisting !== null) {
-            return $matchedExisting;
-        }
-
-        return Str::upper($trimmed);
+        return $matchedExisting ?? Str::upper($trimmed);
     }
 
     private function normalizeCustomSpecKey(?string $key): ?string
@@ -232,7 +270,6 @@ class ProductSpecService
     private function matchExistingSpecValue(string $key, string $value): ?string
     {
         static $allSpecifications;
-
         $allSpecifications ??= $this->loadAllSpecifications();
 
         $normalizedLookupKeys = $this->lookupKeysForSpecField($key)
@@ -248,10 +285,10 @@ class ProductSpecService
         }
 
         return $allSpecifications
-            ->first(function ($item) use ($normalizedLookupKeys, $comparableValue) {
-                return $normalizedLookupKeys->contains($this->normalizeIdentifier($item->spec_key))
-                    && $this->normalizeComparableValue((string) $item->spec_value) === $comparableValue;
-            })
+            ->first(fn($item) =>
+                $normalizedLookupKeys->contains($this->normalizeIdentifier($item->spec_key))
+                && $this->normalizeComparableValue((string) $item->spec_value) === $comparableValue
+            )
             ?->spec_value;
     }
 
@@ -277,10 +314,7 @@ class ProductSpecService
 
     private function displaySpecKey(string $key): string
     {
-        return Str::of($key)
-            ->replace('_', ' ')
-            ->title()
-            ->toString();
+        return Str::of($key)->replace('_', ' ')->title()->toString();
     }
 
     public function nullableTrim(mixed $value): ?string
@@ -292,27 +326,5 @@ class ProductSpecService
         $trimmed = trim(preg_replace('/\s+/', ' ', (string) $value));
 
         return $trimmed === '' ? null : $trimmed;
-    }
-
-    public function loadAllSpecifications(): Collection
-    {
-        return Cache::remember(
-            self::SPEC_OPTIONS_CACHE_KEY,
-            now()->addMinutes(10),
-            function () {
-                $fromProducts = ProductSpecification::query()
-                    ->get(['id', 'spec_key', 'spec_value']);
-
-                $fromPresets = \App\Models\SpecValuePreset::query()
-                    ->get(['id', 'spec_key', 'spec_value'])
-                    ->map(fn($preset) => (object) [
-                        'id'         => 'preset_' . $preset->id,
-                        'spec_key'   => $preset->spec_key,
-                        'spec_value' => $preset->spec_value,
-                    ]);
-
-                return $fromProducts->concat($fromPresets);
-            }
-        );
     }
 }

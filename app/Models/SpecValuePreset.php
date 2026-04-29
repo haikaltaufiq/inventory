@@ -10,4 +10,12 @@ class SpecValuePreset extends Model
         'spec_key',
         'spec_value',
     ];
+
+    public function products()
+    {
+        return $this->belongsToMany(
+            Product::class,
+            'product_spec_value'
+        );
+    }
 }

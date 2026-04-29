@@ -19,12 +19,11 @@ class ProductRepository
                 'products.name',
                 'products.letak_barang',
                 'products.description',
-                'products.technical_specs',
                 'products.image_url',
             ])
             ->with([
                 'category:id,name',
-                'specifications:id,product_id,spec_key,spec_value',
+                'specs' => fn($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
                 'suppliers' => function ($query) {
                     $pivotFields = [
                         'condition',
@@ -60,10 +59,10 @@ class ProductRepository
         )->first();
 
         return [
-            'total_produk' => (int) ($summaryRow->total_produk ?? 0),
-            'total_stok' => (int) ($summaryRow->total_stok ?? 0),
-            'nilai_inv' => (float) ($summaryRow->nilai_inv ?? 0),
-            'stok_menipis' => (int) ($summaryRow->stok_menipis ?? 0),
+            'total_produk'  => (int)   ($summaryRow->total_produk  ?? 0),
+            'total_stok'    => (int)   ($summaryRow->total_stok    ?? 0),
+            'nilai_inv'     => (float) ($summaryRow->nilai_inv     ?? 0),
+            'stok_menipis'  => (int)   ($summaryRow->stok_menipis  ?? 0),
         ];
     }
 

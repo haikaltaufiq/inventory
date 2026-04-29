@@ -16,8 +16,16 @@ return new class extends Migration
             $table->index('stock', 'product_supplier_stock_idx');
         });
 
-        Schema::table('product_specifications', function (Blueprint $table) {
-            $table->index(['product_id', 'spec_key'], 'product_specifications_product_spec_key_idx');
+        // DIGANTI: product_specifications sudah tidak ada
+        // Index sekarang di product_spec_value (pivot baru)
+        // Schema::table('product_spec_value', function (Blueprint $table) {
+        //     $table->index('product_id', 'product_spec_value_product_id_idx');
+        //     $table->index('spec_value_preset_id', 'product_spec_value_preset_id_idx');
+        // });
+
+        // Index di spec_value_presets untuk lookup dropdown
+        Schema::table('spec_value_presets', function (Blueprint $table) {
+            $table->index('spec_key', 'spec_value_presets_spec_key_idx');
         });
 
         Schema::table('customers', function (Blueprint $table) {
@@ -43,9 +51,13 @@ return new class extends Migration
             $table->dropIndex('product_supplier_stock_idx');
         });
 
-        Schema::table('product_specifications', function (Blueprint $table) {
-            $table->dropForeign(['product_id']);
-            $table->dropIndex('product_specifications_product_spec_key_idx');
+        // Schema::table('product_spec_value', function (Blueprint $table) {
+        //     $table->dropIndex('product_spec_value_product_id_idx');
+        //     $table->dropIndex('product_spec_value_preset_id_idx');
+        // });
+
+        Schema::table('spec_value_presets', function (Blueprint $table) {
+            $table->dropIndex('spec_value_presets_spec_key_idx');
         });
 
         Schema::table('customers', function (Blueprint $table) {

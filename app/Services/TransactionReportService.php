@@ -105,7 +105,8 @@ class TransactionReportService
             ->leftJoin('customers as c', 't.customer_id', '=', 'c.id')
             ->leftJoin('products as p', 'td.product_id', '=', 'p.id')
             ->leftJoin('product_supplier as ps', 'td.product_supplier_id', '=', 'ps.id')
-            ->leftJoin('product_specifications as pspec', 'p.id', '=', 'pspec.product_id')
+            ->leftJoin('product_spec_value as psv', 'p.id', '=', 'psv.product_id')
+            ->leftJoin('spec_value_presets as pspec', 'psv.spec_value_preset_id', '=', 'pspec.id')
             ->select([
                 'td.id as transaction_detail_id',
                 'td.transaction_id',
@@ -175,7 +176,7 @@ class TransactionReportService
 
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
-            $like = '%' . $search . '%';
+            $like   = '%' . $search . '%';
 
             $query->where(function ($w) use ($like) {
                 $w->where('t.sales_name', 'like', $like)
