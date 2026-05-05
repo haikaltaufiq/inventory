@@ -2,10 +2,6 @@
     ════════════════════════════════════════════════════════════════
     MODAL PEMBAYARAN MIDTRANS SNAP
     ════════════════════════════════════════════════════════════════
-    Cara pakai:
-    1. @include('transactions._modal_payment') di transactions/index.blade.php
-    2. Panggil: openPaymentModal(transactionId, totalFormatted, documentUrl)
-    ════════════════════════════════════════════════════════════════
 --}}
 
 <div id="modalPayment"

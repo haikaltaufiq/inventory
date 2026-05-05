@@ -182,7 +182,7 @@
         this.innerHTML = '<i class="fas fa-spinner fa-spin mr-1.5 text-xs"></i> Testing...';
 
         try {
-            const res  = await fetch('{{ route("settings.test") }}');
+            const res  = await fetch('{{ route("settings.midtrans.test") }}');
             const data = await res.json();
 
             showToast(data.message, data.status === 'success' ? 'success' : 'error');

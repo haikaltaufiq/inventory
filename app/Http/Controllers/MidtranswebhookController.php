@@ -5,30 +5,36 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Services\MidtransService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class MidtransWebhookController extends Controller
 {
     public function __construct(private MidtransService $midtrans) {}
 
-    // ─────────────────────────────────────────────
-    // Terima POST notifikasi dari Midtrans
-    // Route: POST /api/midtrans/webhook
-    // ─────────────────────────────────────────────
     public function handle(Request $request)
     {
+        // // test ngrok
+        // header("ngrok-skip-browser-warning: true");
+
+        // if ($request->isMethod('get')) {
+        //     return response()->json([
+        //         'status' => 'ready',
+        //         'message' => 'Webhook endpoint is active'
+        //     ], 200);
+        // }
+
         $payload = $request->all();
 
         Log::info('Midtrans webhook received', $payload);
 
-        // 1. Verifikasi signature
+        // Verifikasi signature (Keamanan)
         if (! $this->midtrans->verifyNotification($payload)) {
             Log::warning('Midtrans webhook: invalid signature', $payload);
             return response()->json(['message' => 'Invalid signature'], 403);
         }
 
-        // 2. Ambil transaction ID dari order_id
-        // Format order_id kita: "TRX-{id}-{timestamp}"
+        // Ambil ID Transaksi dari format "TRX-{id}-{timestamp}"
         $orderId = $payload['order_id'] ?? '';
         preg_match('/^TRX-(\d+)-/', $orderId, $matches);
         $transactionId = $matches[1] ?? null;
@@ -38,26 +44,45 @@ class MidtransWebhookController extends Controller
             return response()->json(['message' => 'Order not found'], 404);
         }
 
-        // 3. Cari transaksi
+        // Cari transaksi di DB
         $transaction = Transaction::find($transactionId);
-
         if (! $transaction) {
             return response()->json(['message' => 'Transaction not found'], 404);
         }
 
-        // 4. Map status & update
+        // Map status & update ke kolom 'status' (sesuai service kamu)
         $newStatus = $this->midtrans->mapPaymentStatus(
             $payload['transaction_status'] ?? '',
             $payload['fraud_status'] ?? ''
         );
 
-        $transaction->update(['payment_status' => $newStatus]);
+        // Pastikan mapping output
+        $dbStatus = ($newStatus === 'paid') ? 'Completed' : ucfirst($newStatus);
+
+        $transaction->update(['status' => $dbStatus]);
 
         Log::info('Midtrans webhook: status updated', [
             'transaction_id' => $transactionId,
-            'status'         => $newStatus,
+            'status'         => $dbStatus,
         ]);
 
         return response()->json(['message' => 'OK']);
+    }
+
+    /**
+     * Fungsi pembantu untuk mengembalikan stok jika transaksi gagal/expire
+     */
+    private function returnStock(Transaction $transaction)
+    {
+        $transaction->load('details');
+        foreach ($transaction->details as $detail) {
+            if ($detail->product_supplier_id) {
+                DB::table('product_supplier')
+                    ->where('id', $detail->product_supplier_id)
+                    ->increment('stock', $detail->quantity);
+
+                Log::info("Stock returned for product: {$detail->product_id} qty: {$detail->quantity}");
+            }
+        }
     }
 }

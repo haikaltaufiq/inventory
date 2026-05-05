@@ -148,8 +148,8 @@ Route::middleware('auth')->group(function () {
     */
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::post('/settings/midtrans', [SettingsController::class, 'saveMidtrans'])->name('settings.midtrans.save');
-    Route::get('/settings/test-connection', [SettingsController::class, 'testConnection'])->name('settings.test');
-
+    Route::get('/settings/midtrans-test', [SettingsController::class, 'testConnection'])->name('settings.midtrans.test');
+    
     /*
     |--------------------------------------------------------------------------
     | Spec Value Presets
