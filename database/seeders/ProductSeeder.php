@@ -922,7 +922,7 @@ class ProductSeeder extends Seeder
             }
 
             // 'technical_specs' DIHAPUS — tidak ada kolom ini di tabel products baru
-            $product = Product::create([
+            $product = Product::updateOrCreate([
                 'category_id'  => $category->id,
                 'brand'        => $item['brand'],
                 'name'         => $item['name'],

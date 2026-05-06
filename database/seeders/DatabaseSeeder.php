@@ -19,14 +19,14 @@ class DatabaseSeeder extends Seeder
         // Users
         // =====================================================================
 
-        $staffUser = User::create([
+        $staffUser = User::updateOrCreate([
             'name' => 'Staff',
             'email' => 'staff@gmail.com',
             'password' => Hash::make('123'),
             'role' => 'staff',
         ]);
 
-        $ownerUser = User::create([
+        $ownerUser = User::updateOrCreate([
             'name' => 'Owner User',
             'email' => 'owner@gmail.com',
             'password' => Hash::make('123'),
@@ -59,19 +59,19 @@ class DatabaseSeeder extends Seeder
             'Gaming Chair & Desk',
             'Lainnya',
         ] as $categoryName) {
-            Category::create(['name' => $categoryName]);
+            Category::updateOrCreate(['name' => $categoryName]);
         }
 
         // =====================================================================
         // Suppliers
         // =====================================================================
 
-        $supplier1 = Supplier::create([
+        $supplier1 = Supplier::updateOrCreate([
             'nama_supplier' => 'PT Sumber Teknologi',
             'alamat' => 'Jakarta',
         ]);
 
-        $supplier2 = Supplier::create([
+        $supplier2 = Supplier::updateOrCreate([
             'nama_supplier' => 'CV Mega Komputer',
             'alamat' => 'Surabaya',
         ]);
@@ -80,14 +80,14 @@ class DatabaseSeeder extends Seeder
         // Customers
         // =====================================================================
 
-        Customer::create([
+        Customer::updateOrCreate([
             'name' => 'Budi Santoso',
             'email' => 'budi@email.com',
             'phone' => '081234567890',
             'address' => 'Jakarta Selatan',
         ]);
 
-        Customer::create([
+        Customer::updateOrCreate([
             'name' => 'Siti Rahayu',
             'email' => 'siti@email.com',
             'phone' => '081234567891',
@@ -173,7 +173,7 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
-        
+
         $this->call([
             ProductSeeder::class,
         ]);
