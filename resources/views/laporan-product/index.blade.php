@@ -139,19 +139,17 @@
                         </td>
                         <td class="w-[280px] px-4 py-4 align-top text-slate-700">
                             @php
-                            $sellerBreakdown = collect($row->seller_breakdown ?? []);
+                            $sellerNames = collect(explode(',', (string) ($row->seller_names ?? '')))
+                                ->map(fn ($sellerName) => trim($sellerName))
+                                ->filter();
                             @endphp
 
-                            @if ($sellerBreakdown->isNotEmpty())
+                            @if ($sellerNames->isNotEmpty())
                             <div class="flex max-w-[280px] flex-wrap gap-1.5">
-                                @foreach ($sellerBreakdown as $seller)
+                                @foreach ($sellerNames as $sellerName)
                                 <span
-                                    class="inline-flex max-w-full items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[12px] leading-4 text-slate-700">
-                                    <span class="truncate">{{ $seller['name'] }}</span>
-                                    <span
-                                        class="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-600 ring-1 ring-slate-200">
-                                        {{ number_format((int) $seller['qty']) }}
-                                    </span>
+                                    class="inline-flex max-w-full items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[12px] leading-4 text-slate-700">
+                                    <span class="truncate">{{ $sellerName }}</span>
                                 </span>
                                 @endforeach
                             </div>

@@ -191,15 +191,22 @@ class ProductOwnerStockSheet implements FromArray, WithTitle, WithEvents
 
     private function sellerLabel(object $row): ?string
     {
-        $sellerBreakdown = collect($row->seller_breakdown ?? []);
+        $sellerNames = collect(explode(',', (string) ($row->seller_names ?? '')))
+            ->map(fn(string $sellerName) => trim($sellerName))
+            ->filter()
+            ->unique()
+            ->values();
 
-        if ($sellerBreakdown->isEmpty()) {
-            return null;
+        if ($sellerNames->isNotEmpty()) {
+            return $sellerNames->implode(', ');
         }
 
-        return $sellerBreakdown
-            ->map(fn(array $seller) => $seller['name'] . ' ' . $seller['qty'])
-            ->implode(', ');
+        return collect($row->seller_breakdown ?? [])
+            ->pluck('name')
+            ->map(fn($sellerName) => trim((string) $sellerName))
+            ->filter()
+            ->unique()
+            ->implode(', ') ?: null;
     }
 
     private function formatDate($date): ?string

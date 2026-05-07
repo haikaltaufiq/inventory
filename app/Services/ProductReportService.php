@@ -98,6 +98,8 @@ class ProductReportService
             ->leftJoin('transaction_details', 'transaction_details.product_supplier_id', '=', 'product_supplier.id')
             ->select([
                 'product_supplier.id as product_supplier_id',
+                'product_supplier.product_id',
+                'product_supplier.supplier_id',
                 'product_supplier.pemodal_user_id',
                 'pemodal_users.name as pemodal_name',
                 'products.name as product_name',
@@ -113,6 +115,8 @@ class ProductReportService
             ->selectRaw('(product_supplier.harga_beli * (product_supplier.stock + COALESCE(SUM(transaction_details.quantity), 0))) as total_modal')
             ->groupBy([
                 'product_supplier.id',
+                'product_supplier.product_id',
+                'product_supplier.supplier_id',
                 'product_supplier.pemodal_user_id',
                 'pemodal_users.name',
                 'products.name',
@@ -193,8 +197,13 @@ class ProductReportService
         }
 
         return $rows->map(function ($row) use ($sellerBreakdownByStock) {
-            $row->seller_breakdown = $sellerBreakdownByStock->get($row->product_supplier_id, collect());
-            $row->seller_names = $row->seller_breakdown->pluck('name')->implode(', ');
+            $directSellers = $sellerBreakdownByStock->get($row->product_supplier_id, collect());
+            $sellerNames = $directSellers->pluck('name')->filter()->unique()->values();
+
+            $row->seller_breakdown = $sellerNames
+                ->map(fn(string $sellerName) => ['name' => $sellerName])
+                ->values();
+            $row->seller_names = $sellerNames->implode(', ');
 
             return $row;
         });
