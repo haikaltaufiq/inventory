@@ -11,6 +11,11 @@
                 Laporan Stok Masing-masing Pemodal.
             </p>
         </div>
+
+        <a href="{{ route('report.product.download', request()->query()) }}"
+            class="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800">
+            Export XLSX
+        </a>
     </div>
 
     <div class="mb-6 rounded-2xl bg-white p-4 shadow-sm">

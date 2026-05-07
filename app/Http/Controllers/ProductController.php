@@ -108,6 +108,11 @@ class ProductController extends Controller
         return view('laporan-product.index', $data);
     }
 
+    public function downloadProductReport(Request $request)
+    {
+        return $this->productReportService->downloadReport($request);
+    }
+
     public function specOptions(Request $request)
     {
         $request->validate([

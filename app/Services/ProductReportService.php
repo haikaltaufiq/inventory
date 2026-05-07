@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Exports\ExportProductStockReport;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\Response;
 
 class ProductReportService
 {
@@ -23,6 +26,67 @@ class ProductReportService
             ->orderBy('name')
             ->get();
 
+        $reportQuery = $this->buildProductStockReportQuery($request);
+
+        $summary = DB::query()
+            ->fromSub(clone $reportQuery, 'report_rows')
+            ->selectRaw('COUNT(*) as total_rows')
+            ->selectRaw('COUNT(DISTINCT pemodal_user_id) as total_pemodal')
+            ->selectRaw('COALESCE(SUM(stock_awal), 0) as total_stock_awal')
+            ->selectRaw('COALESCE(SUM(sold_qty), 0) as total_terjual')
+            ->selectRaw('COALESCE(SUM(stock_ready), 0) as total_stock_ready')
+            ->selectRaw('COALESCE(SUM(total_modal), 0) as total_modal')
+            ->first();
+
+        $reportRows = (clone $reportQuery)
+            ->orderBy('pemodal_users.name')
+            ->orderBy('products.name')
+            ->orderBy('product_supplier.id')
+            ->paginate(15)
+            ->withQueryString();
+
+        $reportRows->setCollection($this->withSellerBreakdown($reportRows->getCollection()));
+
+        return [
+            'reportRows' => $reportRows,
+            'summary' => [
+                'total_rows' => (int) ($summary->total_rows ?? 0),
+                'total_pemodal' => (int) ($summary->total_pemodal ?? 0),
+                'total_stock_awal' => (int) ($summary->total_stock_awal ?? 0),
+                'total_terjual' => (int) ($summary->total_terjual ?? 0),
+                'total_stock_ready' => (int) ($summary->total_stock_ready ?? 0),
+                'total_modal' => (float) ($summary->total_modal ?? 0),
+            ],
+            'categories' => $categories,
+            'owners' => $owners,
+        ];
+    }
+
+    public function downloadReport(Request $request): Response
+    {
+        $fileName = 'laporan-stok-pemodal-' . now()->format('Ymd-His') . '.xlsx';
+        $rows = $this->withSellerBreakdown(
+            $this->buildProductStockReportQuery($request)
+                ->orderBy('pemodal_users.name')
+                ->orderBy('products.name')
+                ->orderBy('product_supplier.id')
+                ->get()
+        );
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        return response()->streamDownload(function () use ($rows) {
+            echo Excel::raw(new ExportProductStockReport($rows), \Maatwebsite\Excel\Excel::XLSX);
+        }, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="' . $fileName . '"',
+        ]);
+    }
+
+    private function buildProductStockReportQuery(Request $request)
+    {
         $reportQuery = DB::table('product_supplier')
             ->join('products', 'product_supplier.product_id', '=', 'products.id')
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
@@ -42,6 +106,7 @@ class ProductReportService
                 'products.category_id',
                 'product_supplier.harga_beli as modal',
                 'product_supplier.stock as stock_ready',
+                'product_supplier.entry_date',
             ])
             ->selectRaw('COALESCE(SUM(transaction_details.quantity), 0) as sold_qty')
             ->selectRaw('(product_supplier.stock + COALESCE(SUM(transaction_details.quantity), 0)) as stock_awal')
@@ -56,6 +121,7 @@ class ProductReportService
                 'products.category_id',
                 'product_supplier.harga_beli',
                 'product_supplier.stock',
+                'product_supplier.entry_date',
             ]);
 
         if ($request->filled('search')) {
@@ -86,24 +152,12 @@ class ProductReportService
             $reportQuery->where('product_supplier.pemodal_user_id', $request->integer('owner_id'));
         }
 
-        $summary = DB::query()
-            ->fromSub(clone $reportQuery, 'report_rows')
-            ->selectRaw('COUNT(*) as total_rows')
-            ->selectRaw('COUNT(DISTINCT pemodal_user_id) as total_pemodal')
-            ->selectRaw('COALESCE(SUM(stock_awal), 0) as total_stock_awal')
-            ->selectRaw('COALESCE(SUM(sold_qty), 0) as total_terjual')
-            ->selectRaw('COALESCE(SUM(stock_ready), 0) as total_stock_ready')
-            ->selectRaw('COALESCE(SUM(total_modal), 0) as total_modal')
-            ->first();
+        return $reportQuery;
+    }
 
-        $reportRows = (clone $reportQuery)
-            ->orderBy('pemodal_users.name')
-            ->orderBy('products.name')
-            ->orderBy('product_supplier.id')
-            ->paginate(15)
-            ->withQueryString();
-
-        $productSupplierIds = $reportRows->getCollection()
+    private function withSellerBreakdown(Collection $rows): Collection
+    {
+        $productSupplierIds = $rows
             ->pluck('product_supplier_id')
             ->filter()
             ->values()
@@ -138,27 +192,11 @@ class ProductReportService
                 });
         }
 
-        $reportRows->setCollection(
-            $reportRows->getCollection()->map(function ($row) use ($sellerBreakdownByStock) {
-                $row->seller_breakdown = $sellerBreakdownByStock->get($row->product_supplier_id, collect());
-                $row->seller_names = $row->seller_breakdown->pluck('name')->implode(', ');
+        return $rows->map(function ($row) use ($sellerBreakdownByStock) {
+            $row->seller_breakdown = $sellerBreakdownByStock->get($row->product_supplier_id, collect());
+            $row->seller_names = $row->seller_breakdown->pluck('name')->implode(', ');
 
-                return $row;
-            })
-        );
-
-        return [
-            'reportRows' => $reportRows,
-            'summary' => [
-                'total_rows' => (int) ($summary->total_rows ?? 0),
-                'total_pemodal' => (int) ($summary->total_pemodal ?? 0),
-                'total_stock_awal' => (int) ($summary->total_stock_awal ?? 0),
-                'total_terjual' => (int) ($summary->total_terjual ?? 0),
-                'total_stock_ready' => (int) ($summary->total_stock_ready ?? 0),
-                'total_modal' => (float) ($summary->total_modal ?? 0),
-            ],
-            'categories' => $categories,
-            'owners' => $owners,
-        ];
+            return $row;
+        });
     }
 }

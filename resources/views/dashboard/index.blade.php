@@ -22,9 +22,6 @@
                 <h1 class="text-xl font-semibold tracking-tight text-slate-900 lg:text-2xl">Dashboard</h1>
                 <p class="mt-1 text-[13px] text-slate-500">Ringkasan performa transaksi, revenue, dan inventori terbaru.</p>
             </div>
-            <div class="text-[11px] text-slate-400">
-                Updated {{ now()->format('d M Y H:i') }}
-            </div>
         </div>
 
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">

@@ -132,6 +132,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/report', [TransactionController::class, 'report'])->name('report');
     Route::get('/report/download', [TransactionController::class, 'downloadReport'])->name('report.download');
     Route::get('/report-product', [ProductController::class, 'reportProduct'])->name('report.product');
+    Route::get('/report-product/download', [ProductController::class, 'downloadProductReport'])->name('report.product.download');
 
     /*
     |--------------------------------------------------------------------------
