@@ -173,4 +173,36 @@ class MidtransService
         $config = Setting::midtransConfig();
         return !empty($config['server_key']) && !empty($config['client_key']);
     }
+
+    
+    public function handleNotification(array $payload): void
+    {
+        if (!$this->verifyNotification($payload)) {
+            Log::warning('Midtrans: Invalid Notification Signature', $payload);
+            return;
+        }
+
+        $orderIdParts = explode('-', $payload['order_id']);
+        // Tadi di createSnapToken kamu pakai format: TRX-{id}-{time}
+        // Jadi id transaksinya ada di index ke-1
+        $transactionId = $orderIdParts[1] ?? null;
+
+        if (!$transactionId) return;
+
+        $transaction = Transaction::find($transactionId);
+        if (!$transaction) return;
+
+        $midtransStatus = $payload['transaction_status'];
+        $fraudStatus = $payload['fraud_status'] ?? '';
+
+        $newStatus = $this->mapPaymentStatus($midtransStatus, $fraudStatus);
+
+        // Update status di database
+        // Sesuaikan mapping 'paid' atau 'pending' dengan kolom 'status' di tabel kamu
+        $transaction->update([
+            'status' => ($newStatus === 'paid') ? 'Completed' : ucfirst($newStatus),
+        ]);
+
+        Log::info("Midtrans Status Updated: TRX-{$transactionId} to {$newStatus}");
+    }
 }

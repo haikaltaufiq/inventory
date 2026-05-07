@@ -26,8 +26,8 @@ class SettingsController extends Controller
         ]);
 
         Setting::setMany([
-            'midtrans_server_key' => $request->midtrans_server_key,
-            'midtrans_client_key' => $request->midtrans_client_key,
+            'midtrans_server_key' => encrypt($request->midtrans_server_key),
+            'midtrans_client_key' => encrypt($request->midtrans_client_key),
             'midtrans_env'        => $request->midtrans_env,
         ]);
 
@@ -46,23 +46,36 @@ class SettingsController extends Controller
         }
 
         try {
-            \Midtrans\Config::$serverKey    = $config['server_key'];
+            \Midtrans\Config::$serverKey = $config['server_key'];
             \Midtrans\Config::$isProduction = $config['is_production'];
 
-            // Cek dengan ambil status order dummy (akan 404, tapi autentikasi valid)
-            \Midtrans\Transaction::status('test-connection-check');
+            // Cek status transaksi dummy
+            \Midtrans\Transaction::status('test-' . time());
 
-        } catch (\Midtrans\Exceptions\MidtransApiException $e) {
-            // 404 = key valid, order tidak ada → connection OK
-            if ($e->getCode() === 404) {
-                return response()->json(['status' => 'success', 'message' => 'Koneksi berhasil! API Key valid.']);
+            return response()->json(['status' => 'success', 'message' => 'Koneksi Berhasil!']);
+
+        } catch (\Exception $e) {
+            $message = $e->getMessage();
+            $statusCode = $e->getCode();
+
+            if ($statusCode == 404 || str_contains($message, '404')) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Koneksi Berhasil! API Key valid dan terhubung.'
+                ]);
             }
 
-            return response()->json(['status' => 'error', 'message' => 'API Key tidak valid: ' . $e->getMessage()]);
-        } catch (\Throwable $e) {
-            return response()->json(['status' => 'error', 'message' => 'Gagal terhubung: ' . $e->getMessage()]);
-        }
+            if ($statusCode == 401 || str_contains($message, '401')) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Gagal: Server Key salah atau salah mode (Sandbox/Production).'
+                ]);
+            }
 
-        return response()->json(['status' => 'success', 'message' => 'Koneksi berhasil!']);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan sistem: ' . $message
+            ]);
+        }
     }
 }

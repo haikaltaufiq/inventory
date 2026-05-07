@@ -236,10 +236,10 @@
                 </div>
             </div>
 
-            {{-- Tombol simpan --}}
+            {{-- Tombol Cetak --}}
             <button onclick="saveBuild()"
                 class="mt-4 w-full py-3 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition">
-                Simpan Build
+                Cetak Estimasi
             </button>
         </div>
 
@@ -885,7 +885,7 @@ function resetBuild() {
 }
 
 // =============================================================================
-// SAVE BUILD
+// SAVE BUILD — Cetak Estimasi
 // =============================================================================
 function saveBuild() {
     const filled = Object.entries(build).filter(([, v]) => v !== null);
@@ -895,14 +895,212 @@ function saveBuild() {
         return;
     }
 
-    // TODO: kirim ke endpoint backend untuk menyimpan build
-    // Contoh payload yang bisa dikirim:
-    // const payload = Object.fromEntries(
-    //     filled.map(([key, product]) => [key, { id: product.id, name: product.name, price: product.price }])
-    // );
-    // fetch('/pc-builder/save', { method: 'POST', headers: { ... }, body: JSON.stringify(payload) });
+    const LABELS = {
+        motherboard: 'Motherboard',
+        cpu:         'Processor (CPU)',
+        ram:         'RAM',
+        vga:         'VGA / GPU',
+        storage:     'Storage',
+        psu:         'Power Supply',
+    };
 
-    alert('Fitur simpan build segera hadir!');
+    const cpuTdp      = build.cpu?.tdp_watt    || 0;
+    const gpuMinPsu   = build.vga?.min_psu_watt || 0;
+    const totalNeed   = cpuTdp + gpuMinPsu;
+    const recommended = totalNeed > 0 ? Math.ceil((totalNeed * 1.3) / 50) * 50 : null;
+    const psuWattage  = build.psu?.total_wattage || 0;
+
+    let total = 0;
+    Object.values(build).forEach(p => { if (p) total += p.price; });
+
+    // Bangun baris komponen
+    const rows = Object.entries(LABELS).map(([key, label]) => {
+        const p = build[key];
+        if (!p) return `
+            <tr>
+                <td class="label">${label}</td>
+                <td class="name" colspan="2" style="color:#94a3b8;font-style:italic;">Belum dipilih</td>
+            </tr>`;
+
+        // Specs penting untuk ditampilkan
+        const specStr = p.specs
+            ? Object.entries(p.specs).slice(0, 4)
+                .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+                .join(' · ')
+            : '';
+
+        return `
+            <tr>
+                <td class="label">${label}</td>
+                <td class="name">
+                    ${p.brand ? `<span class="badge">${p.brand}</span> ` : ''}
+                    ${p.name}
+                    ${specStr ? `<br><span class="specs">${specStr}</span>` : ''}
+                </td>
+                <td class="price">${p.price_fmt}</td>
+            </tr>`;
+    }).join('');
+
+    // Peringatan kompatibilitas
+    let compatWarning = '';
+    if (build.cpu && build.motherboard && build.cpu.socket_type && build.motherboard.socket_type
+        && build.cpu.socket_type !== build.motherboard.socket_type) {
+        compatWarning += `<div class="warning">⚠ Socket tidak cocok: CPU (${build.cpu.socket_type}) ≠ Motherboard (${build.motherboard.socket_type})</div>`;
+    }
+    if (build.ram && build.motherboard && build.ram.ram_type && build.motherboard.ram_type_slot
+        && build.ram.ram_type !== build.motherboard.ram_type_slot) {
+        compatWarning += `<div class="warning">⚠ Tipe RAM tidak cocok: Slot Motherboard (${build.motherboard.ram_type_slot}) ≠ RAM (${build.ram.ram_type})</div>`;
+    }
+    if (psuWattage > 0 && recommended && psuWattage < recommended) {
+        compatWarning += `<div class="warning">⚠ PSU ${psuWattage}W mungkin tidak cukup. Direkomendasikan ≥ ${recommended}W.</div>`;
+    }
+
+    const printDate = new Date().toLocaleDateString('id-ID', {
+        day: 'numeric', month: 'long', year: 'numeric',
+    });
+
+    const html = `<!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <title>Estimasi Rakit PC</title>
+        <style>
+            @page {
+                margin: 0;         
+                size: A4 portrait;
+            }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            body {
+                font-family: 'Segoe UI', Arial, sans-serif;
+                font-size: 13px;
+                color: #1e293b;
+                padding: 32px;
+                background: #fff;
+            }
+            .header {
+                border-bottom: 2px solid #0f172a;
+                padding-bottom: 14px;
+                margin-bottom: 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+            }
+            .header h1 { font-size: 20px; font-weight: 700; color: #0f172a; }
+            .header p  { font-size: 11px; color: #64748b; margin-top: 3px; }
+            .date       { font-size: 11px; color: #64748b; text-align: right; }
+
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            thead tr { background: #0f172a; color: #fff; }
+            thead th { padding: 9px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+            tbody tr { border-bottom: 1px solid #e2e8f0; }
+            tbody tr:last-child { border-bottom: none; }
+            td { padding: 10px 12px; vertical-align: top; }
+
+            td.label { font-weight: 600; color: #475569; width: 160px; white-space: nowrap; }
+            td.name  { color: #1e293b; line-height: 1.5; }
+            td.price { text-align: right; font-weight: 600; white-space: nowrap; color: #0f172a; width: 130px; }
+
+            .badge { display: inline-block; font-size: 10px; background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; }
+            .specs { font-size: 10px; color: #94a3b8; }
+
+            .total-row { background: #f8fafc; }
+            .total-row td { padding: 12px; font-weight: 700; font-size: 14px; }
+
+            .section {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 14px 16px;
+                margin-bottom: 14px;
+            }
+            .section-title { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #64748b; margin-bottom: 8px; }
+            .watt-info { display: flex; justify-content: space-between; font-size: 12px; color: #334155; }
+            .watt-info span { font-weight: 600; }
+
+            .warning {
+                background: #fff7ed;
+                border: 1px solid #fed7aa;
+                border-radius: 6px;
+                padding: 8px 12px;
+                margin-bottom: 8px;
+                color: #c2410c;
+                font-size: 11px;
+            }
+
+            .footer {
+                margin-top: 28px;
+                border-top: 1px solid #e2e8f0;
+                padding-top: 12px;
+                font-size: 10px;
+                color: #94a3b8;
+                text-align: center;
+            }
+
+            @media print {
+                body { padding: 20px; }
+                button { display: none !important; }
+            }
+        </style>
+    </head>
+    <body>
+
+        <div class="header">
+            <div>
+                <h1>Estimasi Rakit PC</h1>
+                <p>Simulasi konfigurasi dan kompatibilitas komponen PC</p>
+            </div>
+            <div class="date">Dicetak: ${printDate}</div>
+        </div>
+
+        ${compatWarning}
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Komponen</th>
+                    <th>Produk</th>
+                    <th style="text-align:right">Harga</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+                <tr class="total-row">
+                    <td colspan="2">Total Estimasi</td>
+                    <td class="price" style="font-size:15px;">Rp ${total.toLocaleString('id-ID')}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        ${totalNeed > 0 ? `
+        <div class="section">
+            <div class="section-title">Estimasi Konsumsi Daya</div>
+            <div class="watt-info">
+                <span>CPU TDP</span><span>${cpuTdp} W</span>
+            </div>
+            <div class="watt-info">
+                <span>GPU Min PSU</span><span>${gpuMinPsu} W</span>
+            </div>
+            <div class="watt-info" style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;">
+                <span>Total Estimasi</span><span>${totalNeed} W</span>
+            </div>
+            <div class="watt-info">
+                <span>Rekomendasi PSU (headroom 30%)</span>
+                <span style="color:#0f172a;">≥ ${recommended} W</span>
+            </div>
+            ${psuWattage ? `<div class="watt-info"><span>PSU Dipilih</span><span>${psuWattage} W</span></div>` : ''}
+        </div>` : ''}
+
+        <div class="footer">
+            Dokumen ini merupakan estimasi. Harga dapat berubah sewaktu-waktu.
+        </div>
+
+        <script>window.onload = () => { window.print(); }<\/script>
+    </body>
+    </html>`;
+
+    const w = window.open('', '_blank', 'width=800,height=700');
+    w.document.write(html);
+    w.document.close();
 }
 
 // =============================================================================

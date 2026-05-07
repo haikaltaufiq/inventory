@@ -49,7 +49,7 @@ class TransactionService
                 'shipping_fee' => $shippingFee,
                 'marketing_fee' => $marketingFee,
                 'final_total' => $finalTotal,
-                'status' => 'Completed',
+                'status' => 'Pending',
                 'type' => $validated['transaction_data']['type'] ?? 'Invoice',
                 'transaction_date' => now()->toDateString(),
             ]);
@@ -138,7 +138,7 @@ class TransactionService
                 'subtotal' => $subtotal,
                 'service_fee' => $serviceFee,
                 'final_total' => $finalTotal,
-                'status' => 'Completed',
+                'status' => 'Pending',
                 'type' => $validated['type'],
                 'transaction_date' => $validated['transaction_date'],
             ]);

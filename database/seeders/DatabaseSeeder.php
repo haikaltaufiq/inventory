@@ -19,19 +19,24 @@ class DatabaseSeeder extends Seeder
         // Users
         // =====================================================================
 
-        $staffUser = User::create([
-            'name' => 'Staff',
-            'email' => 'staff@gmail.com',
-            'password' => Hash::make('123'),
-            'role' => 'staff',
-        ]);
+        $staffUser = User::updateOrCreate(
+            ['email' => 'staff@gmail.com'],
+            [
+                'name' => 'Staff',
+                'password' => Hash::make('123'),
+                'role' => 'staff',
+            ]
+        );
 
-        $ownerUser = User::create([
-            'name' => 'Owner User',
-            'email' => 'owner@gmail.com',
-            'password' => Hash::make('123'),
-            'role' => 'owner',
-        ]);
+
+        $ownerUser = User::updateOrCreate(
+            ['email' => 'owner@gmail.com'],
+            [
+                'name' => 'Owner User',
+                'password' => Hash::make('123'),
+                'role' => 'owner',
+            ]
+        );
 
         // =====================================================================
         // Categories
@@ -59,40 +64,44 @@ class DatabaseSeeder extends Seeder
             'Gaming Chair & Desk',
             'Lainnya',
         ] as $categoryName) {
-            Category::create(['name' => $categoryName]);
+            Category::updateOrCreate(['name' => $categoryName]);
         }
 
         // =====================================================================
         // Suppliers
         // =====================================================================
 
-        $supplier1 = Supplier::create([
-            'nama_supplier' => 'PT Sumber Teknologi',
-            'alamat' => 'Jakarta',
-        ]);
+        $supplier1 = Supplier::updateOrCreate(
+            ['nama_supplier' => 'PT Sumber Teknologi'],
+            ['alamat' => 'Jakarta']
+        );
 
-        $supplier2 = Supplier::create([
-            'nama_supplier' => 'CV Mega Komputer',
-            'alamat' => 'Surabaya',
-        ]);
+        $supplier2 = Supplier::updateOrCreate(
+            ['nama_supplier' => 'CV Mega Komputer'],
+            ['alamat' => 'Surabaya']
+        );
 
         // =====================================================================
         // Customers
         // =====================================================================
 
-        Customer::create([
-            'name' => 'Budi Santoso',
-            'email' => 'budi@email.com',
-            'phone' => '081234567890',
-            'address' => 'Jakarta Selatan',
-        ]);
+        Customer::updateOrCreate(
+            ['email' => 'budi@email.com'],
+            [
+                'name' => 'Budi Santoso',
+                'phone' => '081234567890',
+                'address' => 'Jakarta Selatan',
+            ]
+        );
 
-        Customer::create([
-            'name' => 'Siti Rahayu',
-            'email' => 'siti@email.com',
-            'phone' => '081234567891',
-            'address' => 'Bandung',
-        ]);
+        Customer::updateOrCreate(
+            ['email' => 'siti@email.com'],
+            [
+                'name' => 'Siti Rahayu',
+                'phone' => '081234567891',
+                'address' => 'Bandung',
+            ]
+        );
 
         // =====================================================================
         // Spec Value Presets
@@ -173,7 +182,7 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
-        
+
         $this->call([
             ProductSeeder::class,
         ]);

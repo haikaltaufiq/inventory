@@ -18,7 +18,6 @@ class Setting extends Model
 
     // ─────────────────────────────────────────────
     // GET: Ambil satu nilai setting
-    // Contoh: Setting::get('midtrans_server_key')
     // ─────────────────────────────────────────────
     public static function get(string $key, mixed $default = null): mixed
     {
@@ -30,7 +29,6 @@ class Setting extends Model
 
     // ─────────────────────────────────────────────
     // SET: Simpan atau update satu nilai setting
-    // Contoh: Setting::set('midtrans_env', 'sandbox')
     // ─────────────────────────────────────────────
     public static function set(string $key, mixed $value): void
     {
@@ -40,7 +38,6 @@ class Setting extends Model
 
     // ─────────────────────────────────────────────
     // SET MANY: Simpan banyak setting sekaligus
-    // Contoh: Setting::setMany(['key' => 'val', ...])
     // ─────────────────────────────────────────────
     public static function setMany(array $data): void
     {
@@ -50,15 +47,19 @@ class Setting extends Model
     }
 
     // ─────────────────────────────────────────────
-    // GET MIDTRANS CONFIG: Ambil semua config Midtrans
+    // GET MIDTRANS CONFIG: Ambil semua config Midtrans (Decrypted)
     // ─────────────────────────────────────────────
     public static function midtransConfig(): array
     {
+        $serverKeyEncrypted = static::get('midtrans_server_key');
+        $clientKeyEncrypted = static::get('midtrans_client_key');
+        $env = static::get('midtrans_env', 'sandbox');
+
         return [
-            'server_key' => static::get('midtrans_server_key'),
-            'client_key' => static::get('midtrans_client_key'),
-            'env'        => static::get('midtrans_env', 'sandbox'),
-            'is_production' => static::get('midtrans_env', 'sandbox') === 'production',
+            'server_key'    => $serverKeyEncrypted ? decrypt($serverKeyEncrypted) : null,
+            'client_key'    => $clientKeyEncrypted ? decrypt($clientKeyEncrypted) : null,
+            'env'           => $env,
+            'is_production' => $env === 'production',
         ];
     }
 }
