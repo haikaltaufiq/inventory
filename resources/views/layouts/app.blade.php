@@ -80,9 +80,16 @@
 
                 <a href="{{ route('spec-presets.index') }}" class="flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('spec-presets.*') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 3v6" />
-                        <path d="M16.76 3a2 2 0 0 1 1.8 1.1l2.23 4.479a2 2 0 0 1 .21.891V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9.472a2 2 0 0 1 .211-.894L5.45 4.1A2 2 0 0 1 7.24 3z" />
-                        <path d="M3.054 9.013h17.893" />
+                        <rect x="4" y="4" width="16" height="16" rx="2" />
+                        <path d="M9 9h6v6H9z" />
+                        <path d="M15 2v2" />
+                        <path d="M9 2v2" />
+                        <path d="M15 20v2" />
+                        <path d="M9 20v2" />
+                        <path d="M20 15h2" />
+                        <path d="M20 9h2" />
+                        <path d="M2 15h2" />
+                        <path d="M2 9h2" />
                     </svg>
                     <span class="ml-3 {{ request()->routeIs('products.*') ? 'font-semibold' : 'font-normal' }} text-sm">Spec</span>
                 </a>
@@ -131,8 +138,7 @@
                     <span class="ml-3 {{ request()->routeIs('report') ? 'font-semibold' : 'font-normal' }} text-sm">Laporan Transaksi</span>
                 </a>
                 <a href="{{ route('report.product') }}"
-                    class="flex items-center px-6 py-3 text-sm transition-all rounded-xl
-   {{ request()->routeIs('report.product') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">
+                    class="flex items-center px-6 py-3 text-sm transition-all rounded-xl {{ request()->routeIs('report.product') ? 'nav-active' : 'hover:bg-white/10 text-white' }}">
 
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-pen-line-icon lucide-clipboard-pen-line">
                         <rect width="8" height="4" x="8" y="2" rx="1" />
