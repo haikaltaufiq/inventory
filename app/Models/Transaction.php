@@ -45,4 +45,19 @@ class Transaction extends Model
     {
         return $this->hasMany(TransactionDetail::class);
     }
+
+    const STATUS_DRAFT     = 'draft';
+    const STATUS_DEAL      = 'deal';
+    const STATUS_CANCELLED = 'cancelled';
+
+    // Transisi yang diizinkan
+    public function canTransitionTo(string $newStatus): bool
+    {
+        return match($this->status) {
+            'draft'     => in_array($newStatus, ['deal', 'cancelled']),
+            'deal'      => in_array($newStatus, ['cancelled']),  // bisa cancel meski sudah deal
+            'cancelled' => false,  // final, tidak bisa berubah
+            default     => false,
+        };
+    }
 }

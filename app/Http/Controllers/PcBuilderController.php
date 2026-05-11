@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PcBuild;
 use App\Models\Product;
 use Illuminate\Http\Request;
 
@@ -113,5 +114,67 @@ class PcBuilderController extends Controller
             'min_psu_watt'  => isset($specs['min_psu_watt']) ? (int) $specs['min_psu_watt'] : null,
             'total_wattage' => isset($specs['total_wattage'])? (int) $specs['total_wattage']: null,
         ];
+    }
+
+        // TAMBAH: simpan build dari modal
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'       => 'required|string|max:255',
+            'notes'      => 'nullable|string',
+            'components' => 'required|array',
+        ]);
+
+        // Hitung total dari components yang tidak null
+        $total = collect($request->components)
+            ->filter()
+            ->sum(fn($c) => $c['price'] ?? 0);
+
+        $build = PcBuild::create([
+            'name'       => $request->name,
+            'notes'      => $request->notes,
+            'components' => $request->components,
+            'total_price'=> $total,
+            'created_by' => auth()->id(),
+        ]);
+
+        return response()->json(['status' => 'success', 'build' => $build]);
+    }
+
+    // TAMBAH: untuk halaman transaksi — ambil semua saved build
+    public function list()
+    {
+        $builds = PcBuild::with('creator')
+            ->latest()
+            ->get()
+            ->map(fn($b) => [
+                'id'          => $b->id,
+                'name'        => $b->name,
+                'notes'       => $b->notes,
+                'total_price' => $b->total_price,
+                'total_fmt'   => 'Rp ' . number_format($b->total_price, 0, ',', '.'),
+                'status'      => $b->status,
+                'created_by'  => $b->creator?->name,
+                'components'  => $b->components,
+                'created_at'  => $b->created_at->format('d M Y'),
+            ]);
+
+        return response()->json($builds);
+    }
+
+    // PcBuilderController.php
+    public function updateStatus(Request $request, PcBuild $build)
+    {
+        $request->validate([
+            'status' => 'required|in:draft,deal,cancelled'
+        ]);
+
+        if ($build->status === 'cancelled') {
+            return response()->json(['message' => 'Build sudah cancelled, tidak bisa diubah.'], 422);
+        }
+
+        $build->update(['status' => $request->status]);
+
+        return response()->json(['status' => 'success']);
     }
 }

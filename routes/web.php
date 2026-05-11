@@ -139,8 +139,15 @@ Route::middleware('auth')->group(function () {
     | pc-builder
     |--------------------------------------------------------------------------
     */
-    Route::get('/pc-builder', [PcBuilderController::class, 'index'])->name('pc-builder.index');
-    Route::get('/pc-builder/compatible', [PcBuilderController::class, 'getCompatible'])->name('pc-builder.compatible');
+    Route::prefix('pc-builder')->name('pc-builder.')->group(function () {
+        Route::get('/',            [PcBuilderController::class, 'index'])->name('index');
+        Route::get('/compatible',  [PcBuilderController::class, 'getCompatible'])->name('compatible');
+
+        // Tambah ini:
+        Route::post('/builds',            [PcBuilderController::class, 'store'])->name('builds.store');
+        Route::get('/builds/list',        [PcBuilderController::class, 'list'])->name('builds.list');
+        Route::patch('/builds/{build}/status', [PcBuilderController::class, 'updateStatus']);
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -150,7 +157,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::post('/settings/midtrans', [SettingsController::class, 'saveMidtrans'])->name('settings.midtrans.save');
     Route::get('/settings/midtrans-test', [SettingsController::class, 'testConnection'])->name('settings.midtrans.test');
-    
+
     /*
     |--------------------------------------------------------------------------
     | Spec Value Presets

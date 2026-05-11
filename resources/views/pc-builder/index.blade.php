@@ -237,10 +237,16 @@
             </div>
 
             {{-- Tombol Cetak --}}
-            <button onclick="saveBuild()"
-                class="mt-4 w-full py-3 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition">
-                Cetak Estimasi
-            </button>
+            <div class="mt-4 flex gap-2">
+                <button onclick="saveBuild()"
+                    class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition">
+                    Cetak Estimasi
+                </button>
+                <button onclick="openSaveBuildModal()"
+                    class="flex-1 py-3 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700 transition">
+                    Simpan Build
+                </button>
+            </div>
         </div>
 
     </div>
@@ -298,6 +304,40 @@
         {{-- Product list --}}
         <div id="modal-list" class="overflow-y-auto flex-1 px-4 pb-4 space-y-2 mt-2"></div>
 
+    </div>
+</div>
+
+{{-- Modal Simpan Build --}}
+<div id="modal-save-build"
+    class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+        <h3 class="text-base font-semibold text-slate-800 mb-4">Simpan Build</h3>
+
+        <div class="space-y-3">
+            <div>
+                <label class="text-xs text-slate-500 font-medium">Nama Build</label>
+                <input type="text" id="save-build-name"
+                    placeholder="Contoh: Gaming PC Budi - Budget 15jt"
+                    class="mt-1 w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/20">
+            </div>
+            <div>
+                <label class="text-xs text-slate-500 font-medium">Catatan (opsional)</label>
+                <textarea id="save-build-notes" rows="2"
+                    placeholder="Catatan untuk client..."
+                    class="mt-1 w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-900/20"></textarea>
+            </div>
+        </div>
+
+        <div class="flex gap-2 mt-5">
+            <button onclick="closeSaveBuildModal()"
+                class="flex-1 py-2.5 rounded-xl bg-slate-100 text-sm text-slate-600 hover:bg-slate-200">
+                Batal
+            </button>
+            <button onclick="confirmSaveBuild()"
+                class="flex-1 py-2.5 rounded-xl bg-slate-900 text-white text-sm font-medium hover:bg-slate-700">
+                Simpan
+            </button>
+        </div>
     </div>
 </div>
 
@@ -966,7 +1006,7 @@ function saveBuild() {
         <title>Estimasi Rakit PC</title>
         <style>
             @page {
-                margin: 0;         
+                margin: 0;
                 size: A4 portrait;
             }
             * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1101,6 +1141,57 @@ function saveBuild() {
     const w = window.open('', '_blank', 'width=800,height=700');
     w.document.write(html);
     w.document.close();
+}
+
+const CSRF_TOKEN = '{{ csrf_token() }}';
+
+// =============================================================================
+// ini untuk buka modal simpan build, yang isinya form untuk input nama build + catatan
+// =============================================================================
+function openSaveBuildModal() {
+    const filled = Object.values(build).filter(Boolean);
+    if (filled.length === 0) {
+        alert('Pilih minimal satu komponen dulu.');
+        return;
+    }
+    document.getElementById('modal-save-build').classList.remove('hidden');
+    document.getElementById('modal-save-build').classList.add('flex');
+}
+
+function closeSaveBuildModal() {
+    document.getElementById('modal-save-build').classList.add('hidden');
+    document.getElementById('modal-save-build').classList.remove('flex');
+}
+
+async function confirmSaveBuild() {
+    const name = document.getElementById('save-build-name').value.trim();
+    if (!name) { alert('Nama build wajib diisi.'); return; }
+
+    const payload = {
+        name,
+        notes: document.getElementById('save-build-notes').value,
+        components: build,
+    };
+
+    try {
+        const res = await fetch('/pc-builder/builds', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error('Gagal menyimpan');
+
+        closeSaveBuildModal();
+        document.getElementById('save-build-name').value = '';
+        document.getElementById('save-build-notes').value = '';
+        alert('Build berhasil disimpan!');
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
 }
 
 // =============================================================================

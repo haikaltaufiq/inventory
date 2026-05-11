@@ -50,6 +50,7 @@
                     };
                 })
             })),
+
             // === CART STATE ===
             cart: [],
             selectedProduct: {
@@ -357,7 +358,69 @@
                     console.error('submitOrder error:', error);
                     alert('Tidak dapat terhubung ke server.');
                 }
-            }
+            },
+
+            // === PC BUILDER: SAVED BUILDS ===
+            savedBuilds: [],
+            savedBuildsOpen: false,
+            // === PC BUILDER: LOAD SAVED BUILDS ===
+            async loadSavedBuilds() {
+                const res = await fetch('/pc-builder/builds/list');
+                this.savedBuilds = await res.json();
+                openModal('modalSavedBuilds');
+            },
+            // === PC BUILDER: APPLY BUILD TO CART ===
+            applyBuild(build) {
+                this.cart = [];
+                const skipped = [];
+
+                Object.values(build.components).forEach(comp => {
+                    if (!comp) return;
+
+                    const product = this.products.find(p => p.id === comp.id);
+                    if (!product) { skipped.push(comp.name ?? 'Unknown'); return; }
+
+                    const supplier = product.suppliers.find(s => s.pivot_stock > 0);
+                    if (!supplier) { skipped.push(product.name + ' (stok habis)'); return; }
+
+                    this.confirmAddToCart(product, supplier, false);
+                });
+
+                this.transactionData.transactionMode = 'rakit_pc';
+                this.transactionData.buildName = build.name;
+
+                closeModal('modalSavedBuilds');
+
+                if (skipped.length > 0) {
+                    alert('Beberapa komponen tidak bisa dimuat:\n- ' + skipped.join('\n- '));
+                }
+            },
+
+            // ini untuk update status build di list saved builds (deal/cancelled) tanpa reload halaman
+            async updateBuildStatus(build, newStatus) {
+                const label = newStatus === 'deal' ? 'Deal' : 'Cancelled';
+                if (!confirm(`Tandai build "${build.name}" sebagai ${label}?`)) return;
+
+                const res = await fetch(`/pc-builder/builds/${build.id}/status`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ status: newStatus })
+                });
+
+                if (res.ok) {
+                    const idx = this.savedBuilds.findIndex(b => b.id === build.id);
+                    if (idx !== -1) {
+                        this.savedBuilds.splice(idx, 1, { ...this.savedBuilds[idx], status: newStatus });
+                    }
+                } else {
+                    const err = await res.json();
+                    alert(err.message || 'Gagal mengubah status.');
+                }
+            },
         }
     }
 </script>

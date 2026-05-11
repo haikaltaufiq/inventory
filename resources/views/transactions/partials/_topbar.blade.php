@@ -58,7 +58,14 @@
         </button>
         <span x-show="transactionData.transactionMode === 'rakit_pc' && transactionData.buildName"
             class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-            Nama barang: <span class="font-medium" x-text="transactionData.buildName"></span>
+            Nama Rakitan: <span class="font-medium" x-text="transactionData.buildName"></span>
         </span>
+
+        {{-- Tombol Load Saved Build --}}
+        <button @click="loadSavedBuilds()"
+            class="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-600 hover:bg-slate-50">
+            <i class="fas fa-microchip"></i>
+            Load Saved Build
+        </button>
     </div>
 </div>

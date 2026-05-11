@@ -341,3 +341,75 @@
         </button>
     </div>
 </div>
+
+<x-modal id="modalSavedBuilds" title="Saved Builds" size="lg">
+    <div class="space-y-3">
+        <template x-for="build in savedBuilds" :key="build.id">
+            <div class="rounded-xl border p-4 transition"
+                :class="{
+                    'border-slate-200 bg-white': build.status === 'draft',
+                    'border-green-200 bg-green-50': build.status === 'deal',
+                    'border-red-200 bg-red-50 opacity-60': build.status === 'cancelled'
+                }">
+
+                {{-- Info Build --}}
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <p class="font-semibold text-slate-800 text-sm" x-text="build.name"></p>
+                            {{-- Badge Status --}}
+                            <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                                :class="{
+                                    'bg-slate-100 text-slate-500': build.status === 'draft',
+                                    'bg-green-100 text-green-700': build.status === 'deal',
+                                    'bg-red-100 text-red-600': build.status === 'cancelled'
+                                }"
+                                x-text="build.status === 'draft' ? 'Draft' : build.status === 'deal' ? 'Deal ✓' : 'Cancelled ✕'">
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1"
+                           x-text="build.created_at + ' · ' + (build.created_by || 'Unknown')"></p>
+                        <p class="text-xs text-slate-500 mt-0.5" x-text="build.notes"></p>
+                    </div>
+                    <span class="font-bold text-slate-800 text-sm" x-text="build.total_fmt"></span>
+                </div>
+
+                {{-- Action Buttons --}}
+                <div class="flex gap-2 pt-2 border-t border-slate-100">
+
+                    {{-- Load ke Cart (hanya kalau bukan cancelled) --}}
+                    <button x-show="build.status !== 'cancelled'"
+                        @click="applyBuild(build)"
+                        class="flex-1 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-700 transition">
+                        ↓ Load ke Cart
+                    </button>
+
+                    {{-- Tandai Deal (hanya kalau draft) --}}
+                    <button x-show="build.status === 'draft'"
+                        @click="updateBuildStatus(build, 'deal')"
+                        class="flex-1 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition">
+                        ✓ Deal
+                    </button>
+
+                    {{-- Cancel (draft atau deal bisa cancel) --}}
+                    <button x-show="build.status !== 'cancelled'"
+                        @click="updateBuildStatus(build, 'cancelled')"
+                        class="py-1.5 px-3 rounded-lg bg-red-100 text-red-600 text-xs font-medium hover:bg-red-200 transition">
+                        ✕ Cancel
+                    </button>
+
+                    {{-- Kalau sudah cancelled --}}
+                    <p x-show="build.status === 'cancelled'"
+                        class="text-xs text-red-400 italic self-center">
+                        Transaksi ini sudah dibatalkan.
+                    </p>
+                </div>
+
+            </div>
+        </template>
+
+        <template x-if="savedBuilds.length === 0">
+            <p class="text-center text-slate-400 py-8 text-sm">Belum ada build yang disimpan.</p>
+        </template>
+    </div>
+</x-modal>
