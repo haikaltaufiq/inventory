@@ -199,22 +199,57 @@
 
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:p-5">
                     <p class="text-sm font-medium text-slate-700">Ringkasan transaksi</p>
-                    <p class="mt-1 text-sm text-slate-500">Pastikan detail customer, dokumen, dan total sudah sesuai sebelum disimpan.</p>
+                    <p class="mt-1 text-sm text-slate-500">Pastikan semua detail sudah sesuai sebelum disimpan.</p>
 
-                    <div class="mt-5 space-y-3">
-                        <div class="flex items-center justify-between text-sm text-slate-500">
-                            <span>Subtotal</span>
-                            <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
+                    {{-- Build mode summary --}}
+                    <template x-if="activeBuild">
+                        <div class="mt-5 space-y-2">
+                            {{-- Info build --}}
+                            <div class="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 mb-3">
+                                <p class="text-xs font-semibold text-blue-700" x-text="'Rakitan: ' + activeBuild.name"></p>
+                                <p class="text-xs text-blue-500 mt-0.5"
+                                x-text="Object.values(activeBuild.components).filter(Boolean).length + ' komponen'"></p>
+                            </div>
+                            <div class="flex items-center justify-between text-sm text-slate-500">
+                                <span>Total Modal</span>
+                                <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm text-emerald-600 font-medium">
+                                <span>Margin (<span x-text="buildMarginPct"></span>%)</span>
+                                <span>+ Rp <span x-text="formatNumber(buildMarginAmount)"></span></span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm text-slate-500">
+                                <span>Biaya tambahan</span>
+                                <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-200 pt-3">
+                                <span class="text-sm font-semibold text-slate-700">Total Tagihan</span>
+                                <span class="text-2xl font-bold text-slate-900">
+                                    Rp <span x-text="formatNumber(finalTotal)"></span>
+                                </span>
+                            </div>
                         </div>
-                        <div class="flex items-center justify-between text-sm text-slate-500">
-                            <span>Biaya tambahan</span>
-                            <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                    </template>
+
+                    {{-- Mode normal summary --}}
+                    <template x-if="!activeBuild">
+                        <div class="mt-5 space-y-3">
+                            <div class="flex items-center justify-between text-sm text-slate-500">
+                                <span>Subtotal</span>
+                                <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm text-slate-500">
+                                <span>Biaya tambahan</span>
+                                <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-200 pt-3">
+                                <span class="text-sm font-medium text-slate-600">Total tagihan</span>
+                                <span class="text-2xl font-semibold text-slate-900">
+                                    Rp <span x-text="formatNumber(finalTotal)"></span>
+                                </span>
+                            </div>
                         </div>
-                        <div class="flex items-center justify-between border-t border-slate-200 pt-3">
-                            <span class="text-sm font-medium text-slate-600">Total tagihan</span>
-                            <span class="text-2xl font-semibold text-slate-900">Rp <span x-text="formatNumber(finalTotal)"></span></span>
-                        </div>
-                    </div>
+                    </template>
 
                     <button @click="submitOrder()"
                         class="mt-5 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800">
@@ -225,20 +260,6 @@
         </div>
     </div>
 </div>
-
-<x-modal id="modalBuildName" title="Nama Barang Rakit PC" size="sm">
-    <div class="space-y-4">
-        <p class="text-sm text-slate-500">Masukkan nama barang utama untuk transaksi Rakit PC.</p>
-        <input type="text" x-model="draftBuildName" placeholder="Contoh: PC Gaming"
-            class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
-        <div class="flex justify-end gap-2">
-            <button @click="closeModal('modalBuildName')"
-                class="rounded-xl border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">Batal</button>
-            <button @click="applyBuildName()"
-                class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Simpan</button>
-        </div>
-    </div>
-</x-modal>
 
 {{-- MODAL: PRODUCT DETAIL --}}
 <div x-show="detailOpen" x-transition x-cloak
@@ -366,6 +387,14 @@
                                 }"
                                 x-text="build.status === 'draft' ? 'Draft' : build.status === 'deal' ? 'Deal ✓' : 'Cancelled ✕'">
                             </span>
+                        </div>
+                        {{-- Tampilkan harga jual, bukan modal --}}
+                        <div class="text-right">
+                            <p class="font-bold text-slate-900 text-sm" x-text="build.harga_jual_fmt"></p>
+                            <p class="text-xs text-slate-400 mt-0.5">
+                                Modal: <span x-text="build.total_fmt"></span>
+                                · Margin: <span x-text="build.margin_pct + '%'"></span>
+                            </p>
                         </div>
                         <p class="text-xs text-slate-400 mt-1"
                            x-text="build.created_at + ' · ' + (build.created_by || 'Unknown')"></p>

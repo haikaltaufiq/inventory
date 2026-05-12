@@ -22,6 +22,8 @@ return new class extends Migration
                 ->constrained('users')
                 ->nullOnDelete();
             $table->enum('status', ['draft', 'deal', 'cancelled'])->default('draft');
+            $table->decimal('margin_pct', 5, 2)->default(0);
+            $table->unsignedBigInteger('harga_jual')->default(0);
             $table->timestamps();
         });
     }

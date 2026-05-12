@@ -68,20 +68,55 @@
         {{-- CART SUMMARY --}}
         <div class="border-t border-slate-100 bg-white px-6 py-5">
             <div class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div class="flex items-center justify-between text-sm text-slate-500">
-                    <span>Subtotal</span>
-                    <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
-                </div>
-                <div class="flex items-center justify-between text-sm text-slate-500">
-                    <span>Biaya tambahan</span>
-                    <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
-                </div>
-                <div class="flex items-center justify-between border-t border-slate-200 pt-3">
-                    <span class="text-sm font-medium text-slate-600">Total bill</span>
-                    <span class="text-2xl font-semibold text-slate-900">Rp <span
-                            x-text="formatNumber(finalTotal)"></span></span>
-                </div>
+
+                {{-- Build mode: tampilkan breakdown modal + margin --}}
+                <template x-if="activeBuild">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-sm text-slate-500">
+                            <span>Total Modal</span>
+                            <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm text-emerald-600">
+                            <span>Margin (<span x-text="buildMarginPct"></span>%)</span>
+                            <span>+ Rp <span x-text="formatNumber(buildMarginAmount)"></span></span>
+                        </div>
+                        <template x-if="serviceFee > 0">
+                            <div class="flex items-center justify-between text-sm text-slate-500">
+                                <span>Biaya tambahan</span>
+                                <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                            </div>
+                        </template>
+                        <div class="flex items-center justify-between border-t border-slate-200 pt-2">
+                            <span class="text-sm font-semibold text-slate-700">Harga Jual Set</span>
+                            <span class="text-xl font-bold text-slate-900">
+                                Rp <span x-text="formatNumber(finalTotal)"></span>
+                            </span>
+                        </div>
+                    </div>
+                </template>
+
+                {{-- Mode normal --}}
+                <template x-if="!activeBuild">
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-sm text-slate-500">
+                            <span>Subtotal</span>
+                            <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm text-slate-500">
+                            <span>Biaya tambahan</span>
+                            <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between border-t border-slate-200 pt-2">
+                            <span class="text-sm font-medium text-slate-600">Total bill</span>
+                            <span class="text-2xl font-semibold text-slate-900">
+                                Rp <span x-text="formatNumber(finalTotal)"></span>
+                            </span>
+                        </div>
+                    </div>
+                </template>
+
             </div>
+            
             <button @click="openModal('modalCheckout')" :disabled="cart.length === 0"
                 class="mt-4 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-30">
                 Finalisasi order

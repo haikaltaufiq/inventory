@@ -50,7 +50,6 @@
                     };
                 })
             })),
-
             // === CART STATE ===
             cart: [],
             selectedProduct: {
@@ -68,9 +67,21 @@
                 transactionMode: 'sparepart',
                 buildName: '',
             },
+            // === BUILD MODE STATE ===
+            activeBuild: null,
+            buildMarginPct: 0,
 
             // === COMPUTED: FILTERED PRODUCTS ===
             get filteredProducts() {
+                // Kalau sedang dalam build mode → hanya tampilkan produk dari build
+                if (this.activeBuild) {
+                    const buildProductIds = Object.values(this.activeBuild.components)
+                        .filter(Boolean)
+                        .map(c => c.id);
+                    return this.products.filter(p => buildProductIds.includes(p.id));
+                }
+
+                // Mode normal
                 return this.products.filter(p => {
                     const matchSearch = p.name.toLowerCase().includes(this.searchQuery.toLowerCase());
                     const matchCat = this.activeCat === 'Semua' || p.category_name === this.activeCat;
@@ -86,6 +97,12 @@
                 return this.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
             },
 
+            // === COMPUTED: MARGIN AMOUNT (hanya di build mode) ===
+            get buildMarginAmount() {
+                if (!this.activeBuild || !this.buildMarginPct) return 0;
+                return Math.round(this.subtotal * this.buildMarginPct / 100);
+            },
+
             // === COMPUTED: FINAL TOTAL ===
             get serviceFee() {
                 return (Number(this.additionalFees.installation) || 0) +
@@ -94,8 +111,9 @@
                     (Number(this.additionalFees.marketing) || 0);
             },
 
+            // === COMPUTED: FINAL TOTAL (modal + margin + biaya tambahan) ===
             get finalTotal() {
-                return this.subtotal + (Number(this.serviceFee) || 0);
+                return this.subtotal + this.buildMarginAmount + this.serviceFee;
             },
 
             // === HELPER: NUMBER FORMAT ===
@@ -159,28 +177,17 @@
                 this.filterCompatible = !this.filterCompatible;
             },
 
-            setTransactionMode(mode) {
-                this.transactionData.transactionMode = mode;
-                if (mode === 'rakit_pc') {
-                    this.filterCompatible = true;
-                    this.draftBuildName = this.transactionData.buildName || '';
-                    openModal('modalBuildName');
-                    return;
-                }
+            // setTransactionMode(mode) {
+            //     this.transactionData.transactionMode = mode;
+            //     if (mode === 'rakit_pc') {
+            //         this.filterCompatible = true;
+            //         this.draftBuildName = this.transactionData.buildName || '';
+            //         openModal('modalBuildName');
+            //         return;
+            //     }
 
-                this.transactionData.buildName = '';
-            },
-
-            applyBuildName() {
-                const buildName = (this.draftBuildName || '').trim();
-                if (!buildName) {
-                    alert('Nama barang rakit PC wajib diisi.');
-                    return;
-                }
-
-                this.transactionData.buildName = buildName;
-                closeModal('modalBuildName');
-            },
+            //     this.transactionData.buildName = '';
+            // },
 
             isProductIncompatible(p) {
                 const cartProcie = this.cart.find(i => i.category_name === 'Processor' || i.category_name === 'CPU');
@@ -309,11 +316,6 @@
             async submitOrder() {
                 if (!this.transactionData.sales) return alert('Sales wajib dipilih.');
                 if (!this.transactionData.customerName) return alert('Nama customer wajib diisi.');
-                if (this.transactionData.transactionMode === 'rakit_pc' && !this.transactionData.buildName) {
-                    this.draftBuildName = '';
-                    openModal('modalBuildName');
-                    return alert('Isi nama barang untuk transaksi Rakit PC.');
-                }
 
                 const payload = {
                     transaction_data: this.transactionData,
@@ -420,6 +422,56 @@
                     const err = await res.json();
                     alert(err.message || 'Gagal mengubah status.');
                 }
+            },
+
+            applyBuild(buildData) {
+                this.cart = [];
+                this.activeBuild   = buildData;
+                this.buildMarginPct = Number(buildData.margin_pct) || 0;
+
+                const skipped = [];
+
+                Object.values(buildData.components).forEach(comp => {
+                    if (!comp) return;
+
+                    const product = this.products.find(p => p.id === comp.id);
+                    if (!product) {
+                        skipped.push(comp.name ?? 'Unknown');
+                        return;
+                    }
+
+                    const supplier = product.suppliers.find(s => s.pivot_stock > 0);
+                    if (!supplier) {
+                        skipped.push(product.name + ' (stok habis)');
+                        return;
+                    }
+
+                    const supplierWithModalPrice = {
+                        ...supplier,
+                        pivot_price: comp.price || 0,   // ← harga modal
+                    };
+
+                    this.confirmAddToCart(product, supplierWithModalPrice, false);
+                });
+
+                this.transactionData.transactionMode = 'rakit_pc';
+                this.transactionData.buildName = buildData.name;
+
+                closeModal('modalSavedBuilds');
+
+                if (skipped.length > 0) {
+                    alert('Beberapa komponen tidak bisa dimuat:\n- ' + skipped.join('\n- '));
+                }
+            },
+
+            // === EXIT BUILD MODE ===
+            exitBuildMode() {
+                if (!confirm('Keluar dari mode build? Cart akan dikosongkan.')) return;
+                this.activeBuild    = null;
+                this.buildMarginPct = 0;
+                this.cart           = [];
+                this.transactionData.transactionMode = 'sparepart';
+                this.transactionData.buildName       = '';
             },
         }
     }

@@ -90,52 +90,62 @@ class PcBuilderController extends Controller
 
     private function formatProduct($product): array
     {
-        // specs() sekarang return koleksi SpecValuePreset (punya spec_key & spec_value)
-        // pluck() tetap bekerja persis sama
         $specs = $product->specs
             ->pluck('spec_value', 'spec_key')
             ->toArray();
 
-        $hargaJual = $product->suppliers
-            ->filter(fn($s) => $s->pivot->stock > 0)
-            ->min(fn($s) => $s->pivot->harga_jual_manual) ?? 0;
+        $suppliersWithStock = $product->suppliers
+            ->filter(fn($s) => $s->pivot->stock > 0);
+
+        // Ambil harga beli terendah (harga modal)
+        $hargaBeli = $suppliersWithStock->min(fn($s) => $s->pivot->harga_beli) ?? 0;
+
+        // Harga jual tetap disimpan untuk referensi
+        $hargaJual = $suppliersWithStock->min(fn($s) => $s->pivot->harga_jual_manual) ?? 0;
 
         return [
-            'id'        => $product->id,
-            'name'      => $product->name,
-            'brand'     => $product->brand ?? '',
-            'price'     => (int) $hargaJual,
-            'price_fmt' => 'Rp ' . number_format((int) $hargaJual, 0, ',', '.'),
-            'specs'     => $specs,
-            'socket_type'   => $specs['socket_type']   ?? null,
-            'ram_type_slot' => $specs['ram_type_slot'] ?? null,
-            'tdp_watt'      => isset($specs['tdp_watt'])     ? (int) $specs['tdp_watt']     : null,
-            'ram_type'      => $specs['ram_type']      ?? null,
-            'min_psu_watt'  => isset($specs['min_psu_watt']) ? (int) $specs['min_psu_watt'] : null,
-            'total_wattage' => isset($specs['total_wattage'])? (int) $specs['total_wattage']: null,
+            'id'             => $product->id,
+            'name'           => $product->name,
+            'brand'          => $product->brand ?? '',
+
+            // ← price sekarang = harga BELI (modal)
+            'price'          => (int) $hargaBeli,
+            'price_fmt'      => 'Rp ' . number_format((int) $hargaBeli, 0, ',', '.'),
+
+            // ← harga jual tetap ada untuk referensi di cetak
+            'harga_jual'     => (int) $hargaJual,
+            'harga_jual_fmt' => 'Rp ' . number_format((int) $hargaJual, 0, ',', '.'),
+
+            'specs'          => $specs,
+            'socket_type'    => $specs['socket_type']   ?? null,
+            'ram_type_slot'  => $specs['ram_type_slot'] ?? null,
+            'tdp_watt'       => isset($specs['tdp_watt'])      ? (int) $specs['tdp_watt']      : null,
+            'ram_type'       => $specs['ram_type']       ?? null,
+            'min_psu_watt'   => isset($specs['min_psu_watt'])  ? (int) $specs['min_psu_watt']  : null,
+            'total_wattage'  => isset($specs['total_wattage']) ? (int) $specs['total_wattage'] : null,
         ];
     }
 
-        // TAMBAH: simpan build dari modal
+    // TAMBAH: simpan build dari modal
     public function store(Request $request)
     {
         $request->validate([
-            'name'       => 'required|string|max:255',
-            'notes'      => 'nullable|string',
-            'components' => 'required|array',
+            'name'        => 'required|string|max:255',
+            'notes'       => 'nullable|string',
+            'components'  => 'required|array',
+            'margin_pct'  => 'nullable|numeric|min:0',
+            'total_modal' => 'nullable|integer|min:0',
+            'harga_jual'  => 'nullable|integer|min:0',
         ]);
 
-        // Hitung total dari components yang tidak null
-        $total = collect($request->components)
-            ->filter()
-            ->sum(fn($c) => $c['price'] ?? 0);
-
         $build = PcBuild::create([
-            'name'       => $request->name,
-            'notes'      => $request->notes,
-            'components' => $request->components,
-            'total_price'=> $total,
-            'created_by' => auth()->id(),
+            'name'        => $request->name,
+            'notes'       => $request->notes,
+            'components'  => $request->components,
+            'margin_pct'  => $request->margin_pct  ?? 0,
+            'total_price' => $request->total_modal  ?? 0,
+            'harga_jual'  => $request->harga_jual   ?? 0,
+            'created_by'  => auth()->id(),
         ]);
 
         return response()->json(['status' => 'success', 'build' => $build]);
@@ -148,15 +158,18 @@ class PcBuilderController extends Controller
             ->latest()
             ->get()
             ->map(fn($b) => [
-                'id'          => $b->id,
-                'name'        => $b->name,
-                'notes'       => $b->notes,
-                'total_price' => $b->total_price,
-                'total_fmt'   => 'Rp ' . number_format($b->total_price, 0, ',', '.'),
-                'status'      => $b->status,
-                'created_by'  => $b->creator?->name,
-                'components'  => $b->components,
-                'created_at'  => $b->created_at->format('d M Y'),
+                'id'            => $b->id,
+                'name'          => $b->name,
+                'notes'         => $b->notes,
+                'total_price'   => $b->total_price,
+                'total_fmt'     => 'Rp ' . number_format($b->total_price, 0, ',', '.'),
+                'harga_jual'    => $b->harga_jual,                                           // ← baru
+                'harga_jual_fmt'=> 'Rp ' . number_format($b->harga_jual, 0, ',', '.'),      // ← baru
+                'margin_pct'    => $b->margin_pct,                                           // ← baru
+                'status'        => $b->status,
+                'created_by'    => $b->creator?->name,
+                'components'    => $b->components,
+                'created_at'    => $b->created_at->format('d M Y'),
             ]);
 
         return response()->json($builds);

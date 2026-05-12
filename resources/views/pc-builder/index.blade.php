@@ -218,25 +218,60 @@
                 </p>
             </div>
 
-            {{-- Warning PSU tidak cukup --}}
+            {{-- Warning PSU --}}
             <div id="psu-warning"
-                 class="hidden mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-600 leading-relaxed">
+                class="hidden mt-3 bg-red-50 border border-red-100 rounded-xl p-3 text-xs text-red-600 leading-relaxed">
             </div>
 
-            {{-- Warning kompatibilitas inline di summary --}}
+            {{-- Warning kompatibilitas --}}
             <div id="compat-warning"
-                 class="hidden mt-3 bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700 leading-relaxed">
+                class="hidden mt-3 bg-amber-50 border border-amber-100 rounded-xl p-3 text-xs text-amber-700 leading-relaxed">
             </div>
 
-            {{-- Total harga --}}
-            <div class="mt-5 pt-4 border-t border-slate-100">
+            {{-- ============================================================
+                TOTAL MODAL + MARGIN + HARGA JUAL
+            ============================================================ --}}
+            <div class="mt-5 pt-4 border-t border-slate-100 space-y-3">
+
+                {{-- Total Modal --}}
                 <div class="flex justify-between items-center">
-                    <span class="text-sm font-medium text-slate-600">Total Estimasi</span>
-                    <span id="summary-total" class="text-lg font-bold text-slate-800">Rp 0</span>
+                    <span class="text-sm text-slate-500">Total Modal</span>
+                    <span id="summary-total-modal" class="text-sm font-semibold text-slate-700">Rp 0</span>
                 </div>
+
+                {{-- Input Margin --}}
+                <div class="bg-slate-50 rounded-xl p-3">
+                    <label class="text-xs text-slate-500 font-medium block mb-2">
+                        Margin Keuntungan
+                    </label>
+                    <div class="flex items-center gap-2">
+                        <input
+                            type="number"
+                            id="input-margin"
+                            value="15"
+                            min="0"
+                            max="1000"
+                            step="0.5"
+                            oninput="updateMargin()"
+                            class="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900/20 text-right font-medium"
+                        >
+                        <span class="text-sm text-slate-500 flex-shrink-0">%</span>
+                    </div>
+                    <div class="mt-2 flex justify-between text-xs text-slate-400">
+                        <span>Keuntungan</span>
+                        <span id="summary-margin-amount" class="font-medium text-emerald-600">+ Rp 0</span>
+                    </div>
+                </div>
+
+                {{-- Harga Jual Final --}}
+                <div class="flex justify-between items-center pt-1 border-t border-slate-100">
+                    <span class="text-sm font-semibold text-slate-700">Harga Jual Set</span>
+                    <span id="summary-total-jual" class="text-xl font-bold text-slate-900">Rp 0</span>
+                </div>
+
             </div>
 
-            {{-- Tombol Cetak --}}
+            {{-- Tombol --}}
             <div class="mt-4 flex gap-2">
                 <button onclick="saveBuild()"
                     class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition">
@@ -764,8 +799,11 @@ function enableRow(key, placeholder, hintId) {
 // =============================================================================
 // UPDATE SUMMARY — hitung total harga + estimasi daya
 // =============================================================================
+// =============================================================================
+// UPDATE SUMMARY — hitung total modal + margin + harga jual
+// =============================================================================
 function updateSummary() {
-    let total = 0;
+    let totalModal = 0;
 
     Object.entries(build).forEach(([key, product]) => {
         const priceEl = document.getElementById(`summary-price-${key}`);
@@ -773,6 +811,7 @@ function updateSummary() {
 
         if (product) {
             if (priceEl) {
+                // Tampilkan harga beli (modal)
                 priceEl.textContent = product.price_fmt;
                 priceEl.classList.remove('text-slate-300');
                 priceEl.classList.add('text-slate-800', 'font-medium');
@@ -781,7 +820,7 @@ function updateSummary() {
                 nameEl.textContent = product.name;
                 nameEl.classList.remove('hidden');
             }
-            total += product.price;
+            totalModal += product.price; // price = harga_beli
         } else {
             if (priceEl) {
                 priceEl.textContent = '—';
@@ -795,16 +834,23 @@ function updateSummary() {
         }
     });
 
-    document.getElementById('summary-total').textContent =
-        'Rp ' + total.toLocaleString('id-ID');
+    // Simpan total modal ke variabel global
+    window._totalModal = totalModal;
+
+    // Update tampilan total modal
+    document.getElementById('summary-total-modal').textContent =
+        'Rp ' + totalModal.toLocaleString('id-ID');
+
+    // Hitung harga jual dengan margin
+    updateMargin();
 
     // Estimasi daya
     const cpuTdp    = build.cpu?.tdp_watt    || 0;
     const gpuMinPsu = build.vga?.min_psu_watt || 0;
     const totalNeed = cpuTdp + gpuMinPsu;
 
-    const wattEl  = document.getElementById('summary-watt');
-    const recEl   = document.getElementById('summary-psu-rec');
+    const wattEl = document.getElementById('summary-watt');
+    const recEl  = document.getElementById('summary-psu-rec');
 
     if (totalNeed > 0) {
         const recommended = Math.ceil((totalNeed * 1.3) / 50) * 50;
@@ -815,8 +861,27 @@ function updateSummary() {
         recEl.textContent  = 'Pilih CPU & VGA untuk estimasi daya';
     }
 
-    // Validasi wattage PSU yang dipilih
     validatePsuWattage();
+}
+
+// =============================================================================
+// UPDATE MARGIN — dipanggil saat input margin berubah atau summary diupdate
+// =============================================================================
+function updateMargin() {
+    const totalModal    = window._totalModal || 0;
+    const marginPct     = parseFloat(document.getElementById('input-margin')?.value) || 0;
+    const marginAmount  = Math.round(totalModal * marginPct / 100);
+    const totalJual     = totalModal + marginAmount;
+
+    // Simpan harga jual ke global (dipakai saat save build)
+    window._totalJual  = totalJual;
+    window._marginPct  = marginPct;
+
+    document.getElementById('summary-margin-amount').textContent =
+        '+ Rp ' + marginAmount.toLocaleString('id-ID');
+
+    document.getElementById('summary-total-jual').textContent =
+        'Rp ' + totalJual.toLocaleString('id-ID');
 }
 
 function validatePsuWattage() {
@@ -1167,10 +1232,19 @@ async function confirmSaveBuild() {
     const name = document.getElementById('save-build-name').value.trim();
     if (!name) { alert('Nama build wajib diisi.'); return; }
 
+    const filled = Object.values(build).filter(Boolean);
+    if (filled.length === 0) {
+        alert('Pilih minimal satu komponen dulu.');
+        return;
+    }
+
     const payload = {
         name,
-        notes: document.getElementById('save-build-notes').value,
-        components: build,
+        notes:        document.getElementById('save-build-notes').value.trim(),
+        components:   build,
+        margin_pct:   window._marginPct  || 0,
+        total_modal:  window._totalModal || 0,
+        harga_jual:   window._totalJual  || 0,
     };
 
     try {
@@ -1183,12 +1257,15 @@ async function confirmSaveBuild() {
             body: JSON.stringify(payload),
         });
 
-        if (!res.ok) throw new Error('Gagal menyimpan');
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'Gagal menyimpan');
+        }
 
         closeSaveBuildModal();
-        document.getElementById('save-build-name').value = '';
+        document.getElementById('save-build-name').value  = '';
         document.getElementById('save-build-notes').value = '';
-        alert('Build berhasil disimpan!');
+        alert('✓ Build berhasil disimpan!');
     } catch (err) {
         alert('Error: ' + err.message);
     }
