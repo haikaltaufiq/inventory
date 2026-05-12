@@ -5,7 +5,7 @@
             // === FILTER STATE ===
             searchQuery: '',
             activeCat: 'Semua',
-            filterCompatible: false,
+            // filterCompatible: false,
             // === CHECKOUT STATE ===
             additionalFees: {
                 installation: 0,
@@ -85,9 +85,9 @@
                 return this.products.filter(p => {
                     const matchSearch = p.name.toLowerCase().includes(this.searchQuery.toLowerCase());
                     const matchCat = this.activeCat === 'Semua' || p.category_name === this.activeCat;
-                    if (this.filterCompatible) {
-                        return matchSearch && matchCat && !this.isProductIncompatible(p);
-                    }
+                    // if (this.filterCompatible) {
+                    //     return matchSearch && matchCat && !this.isProductIncompatible(p);
+                    // }
                     return matchSearch && matchCat;
                 });
             },
@@ -168,14 +168,14 @@
             },
 
             // === COMPATIBILITY CHECK ===
-            toggleCompatibility() {
-                if (this.transactionData.transactionMode === 'rakit_pc') {
-                    this.filterCompatible = true;
-                    return;
-                }
+            // toggleCompatibility() {
+            //     if (this.transactionData.transactionMode === 'rakit_pc') {
+            //         this.filterCompatible = true;
+            //         return;
+            //     }
 
-                this.filterCompatible = !this.filterCompatible;
-            },
+            //     this.filterCompatible = !this.filterCompatible;
+            // },
 
             // setTransactionMode(mode) {
             //     this.transactionData.transactionMode = mode;

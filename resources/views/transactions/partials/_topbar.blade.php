@@ -36,14 +36,14 @@
             </div>
         </div>
 
-        {{-- COMPATIBILITY TOGGLE --}}
+        {{-- COMPATIBILITY TOGGLE
         <button @click="toggleCompatibility()"
             :class="filterCompatible ? 'bg-slate-900 text-white border-slate-900' :
                     'bg-slate-50 text-slate-600 border-slate-200'"
             class="flex h-11 items-center gap-2 rounded-xl border px-4 text-sm transition hover:border-slate-300">
             <i class="fas fa-microchip"></i>
             <span x-text="filterCompatible ? 'Compatibility aktif' : 'Match compatibility'"></span>
-        </button>
+        </button> --}}
     </div>
     <div class="mt-4 flex flex-wrap items-center gap-2">
         <button @click="setTransactionMode('sparepart')"
