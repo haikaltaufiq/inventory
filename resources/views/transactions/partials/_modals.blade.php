@@ -374,12 +374,14 @@
                 }">
 
                 {{-- Info Build --}}
-                <div class="flex justify-between items-start mb-3">
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <p class="font-semibold text-slate-800 text-sm" x-text="build.name"></p>
+                <div class="flex justify-between items-start mb-3 gap-4">
+                    {{-- Sisi Kiri: Nama, Status, & Metadata --}}
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                            <p class="font-semibold text-slate-800 text-sm truncate" x-text="build.name"></p>
+
                             {{-- Badge Status --}}
-                            <span class="text-xs px-2 py-0.5 rounded-full font-medium"
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
                                 :class="{
                                     'bg-slate-100 text-slate-500': build.status === 'draft',
                                     'bg-green-100 text-green-700': build.status === 'deal',
@@ -388,21 +390,25 @@
                                 x-text="build.status === 'draft' ? 'Draft' : build.status === 'deal' ? 'Deal ✓' : 'Cancelled ✕'">
                             </span>
                         </div>
-                        {{-- Tampilkan harga jual, bukan modal --}}
-                        <div class="text-right">
-                            <p class="font-bold text-slate-900 text-sm" x-text="build.harga_jual_fmt"></p>
-                            <p class="text-xs text-slate-400 mt-0.5">
-                                Modal: <span x-text="build.total_fmt"></span>
-                                · Margin: <span x-text="build.margin_pct + '%'"></span>
-                            </p>
-                        </div>
-                        <p class="text-xs text-slate-400 mt-1"
-                           x-text="build.created_at + ' · ' + (build.created_by || 'Unknown')"></p>
-                        <p class="text-xs text-slate-500 mt-0.5" x-text="build.notes"></p>
-                    </div>
-                    <span class="font-bold text-slate-800 text-sm" x-text="build.total_fmt"></span>
-                </div>
 
+                        {{-- Metadata & Notes --}}
+                        <div class="text-xs text-slate-400 space-y-0.5">
+                            <p x-text="build.created_at + ' · ' + (build.created_by || 'Unknown')"></p>
+                            <p class="text-slate-500 italic" x-show="build.notes" x-text="build.notes"></p>
+                        </div>
+                    </div>
+
+                    {{-- Sisi Kanan: Harga & Margin --}}
+                    <div class="text-right shrink-0">
+                        <p class="font-bold text-slate-900 text-sm" x-text="build.harga_jual_fmt"></p>
+                        <div class="text-[11px] text-slate-400 mt-0.5">
+                            <span>Mod: <span x-text="build.total_fmt"></span></span>
+                            <span class="mx-1 text-slate-300">|</span>
+                            <span class="font-medium text-blue-600" x-text="build.margin_pct + '%'"></span>
+                        </div>
+                    </div>
+                </div>
+                
                 {{-- Action Buttons --}}
                 <div class="flex gap-2 pt-2 border-t border-slate-100">
 
