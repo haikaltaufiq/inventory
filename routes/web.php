@@ -54,11 +54,8 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('products')->name('products.')->group(function () {
         Route::get('/', [ProductController::class, 'index'])->name('index');
-        Route::post('/grid-save', [ProductController::class, 'gridSave'])->name('grid-save');
-        Route::get('/create', [ProductController::class, 'create'])->name('create');
         Route::get('/spec-options', [ProductController::class, 'specOptions'])->name('spec-options');
         Route::post('/', [ProductController::class, 'store'])->name('store');
-        Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
         Route::put('/{product}', [ProductController::class, 'update'])->name('update');
         Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy');
     });

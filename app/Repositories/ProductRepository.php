@@ -43,7 +43,8 @@ class ProductRepository
                 },
             ]);
 
-        return $this->applyProductIndexFilters($query, $request);
+        return $this->applyProductIndexFilters($query, $request)
+            ->orderByDesc('products.id');
     }
 
     public function getIndexSummary(Request $request): array

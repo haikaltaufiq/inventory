@@ -8,7 +8,7 @@ use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Repositories\ProductRepository;
-use App\Services\ProductGridService;
+use App\Services\ProductInventoryService;
 use App\Services\ProductReportService;
 use App\Services\ProductService;
 use App\Services\ProductSpecService;
@@ -20,7 +20,7 @@ class ProductController extends Controller
     public function __construct(
         private ProductRepository $productRepository,
         private ProductService $productService,
-        private ProductGridService $productGridService,
+        private ProductInventoryService $productInventoryService,
         private ProductReportService $productReportService,
         private ProductSpecService $productSpecService
     ) {}
@@ -52,44 +52,43 @@ class ProductController extends Controller
             'categories' => $categories,
             'suppliers' => $suppliers,
             'users' => $users,
-            'gridRows' => $this->productGridService->resolveGridRowsForIndex($products->getCollection(), $categories),
+            'productRows' => $this->productInventoryService->resolveProductRowsForIndex($products->getCollection()),
             'specTemplates' => $this->buildAllSpecTemplates($categories),
         ]);
     }
 
-    public function create()
-    {
-        return redirect()->route('products.index');
-    }
-
     public function store(ProductRequest $request)
     {
-        $this->productService->createProduct($request->validated(), $request->file('image'));
+        $product = $this->productService->createProduct($request->validated(), $request->file('image'));
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Produk berhasil ditambah.',
+                'product_id' => $product->id,
+                'redirect' => route('products.index'),
+            ]);
+        }
 
         return redirect()
             ->route('products.index')
             ->with('success', 'Produk berhasil ditambah.');
     }
 
-    public function edit(Product $product)
-    {
-        return redirect()->route('products.index');
-    }
-
     public function update(ProductRequest $request, Product $product)
     {
-        $this->productService->updateProduct($product, $request->validated(), $request->file('image'));
+        $product = $this->productService->updateProduct($product, $request->validated(), $request->file('image'));
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Produk berhasil diupdate.',
+                'product_id' => $product->id,
+                'redirect' => route('products.index'),
+            ]);
+        }
 
         return redirect()
             ->route('products.index')
             ->with('success', 'Produk berhasil diupdate.');
-    }
-
-    public function gridSave(Request $request)
-    {
-        $result = $this->productGridService->processGridSave($request);
-
-        return $this->redirectAfterGridSave($request, $result['message']);
     }
 
     public function destroy(Product $product)
@@ -121,20 +120,6 @@ class ProductController extends Controller
 
         $category = Category::query()->findOrFail($request->integer('category_id'));
         return response()->json($this->buildSpecTemplatePayload($category));
-    }
-
-    private function redirectAfterGridSave(Request $request, string $message)
-    {
-        $redirectTo = $request->string('redirect_to')->toString();
-
-        if (
-            $redirectTo !== ''
-            && (str_starts_with($redirectTo, url('/')) || str_starts_with($redirectTo, '/'))
-        ) {
-            return redirect()->to($redirectTo)->with('success', $message);
-        }
-
-        return redirect()->route('products.index')->with('success', $message);
     }
 
     private function buildAllSpecTemplates(Collection $categories): array
