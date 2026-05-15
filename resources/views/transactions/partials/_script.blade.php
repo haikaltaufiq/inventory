@@ -27,6 +27,7 @@
             products: @json($products).map(p => ({
                 id: p.id,
                 name: p.name,
+                serial_number: p.serial_number ?? null,
                 category_name: p.category ? p.category.name : 'Uncategorized',
                 base_price: Number(p.base_price ?? 0),
                 socket: p.socket ?? null,
@@ -83,11 +84,13 @@
 
                 // Mode normal
                 return this.products.filter(p => {
-                    const matchSearch = p.name.toLowerCase().includes(this.searchQuery.toLowerCase());
+                    const searchLower = String(this.searchQuery || '').trim().toLowerCase();
+                    const serialLower = String(p.serial_number || '').toLowerCase();
+                    const matchName = String(p.name || '').toLowerCase().includes(searchLower);
+                    const matchSerialFull = serialLower.includes(searchLower);
+                    const matchSerialLast4 = searchLower.length === 4 && /^\d+$/.test(searchLower) && serialLower.endsWith(searchLower);
+                    const matchSearch = matchName || matchSerialFull || matchSerialLast4;
                     const matchCat = this.activeCat === 'Semua' || p.category_name === this.activeCat;
-                    // if (this.filterCompatible) {
-                    //     return matchSearch && matchCat && !this.isProductIncompatible(p);
-                    // }
                     return matchSearch && matchCat;
                 });
             },
@@ -177,17 +180,18 @@
             //     this.filterCompatible = !this.filterCompatible;
             // },
 
-            // setTransactionMode(mode) {
-            //     this.transactionData.transactionMode = mode;
-            //     if (mode === 'rakit_pc') {
-            //         this.filterCompatible = true;
-            //         this.draftBuildName = this.transactionData.buildName || '';
-            //         openModal('modalBuildName');
-            //         return;
-            //     }
+            setTransactionMode(mode) {
+                this.transactionData.transactionMode = mode;
 
-            //     this.transactionData.buildName = '';
-            // },
+                if (mode === 'sparepart' && this.activeBuild) {
+                    this.exitBuildMode();
+                    return;
+                }
+
+                if (mode === 'sparepart') {
+                    this.transactionData.buildName = '';
+                }
+            },
 
             isProductIncompatible(p) {
                 const cartProcie = this.cart.find(i => i.category_name === 'Processor' || i.category_name === 'CPU');

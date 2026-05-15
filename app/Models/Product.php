@@ -13,6 +13,7 @@ class Product extends Model
         'category_id',
         'brand',
         'name',
+        'serial_number',
         'letak_barang',
         'description',
         'image_url',

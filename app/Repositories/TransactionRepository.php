@@ -10,9 +10,6 @@ use Illuminate\Support\Collection;
 
 class TransactionRepository
 {
-    /**
-     * @return Collection
-     */
     public function getSalesUsers(): Collection
     {
         return User::query()
@@ -21,17 +18,11 @@ class TransactionRepository
             ->get();
     }
 
-    /**
-     * @return Collection
-     */
     public function getCategories(): Collection
     {
         return Category::query()->orderBy('name')->get(['id', 'name']);
     }
 
-    /**
-     * @return Collection
-     */
     public function getProductsForIndex(): Collection
     {
         return Product::query()
@@ -39,12 +30,13 @@ class TransactionRepository
                 'products.id',
                 'products.category_id',
                 'products.name',
+                'products.serial_number',
                 'products.image_url',
                 'products.description',
             ])
             ->with([
                 'category:id,name',
-                'specs' => fn($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
+                'specs' => fn ($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
                 'suppliers' => function ($query) {
                     $query
                         ->select('suppliers.id', 'suppliers.nama_supplier')
@@ -54,53 +46,51 @@ class TransactionRepository
             ])
             ->get()
             ->map(function (Product $product) {
-                $specs     = collect($product->specs)->pluck('spec_value', 'spec_key');
+                $specs = collect($product->specs)->pluck('spec_value', 'spec_key');
                 $specItems = collect($product->specs)
-                    ->map(fn($spec) => [
-                        'key'   => $spec->spec_key,
+                    ->map(fn ($spec) => [
+                        'key' => $spec->spec_key,
                         'value' => $spec->spec_value,
                     ])
                     ->values()
                     ->all();
 
                 $suppliers = collect($product->suppliers)
-                    ->map(fn($supplier) => [
-                        'id'           => $supplier->id,
-                        'supplier_id'  => $supplier->id,
-                        'nama_supplier'=> $supplier->nama_supplier,
-                        'pivot'        => [
-                            'id'               => $supplier->pivot->id,
-                            'stock'            => (int)   $supplier->pivot->stock,
-                            'harga_jual_manual'=> (float) $supplier->pivot->harga_jual_manual,
-                            'condition'        => $supplier->pivot->condition,
+                    ->map(fn ($supplier) => [
+                        'id' => $supplier->id,
+                        'supplier_id' => $supplier->id,
+                        'nama_supplier' => $supplier->nama_supplier,
+                        'pivot' => [
+                            'id' => $supplier->pivot->id,
+                            'stock' => (int) $supplier->pivot->stock,
+                            'harga_jual_manual' => (float) $supplier->pivot->harga_jual_manual,
+                            'condition' => $supplier->pivot->condition,
                         ],
                     ])
                     ->values();
 
                 $basePrice = $suppliers
                     ->pluck('pivot.harga_jual_manual')
-                    ->filter(fn($price) => $price !== null)
+                    ->filter(fn ($price) => $price !== null)
                     ->min();
 
                 return [
-                    'id'          => $product->id,
-                    'name'        => $product->name,
-                    'category'    => ['name' => $product->category?->name ?? 'Uncategorized'],
-                    'base_price'  => (float) ($basePrice ?? 0),
-                    'socket'      => $specs->get('socket_type') ?? $specs->get('socket'), // toleransi key lama
-                    'ram_type'    => $specs->get('ram_type'),
-                    'image_url'   => $product->image_url ?? asset('assets/no-image.svg'),
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'serial_number' => $product->serial_number,
+                    'category' => ['name' => $product->category?->name ?? 'Uncategorized'],
+                    'base_price' => (float) ($basePrice ?? 0),
+                    'socket' => $specs->get('socket_type') ?? $specs->get('socket'), // toleransi key lama
+                    'ram_type' => $specs->get('ram_type'),
+                    'image_url' => $product->image_url ?? asset('assets/no-image.svg'),
                     'description' => $product->description,
-                    'specs'       => $specItems,
-                    'suppliers'   => $suppliers,
+                    'specs' => $specItems,
+                    'suppliers' => $suppliers,
                 ];
             })
             ->values();
     }
-    
-    /**
-     * @return Collection
-     */
+
     public function getCustomersForCreate(): Collection
     {
         return Customer::query()
@@ -109,9 +99,6 @@ class TransactionRepository
             ->get();
     }
 
-    /**
-     * @return Collection
-     */
     public function getProductsForCreate(): Collection
     {
         return Product::query()
@@ -121,10 +108,6 @@ class TransactionRepository
             ->get();
     }
 
-    /**
-     * @param Product $product
-     * @return Collection
-     */
     public function getSuppliersByProduct(Product $product): Collection
     {
         $product->load([

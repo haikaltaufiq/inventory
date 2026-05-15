@@ -15,7 +15,7 @@ class ProductInventoryService
     public function resolveProductRowsForIndex(Collection $products): array
     {
         return $products
-            ->map(fn(Product $product) => $this->serializeProductForInventory($product))
+            ->map(fn (Product $product) => $this->serializeProductForInventory($product))
             ->values()
             ->all();
     }
@@ -26,9 +26,10 @@ class ProductInventoryService
         [$formSpecs, $additionalSpecs] = $this->specService->extractSpecFormData($product);
 
         return [
-            'client_key' => 'product_' . $product->id,
+            'client_key' => 'product_'.$product->id,
             'id' => $product->id,
             'name' => $product->name,
+            'serial_number' => $product->serial_number ?? '',
             'brand' => $product->brand ?? '',
             'category_id' => (string) $product->category_id,
             'category_name' => $product->category?->name ?? 'No Category',
@@ -36,7 +37,7 @@ class ProductInventoryService
             'description' => $product->description ?? '',
             'image_url' => $product->image_url,
             'specs' => collect($formSpecs)
-                ->mapWithKeys(fn($value, $key) => [$key => [
+                ->mapWithKeys(fn ($value, $key) => [$key => [
                     'key' => $key,
                     'value' => (string) $value,
                     'mode' => 'existing',
@@ -49,7 +50,7 @@ class ProductInventoryService
                 ];
             }, $additionalSpecs)),
             'suppliers' => $product->suppliers
-                ->map(fn($supplier) => [
+                ->map(fn ($supplier) => [
                     'mode' => 'existing',
                     'supplier_id' => (string) $supplier->id,
                     'pemodal_user_id' => $this->supportsProductSupplierPemodalColumn()

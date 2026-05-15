@@ -1,8 +1,10 @@
 <div class="px-4 pb-6 lg:px-5 lg:pb-8" x-data="productInventory()" x-init="boot()">
     <div class="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-            <h1 class="text-[29px] font-semibold tracking-tight text-slate-800">Manajemen Inventory</h1>
-            <p class="mt-1 text-[13px] text-slate-500">Tambah dan edit produk lewat form modal.</p>
+            <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Manajemen Inventory</h1>
+            <p class="mt-1 text-sm text-slate-500">
+                Manajemen produk di halaman ini.
+            </p>
         </div>
 
         <button type="button" @click="openCreateProductModal()"
@@ -40,7 +42,7 @@
             <div class="relative flex-1">
                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-[13px] text-slate-400"></i>
                 <input type="text" name="search" value="{{ request('search') }}"
-                    placeholder="Cari SKU atau nama produk..."
+                    placeholder="Cari nama produk atau serial number..."
                     class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-[13px] outline-none transition focus:border-slate-400">
             </div>
             <select name="category_id" onchange="this.form.submit()"
@@ -92,8 +94,8 @@
                                 <div class="space-y-1">
                                     <div class="text-[13px] font-semibold leading-[1.35] text-slate-800"
                                         x-text="row.name || 'Produk'"></div>
-                                    <span class="font-mono text-[10px] text-slate-400"
-                                        x-text="`#PRD-${String(row.id).padStart(4, '0')}`"></span>
+                                    <span x-show="row.serial_number" x-cloak
+                                        class="font-mono text-[10px] text-slate-500" x-text="row.serial_number"></span>
                                 </div>
                             </td>
                             <td class="px-3 py-3 align-top">
@@ -131,7 +133,8 @@
                                     x-text="formatNumber(rowStock(row))"></span>
                             </td>
                             <td class="px-3 py-3 align-top">
-                                <span class="text-[12px] font-medium text-slate-700" x-text="investorSummary(row)"></span>
+                                <span class="text-[12px] font-medium text-slate-700"
+                                    x-text="investorSummary(row)"></span>
                             </td>
                             <td class="px-3 py-3 text-center align-top">
                                 <span class="rounded-full px-2.5 py-0.5 text-[10px] font-medium"
@@ -176,8 +179,7 @@
     <x-modal id="modal-product-form" title="Form Produk" size="xl">
         <template x-if="formReady && formRow">
             <form id="product-form" :action="productFormAction()" method="POST" enctype="multipart/form-data"
-                @submit.prevent="submitProductForm($event)"
-                class="space-y-6">
+                @submit.prevent="submitProductForm($event)" class="space-y-6">
                 @csrf
                 <input type="hidden" name="_method" :value="formMode === 'edit' ? 'PUT' : 'POST'">
                 <input type="hidden" name="_form_mode" :value="formMode">
@@ -194,17 +196,13 @@
                         </ul>
                     </div>
 
-                    <div
-                        class="flex flex-col gap-2 border-b border-slate-100 pb-4 md:flex-row md:items-start md:justify-between">
+                    <div class="border-b border-slate-100 pb-4">
                         <div>
                             <h3 class="text-base font-semibold text-slate-900"
                                 x-text="formMode === 'create' ? 'Tambah Produk' : 'Edit Produk'"></h3>
                             <p class="mt-1 text-sm text-slate-500"
                                 x-text="formRow.name || 'Lengkapi data produk, supplier, harga, dan spesifikasi.'"></p>
                         </div>
-                        <span
-                            class="inline-flex w-max rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-600"
-                            x-text="formRow.id ? `#PRD-${String(formRow.id).padStart(4, '0')}` : '#DRAFT'"></span>
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-2">
@@ -216,6 +214,13 @@
                                 placeholder="Nama produk">
                         </div>
                         <div>
+                            <label class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Nomor
+                                Seri</label>
+                            <input name="serial_number" x-model="formRow.serial_number" type="text"
+                                class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-slate-400"
+                                placeholder="Serial number">
+                        </div>
+                        <div>
                             <label
                                 class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Brand</label>
                             <input name="brand" x-model="formRow.brand" type="text"
@@ -225,7 +230,8 @@
                         <div>
                             <label
                                 class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Kategori</label>
-                            <select name="category_id" x-model="formRow.category_id" @change="changeCategory(formRow)"
+                            <select name="category_id" x-model="formRow.category_id"
+                                @change="changeCategory(formRow)"
                                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
                                 <option value="">Pilih kategori</option>
                                 <template x-for="category in categories" :key="category.id">
@@ -234,8 +240,7 @@
                             </select>
                         </div>
                         <div>
-                            <label
-                                class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Foto
+                            <label class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Foto
                                 Produk</label>
                             <input name="image" @change="onImageChange($event)" type="file" accept="image/*"
                                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
@@ -244,8 +249,7 @@
                             </p>
                         </div>
                         <div class="md:col-span-2">
-                            <label
-                                class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Letak
+                            <label class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Letak
                                 Barang</label>
                             <input name="letak_barang" x-model="formRow.letak_barang" type="text"
                                 class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-slate-400"
@@ -330,7 +334,8 @@
                                                 <option value="">Pilih supplier</option>
                                                 <template x-for="supplier in suppliers"
                                                     :key="`form-${supplierIndex}-${supplier.id}`">
-                                                    <option :value="String(supplier.id)" x-text="supplier.name"></option>
+                                                    <option :value="String(supplier.id)" x-text="supplier.name">
+                                                    </option>
                                                 </template>
                                                 <option value="__new__">+ Input supplier baru</option>
                                             </select>
@@ -443,7 +448,8 @@
                                     <input type="hidden" :name="`specs[${field.key}][mode]`"
                                         :value="formRow.specs[field.key]?.mode || 'existing'">
                                     <div class="flex items-center justify-between gap-2">
-                                        <label class="text-sm font-medium text-slate-700" x-text="field.label"></label>
+                                        <label class="text-sm font-medium text-slate-700"
+                                            x-text="field.label"></label>
                                         <span class="rounded-full px-2 py-1 text-[10px]"
                                             :class="field.required ? 'bg-slate-900 text-white' :
                                                 'bg-white text-slate-500'"
@@ -451,7 +457,8 @@
                                     </div>
                                     <div class="mt-3 space-y-3">
                                         <div class="flex gap-2">
-                                            <button type="button" @click="setSpecMode(formRow, field.key, 'existing')"
+                                            <button type="button"
+                                                @click="setSpecMode(formRow, field.key, 'existing')"
                                                 :class="formRow.specs[field.key]?.mode === 'existing' ?
                                                     'bg-slate-900 text-white' :
                                                     'bg-white text-slate-600 ring-1 ring-slate-200'"
@@ -481,7 +488,8 @@
                                         </div>
 
                                         <div x-show="formRow.specs[field.key]?.mode === 'new'" x-cloak>
-                                            <label class="mb-1 block text-[11px] font-medium text-slate-400">Input value
+                                            <label class="mb-1 block text-[11px] font-medium text-slate-400">Input
+                                                value
                                                 baru</label>
                                             <input :name="`specs[${field.key}][value]`"
                                                 :disabled="formRow.specs[field.key]?.mode !== 'new'"
@@ -539,8 +547,8 @@
                                                 type="text" placeholder="Contoh: refresh_rate"
                                                 class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
                                             <input x-show="extraSpec._selectedKey !== '__custom__'" x-cloak
-                                                :disabled="extraSpec._selectedKey === '__custom__'"
-                                                type="hidden" :name="`extra_specs[${extraIndex}][key]`"
+                                                :disabled="extraSpec._selectedKey === '__custom__'" type="hidden"
+                                                :name="`extra_specs[${extraIndex}][key]`"
                                                 :value="extraSpec.key || ''">
                                         </div>
                                         <div>
@@ -580,8 +588,7 @@
                     <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
                         <div class="aspect-square w-full bg-white">
                             <img :src="activePreviewImage()" :alt="activePreviewRow()?.name || 'Foto produk'"
-                                class="h-full w-full object-cover"
-                                x-on:error="$event.target.src = noImageUrl">
+                                class="h-full w-full object-cover" x-on:error="$event.target.src = noImageUrl">
                         </div>
                         <div class="border-t border-slate-200 px-4 py-3">
                             <p class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Foto Produk</p>
@@ -595,8 +602,6 @@
                         <h3 class="mt-2 text-lg font-semibold text-slate-900"
                             x-text="activePreviewRow()?.name || 'Produk'"></h3>
                         <div class="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                            <span class="font-mono"
-                                x-text="activePreviewRow()?.id ? `#PRD-${String(activePreviewRow().id).padStart(4, '0')}` : '#DRAFT'"></span>
                             <span class="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200"
                                 x-text="categoryName(activePreviewRow())"></span>
                             <span class="rounded-full bg-white px-2.5 py-1 ring-1 ring-slate-200"
@@ -612,6 +617,11 @@
                     <div class="rounded-2xl border border-slate-200 bg-white p-4">
                         <p class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Ringkasan</p>
                         <div class="mt-3 space-y-3 text-sm">
+                            <div class="flex items-center justify-between gap-3">
+                                <span class="text-slate-500">Nomor Seri</span>
+                                <span class="font-mono font-semibold text-slate-900"
+                                    x-text="activePreviewRow()?.serial_number || '-'"></span>
+                            </div>
                             <div class="flex items-center justify-between gap-3">
                                 <span class="text-slate-500">Total stok</span>
                                 <span class="font-semibold text-slate-900 tabular-nums"

@@ -42,16 +42,17 @@ class ProductService
 
     public function persistProduct(?Product $product, array $validated, ?UploadedFile $imageFile = null): Product
     {
-        $category        = Category::query()->findOrFail($validated['category_id']);
-        $specPayload     = $this->specService->buildSpecificationPayload($validated, $category->name);
+        $category = Category::query()->findOrFail($validated['category_id']);
+        $specPayload = $this->specService->buildSpecificationPayload($validated, $category->name);
         $resolvedSuppliers = $this->resolveSupplierPayloads($validated['suppliers']);
 
         $attributes = [
-            'category_id'  => $validated['category_id'],
-            'brand'        => $this->specService->nullableTrim($validated['brand'] ?? null),
-            'name'         => trim($validated['name']),
+            'category_id' => $validated['category_id'],
+            'brand' => $this->specService->nullableTrim($validated['brand'] ?? null),
+            'name' => trim($validated['name']),
+            'serial_number' => $this->specService->nullableTrim($validated['serial_number'] ?? null),
             'letak_barang' => $this->specService->nullableTrim($validated['letak_barang'] ?? null),
-            'description'  => $this->specService->nullableTrim($validated['description'] ?? null),
+            'description' => $this->specService->nullableTrim($validated['description'] ?? null),
         ];
 
         if ($product === null) {
@@ -86,7 +87,8 @@ class ProductService
         }
 
         $path = $imageFile->store('products', 'public');
-        return '/storage/' . ltrim($path, '/');
+
+        return '/storage/'.ltrim($path, '/');
     }
 
     private function replaceUploadedProductImage(Product $product, ?UploadedFile $imageFile): ?string
@@ -95,10 +97,10 @@ class ProductService
             return $product->image_url;
         }
 
-        $path     = $imageFile->store('products', 'public');
-        $imageUrl = '/storage/' . ltrim($path, '/');
+        $path = $imageFile->store('products', 'public');
+        $imageUrl = '/storage/'.ltrim($path, '/');
 
-        if (!empty($product->image_url)) {
+        if (! empty($product->image_url)) {
             $oldPath = ltrim(str_replace('/storage/', '', $product->image_url), '/');
             Storage::disk('public')->delete($oldPath);
         }
@@ -109,34 +111,34 @@ class ProductService
     private function syncProductSuppliers(Product $product, array $suppliers): void
     {
         $supportsProductSupplierPemodal = $this->supportsProductSupplierPemodalColumn();
-        $processedSuppliers             = [];
-        $existingSuppliers              = DB::table('product_supplier')
+        $processedSuppliers = [];
+        $existingSuppliers = DB::table('product_supplier')
             ->where('product_id', $product->id)
             ->get()
-            ->keyBy(fn($row) =>
-                $row->supplier_id . '-' .
-                $row->condition . '-' .
+            ->keyBy(fn ($row) => $row->supplier_id.'-'.
+                $row->condition.'-'.
                 ($supportsProductSupplierPemodal ? ($row->pemodal_user_id ?? '') : '')
             );
 
         foreach ($suppliers as $supplier) {
-            $key = $supplier['supplier_id'] . '-' .
-                ($supplier['condition'] ?? 'New') . '-' .
+            $key = $supplier['supplier_id'].'-'.
+                ($supplier['condition'] ?? 'New').'-'.
                 ($supportsProductSupplierPemodal ? ($supplier['pemodal_user_id'] ?? '') : '');
 
             if (isset($processedSuppliers[$key])) {
                 $processedSuppliers[$key]['stock'] += (int) $supplier['stock'];
+
                 continue;
             }
 
             $processedSuppliers[$key] = [
-                'supplier_id'       => $supplier['supplier_id'],
-                'condition'         => $supplier['condition'] ?? 'New',
-                'stock'             => (int) $supplier['stock'],
-                'harga_beli'        => (float) $supplier['harga_beli'],
+                'supplier_id' => $supplier['supplier_id'],
+                'condition' => $supplier['condition'] ?? 'New',
+                'stock' => (int) $supplier['stock'],
+                'harga_beli' => (float) $supplier['harga_beli'],
                 'harga_jual_manual' => (float) $supplier['harga_jual'],
-                'warranty_detail'   => $this->specService->nullableTrim($supplier['warranty_detail'] ?? null),
-                'pemodal_user_id'   => $supportsProductSupplierPemodal
+                'warranty_detail' => $this->specService->nullableTrim($supplier['warranty_detail'] ?? null),
+                'pemodal_user_id' => $supportsProductSupplierPemodal
                     ? ($supplier['pemodal_user_id'] ?? null)
                     : null,
             ];
@@ -149,11 +151,11 @@ class ProductService
 
             if ($existing) {
                 $updatePayload = [
-                    'stock'             => $data['stock'],
-                    'harga_beli'        => $data['harga_beli'],
+                    'stock' => $data['stock'],
+                    'harga_beli' => $data['harga_beli'],
                     'harga_jual_manual' => $data['harga_jual_manual'],
-                    'warranty_detail'   => $data['warranty_detail'],
-                    'updated_at'        => now(),
+                    'warranty_detail' => $data['warranty_detail'],
+                    'updated_at' => now(),
                 ];
 
                 if ($supportsProductSupplierPemodal) {
@@ -168,16 +170,16 @@ class ProductService
             }
 
             $insertPayload = [
-                'product_id'        => $product->id,
-                'supplier_id'       => $data['supplier_id'],
-                'condition'         => $data['condition'],
-                'stock'             => $data['stock'],
-                'harga_beli'        => $data['harga_beli'],
+                'product_id' => $product->id,
+                'supplier_id' => $data['supplier_id'],
+                'condition' => $data['condition'],
+                'stock' => $data['stock'],
+                'harga_beli' => $data['harga_beli'],
                 'harga_jual_manual' => $data['harga_jual_manual'],
-                'warranty_detail'   => $data['warranty_detail'],
-                'entry_date'        => now()->toDateString(),
-                'created_at'        => now(),
-                'updated_at'        => now(),
+                'warranty_detail' => $data['warranty_detail'],
+                'entry_date' => now()->toDateString(),
+                'created_at' => now(),
+                'updated_at' => now(),
             ];
 
             if ($supportsProductSupplierPemodal) {
@@ -188,11 +190,11 @@ class ProductService
         }
 
         $obsoleteIds = $existingSuppliers
-            ->reject(fn($row, $key) => in_array($key, $activeKeys, true))
+            ->reject(fn ($row, $key) => in_array($key, $activeKeys, true))
             ->pluck('id')
             ->all();
 
-        if (!empty($obsoleteIds)) {
+        if (! empty($obsoleteIds)) {
             DB::table('product_supplier')
                 ->whereIn('id', $obsoleteIds)
                 ->delete();
@@ -206,12 +208,12 @@ class ProductService
                 $mode = $this->resolveSupplierInputMode($supplier);
 
                 if ($mode === 'new') {
-                    $name    = $this->specService->nullableTrim($supplier['new_supplier_name']    ?? null);
+                    $name = $this->specService->nullableTrim($supplier['new_supplier_name'] ?? null);
                     $address = $this->specService->nullableTrim($supplier['new_supplier_address'] ?? null);
 
                     $resolvedSupplier = Supplier::firstOrCreate([
                         'nama_supplier' => $name,
-                        'alamat'        => $address,
+                        'alamat' => $address,
                     ]);
 
                     if ($resolvedSupplier->wasRecentlyCreated) {
@@ -236,7 +238,7 @@ class ProductService
         }
 
         if (
-            $this->specService->nullableTrim($supplier['new_supplier_name']    ?? null) !== null ||
+            $this->specService->nullableTrim($supplier['new_supplier_name'] ?? null) !== null ||
             $this->specService->nullableTrim($supplier['new_supplier_address'] ?? null) !== null
         ) {
             return 'new';

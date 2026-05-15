@@ -17,13 +17,14 @@ class ProductRepository
                 'products.category_id',
                 'products.brand',
                 'products.name',
+                'products.serial_number',
                 'products.letak_barang',
                 'products.description',
                 'products.image_url',
             ])
             ->with([
                 'category:id,name',
-                'specs' => fn($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
+                'specs' => fn ($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
                 'suppliers' => function ($query) {
                     $pivotFields = [
                         'condition',
@@ -60,21 +61,25 @@ class ProductRepository
         )->first();
 
         return [
-            'total_produk'  => (int)   ($summaryRow->total_produk  ?? 0),
-            'total_stok'    => (int)   ($summaryRow->total_stok    ?? 0),
-            'nilai_inv'     => (float) ($summaryRow->nilai_inv     ?? 0),
-            'stok_menipis'  => (int)   ($summaryRow->stok_menipis  ?? 0),
+            'total_produk' => (int) ($summaryRow->total_produk ?? 0),
+            'total_stok' => (int) ($summaryRow->total_stok ?? 0),
+            'nilai_inv' => (float) ($summaryRow->nilai_inv ?? 0),
+            'stok_menipis' => (int) ($summaryRow->stok_menipis ?? 0),
         ];
     }
 
     private function applyProductIndexFilters(Builder $query, Request $request): Builder
     {
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = trim((string) $request->search);
 
             $query->where(function ($q) use ($search) {
                 $q->where('products.name', 'like', "%{$search}%")
-                    ->orWhere('products.id', 'like', "%{$search}%");
+                    ->orWhere('products.serial_number', 'like', "%{$search}%");
+
+                if (strlen($search) === 4 && ctype_digit($search)) {
+                    $q->orWhere('products.serial_number', 'like', "%{$search}");
+                }
             });
         }
 

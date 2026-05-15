@@ -214,14 +214,14 @@
         </aside>
 
         <main class="flex-1 flex flex-col min-w-0 overflow-hidden bg-white">
-            <header class="h-20 lg:h-10 flex items-center justify-between lg:justify-end px-6 lg:px-12 bg-white">
+            <header class="h-14 lg:h-4 flex items-center justify-between lg:justify-end px-3 lg:px-4 bg-white">
                 <button @click="sidebarOpen = true" class="lg:hidden text-blue-950 p-2 focus:outline-none">
                     <i class="fas fa-bars text-2xl"></i>
                 </button>
             </header>
 
             <section class="flex-1 overflow-y-auto">
-                <div class="bg-white lg:rounded-[40px] min-h-full px-4 lg:px-10 py-0">
+                <div class="bg-white lg:rounded-[28px] min-h-full px-2 sm:px-3 lg:px-4 py-0">
                     @if(session('success'))
                     <div class="bg-green-100 text-green-700 p-4 rounded-xl mb-6 flex items-center">
                         <i class="fas fa-check-circle mr-2"></i>

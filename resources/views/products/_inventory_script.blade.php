@@ -185,6 +185,7 @@
                         };
 
                         setValue('name', this.formRow.name);
+                        setValue('serial_number', this.formRow.serial_number);
                         setValue('brand', this.formRow.brand);
                         setValue('category_id', this.formRow.category_id);
                         setValue('letak_barang', this.formRow.letak_barang);
@@ -216,6 +217,7 @@
                     return {
                         id: payload._product_id || null,
                         name: payload.name || '',
+                        serial_number: payload.serial_number || '',
                         brand: payload.brand || '',
                         category_id: payload.category_id || '',
                         category_name: '',
@@ -237,6 +239,7 @@
                         client_key: row.client_key || this.uid(),
                         id: row.id || null,
                         name: row.name || '',
+                        serial_number: row.serial_number || '',
                         brand: row.brand || '',
                         category_id: row.category_id ? String(row.category_id) : '',
                         category_name: row.category_name || '',

@@ -1,18 +1,18 @@
 {{-- SEARCH + FILTER BAR --}}
-<div class="mb-8">
+<div class="mb-6">
     <div
-        class="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm lg:flex-row lg:items-center">
+        class="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm md:flex-row md:items-center">
         {{-- SEARCH INPUT --}}
-        <div class="relative flex-1">
+        <div class="relative min-w-0 flex-1">
             <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400"></i>
-            <input type="text" x-model="searchQuery" placeholder="Cari Part PC..."
+            <input type="text" x-model="searchQuery" placeholder="Cari part, serial number, atau 4 digit belakang..."
                 class="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white">
         </div>
 
         {{-- CATEGORY DROPDOWN --}}
-        <div class="relative" x-data="{ open: false }">
+        <div class="relative md:w-56" x-data="{ open: false }">
             <button @click="open = !open"
-                class="flex h-11 min-w-[13rem] items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-white">
+                class="flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-white">
                 <div class="flex min-w-0 items-center gap-3">
                     <span class="text-sm text-slate-400"><i class="fas fa-layer-group"></i></span>
                     <span class="truncate" x-text="activeCat"></span>
@@ -47,25 +47,28 @@
     </div>
     <div class="mt-4 flex flex-wrap items-center gap-2">
         <button @click="setTransactionMode('sparepart')"
-            :class="transactionData.transactionMode === 'sparepart' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'"
-            class="rounded-xl border px-4 py-2 text-sm transition">
+            :class="transactionData.transactionMode === 'sparepart' ? 'bg-slate-900 text-white border-slate-900' :
+                'bg-white text-slate-600 border-slate-200'"
+            class="h-11 rounded-xl border px-4 text-sm transition">
             Sparepart only
         </button>
         <button @click="setTransactionMode('rakit_pc')"
-            :class="transactionData.transactionMode === 'rakit_pc' ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'"
-            class="rounded-xl border px-4 py-2 text-sm transition">
+            :class="transactionData.transactionMode === 'rakit_pc' ? 'bg-slate-900 text-white border-slate-900' :
+                'bg-white text-slate-600 border-slate-200'"
+            class="h-11 rounded-xl border px-4 text-sm transition">
             Rakit PC
+        </button>
+
+
+        {{-- Tombol Load Saved Build --}}
+        <button @click="loadSavedBuilds()"
+            class="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-600 transition hover:bg-slate-50">
+            <i class="fas fa-microchip"></i>
+            Load Saved Build
         </button>
         <span x-show="transactionData.transactionMode === 'rakit_pc' && transactionData.buildName"
             class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
             Nama Rakitan: <span class="font-medium" x-text="transactionData.buildName"></span>
         </span>
-
-        {{-- Tombol Load Saved Build --}}
-        <button @click="loadSavedBuilds()"
-            class="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-600 hover:bg-slate-50">
-            <i class="fas fa-microchip"></i>
-            Load Saved Build
-        </button>
     </div>
 </div>

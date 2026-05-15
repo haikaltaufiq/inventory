@@ -3,6 +3,8 @@
     <div class="space-y-4">
         <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
             <p class="text-sm font-semibold text-slate-900" x-text="selectedProduct.name"></p>
+            <p x-show="selectedProduct.serial_number" x-cloak class="mt-1 font-mono text-xs text-slate-400"
+                x-text="selectedProduct.serial_number"></p>
             <div class="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                 <span class="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200"
                     x-text="selectedProduct.category_name || 'Uncategorized'"></span>
@@ -300,6 +302,9 @@
                     <div class="flex flex-wrap items-center gap-2">
                         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500"
                             x-text="detailProduct?.category_name"></span>
+                        <span x-show="detailProduct?.serial_number" x-cloak
+                            class="rounded-full bg-slate-100 px-3 py-1 font-mono text-xs text-slate-500"
+                            x-text="detailProduct?.serial_number"></span>
                         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
                             Harga mulai Rp <span x-text="formatNumber(detailProduct?.base_price || 0)"></span>
                         </span>
