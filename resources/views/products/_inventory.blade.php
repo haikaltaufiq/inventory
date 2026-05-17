@@ -60,21 +60,23 @@
 
     <div class="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
         <div class="overflow-x-auto">
-            <table class="min-w-250 w-full text-left text-[13px] xl:table-fixed">
+            <table class="min-w-[1120px] w-full text-left text-[13px] xl:table-fixed">
                 <colgroup>
-                    <col class="w-[17%]">
+                    <col class="w-[6%]">
+                    <col class="w-[16%]">
                     <col class="w-[11%]">
-                    <col class="w-[15%]">
-                    <col class="w-[18%]">
-                    <col class="w-[12%]">
+                    <col class="w-[13%]">
+                    <col class="w-[16%]">
+                    <col class="w-[11%]">
                     <col class="w-[9%]">
-                    <col class="w-[12%]">
+                    <col class="w-[11%]">
                     <col class="w-[8%]">
-                    <col class="w-[12%]">
+                    <col class="w-[11%]">
                     <col class="w-[10%]">
                 </colgroup>
                 <thead class="bg-slate-50/80 text-slate-500">
                     <tr>
+                        <th class="px-3 py-3 text-center text-[12px] font-medium">Gambar</th>
                         <th class="px-3 py-3 text-[12px] font-medium">Produk</th>
                         <th class="px-3 py-3 text-[12px] font-medium">Brand</th>
                         <th class="px-3 py-3 text-[12px] font-medium">Kategori</th>
@@ -90,6 +92,14 @@
                 <tbody class="divide-y divide-slate-100">
                     <template x-for="row in rows" :key="row.client_key">
                         <tr class="transition hover:bg-slate-50/60">
+                            <td class="px-3 py-3 align-top">
+                                <button type="button" @click="openImageModal(row)"
+                                    class="mx-auto block h-12 w-12 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:border-slate-300 hover:shadow-sm"
+                                    :aria-label="`Lihat gambar ${row.name || 'produk'}`">
+                                    <img :src="productImageUrl(row)" :alt="row.name || 'Foto produk'"
+                                        class="h-full w-full object-cover" x-on:error="$event.target.src = noImageUrl">
+                                </button>
+                            </td>
                             <td class="px-3 py-3 align-top">
                                 <div class="space-y-1">
                                     <div class="text-[13px] font-semibold leading-[1.35] text-slate-800"
@@ -167,7 +177,7 @@
                         </tr>
                     </template>
                     <tr x-show="rows.length === 0" x-cloak>
-                        <td colspan="10" class="px-5 py-10 text-center text-sm text-slate-400">
+                        <td colspan="11" class="px-5 py-10 text-center text-sm text-slate-400">
                             Belum ada produk pada filter ini. Klik Tambah Produk untuk membuat data baru.
                         </td>
                     </tr>
@@ -578,6 +588,22 @@
                     </div>
                 </div>
             </form>
+        </template>
+    </x-modal>
+
+    <x-modal id="modal-product-image" title="Foto Produk" size="lg">
+        <template x-if="activePreviewRow()">
+            <div class="space-y-4">
+                <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                    <img :src="activePreviewImage()" :alt="activePreviewRow()?.name || 'Foto produk'"
+                        class="max-h-[72vh] w-full object-contain" x-on:error="$event.target.src = noImageUrl">
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-slate-900" x-text="activePreviewRow()?.name || 'Produk'"></p>
+                    <p class="mt-1 font-mono text-xs text-slate-500"
+                        x-text="activePreviewRow()?.serial_number || 'Tanpa nomor seri'"></p>
+                </div>
+            </div>
         </template>
     </x-modal>
 

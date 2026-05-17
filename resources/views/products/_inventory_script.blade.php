@@ -659,6 +659,12 @@
                     openModal('modal-product-preview');
                 },
 
+                openImageModal(row) {
+                    if (!row) return;
+                    this.previewModalKey = row.client_key;
+                    openModal('modal-product-image');
+                },
+
                 activePreviewRow() {
                     return this.rowByKey(this.previewModalKey);
                 },
