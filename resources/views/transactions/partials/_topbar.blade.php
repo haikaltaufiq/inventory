@@ -10,7 +10,8 @@
         </div>
 
         {{-- CATEGORY DROPDOWN --}}
-        <div class="relative md:w-56" x-data="{ open: false }">
+        <div x-show="transactionData.transactionMode === 'sparepart'" x-cloak class="relative md:w-56"
+            x-data="{ open: false }">
             <button @click="open = !open"
                 class="flex h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 transition hover:border-slate-300 hover:bg-white">
                 <div class="flex min-w-0 items-center gap-3">
@@ -59,16 +60,5 @@
             Rakit PC
         </button>
 
-
-        {{-- Tombol Load Saved Build --}}
-        <button @click="loadSavedBuilds()"
-            class="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-600 transition hover:bg-slate-50">
-            <i class="fas fa-microchip"></i>
-            Load Saved Build
-        </button>
-        <span x-show="transactionData.transactionMode === 'rakit_pc' && transactionData.buildName"
-            class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-            Nama Rakitan: <span class="font-medium" x-text="transactionData.buildName"></span>
-        </span>
     </div>
 </div>

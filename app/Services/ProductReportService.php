@@ -20,9 +20,8 @@ class ProductReportService
             ->orderBy('name')
             ->get();
 
-        $owners = User::query()
-            ->select('id', 'name')
-            ->where('role', 'owner')
+        $pemodals = User::query()
+            ->select('id', 'name', 'role')
             ->orderBy('name')
             ->get();
 
@@ -32,6 +31,7 @@ class ProductReportService
             ->fromSub(clone $reportQuery, 'report_rows')
             ->selectRaw('COUNT(*) as total_rows')
             ->selectRaw('COUNT(DISTINCT pemodal_user_id) as total_pemodal')
+            ->selectRaw('COALESCE(SUM(CASE WHEN pemodal_user_id IS NULL THEN 1 ELSE 0 END), 0) as total_tanpa_pemodal')
             ->selectRaw('COALESCE(SUM(stock_awal), 0) as total_stock_awal')
             ->selectRaw('COALESCE(SUM(sold_qty), 0) as total_terjual')
             ->selectRaw('COALESCE(SUM(stock_ready), 0) as total_stock_ready')
@@ -52,13 +52,14 @@ class ProductReportService
             'summary' => [
                 'total_rows' => (int) ($summary->total_rows ?? 0),
                 'total_pemodal' => (int) ($summary->total_pemodal ?? 0),
+                'total_tanpa_pemodal' => (int) ($summary->total_tanpa_pemodal ?? 0),
                 'total_stock_awal' => (int) ($summary->total_stock_awal ?? 0),
                 'total_terjual' => (int) ($summary->total_terjual ?? 0),
                 'total_stock_ready' => (int) ($summary->total_stock_ready ?? 0),
                 'total_modal' => (float) ($summary->total_modal ?? 0),
             ],
             'categories' => $categories,
-            'owners' => $owners,
+            'pemodals' => $pemodals,
         ];
     }
 
@@ -91,10 +92,7 @@ class ProductReportService
             ->join('products', 'product_supplier.product_id', '=', 'products.id')
             ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
             ->join('suppliers', 'product_supplier.supplier_id', '=', 'suppliers.id')
-            ->join('users as pemodal_users', function ($join) {
-                $join->on('product_supplier.pemodal_user_id', '=', 'pemodal_users.id')
-                    ->where('pemodal_users.role', '=', 'owner');
-            })
+            ->leftJoin('users as pemodal_users', 'product_supplier.pemodal_user_id', '=', 'pemodal_users.id')
             ->leftJoin('transaction_details', 'transaction_details.product_supplier_id', '=', 'product_supplier.id')
             ->select([
                 'product_supplier.id as product_supplier_id',
@@ -102,12 +100,15 @@ class ProductReportService
                 'product_supplier.supplier_id',
                 'product_supplier.pemodal_user_id',
                 'pemodal_users.name as pemodal_name',
+                'pemodal_users.role as pemodal_role',
                 'products.name as product_name',
                 'suppliers.nama_supplier as supplier_name',
                 'categories.name as category_name',
                 'products.category_id',
                 'product_supplier.harga_beli as modal',
+                'product_supplier.harga_jual_manual as harga_jual',
                 'product_supplier.stock as stock_ready',
+                'product_supplier.condition',
                 'product_supplier.entry_date',
             ])
             ->selectRaw('COALESCE(SUM(transaction_details.quantity), 0) as sold_qty')
@@ -119,12 +120,15 @@ class ProductReportService
                 'product_supplier.supplier_id',
                 'product_supplier.pemodal_user_id',
                 'pemodal_users.name',
+                'pemodal_users.role',
                 'products.name',
                 'suppliers.nama_supplier',
                 'categories.name',
                 'products.category_id',
                 'product_supplier.harga_beli',
+                'product_supplier.harga_jual_manual',
                 'product_supplier.stock',
+                'product_supplier.condition',
                 'product_supplier.entry_date',
             ]);
 
@@ -152,8 +156,10 @@ class ProductReportService
             $reportQuery->where('products.category_id', $request->integer('category_id'));
         }
 
-        if ($request->filled('owner_id')) {
-            $reportQuery->where('product_supplier.pemodal_user_id', $request->integer('owner_id'));
+        $pemodalUserId = $request->input('pemodal_user_id', $request->input('owner_id'));
+
+        if ($pemodalUserId !== null && $pemodalUserId !== '') {
+            $reportQuery->where('product_supplier.pemodal_user_id', (int) $pemodalUserId);
         }
 
         return $reportQuery;
@@ -201,7 +207,14 @@ class ProductReportService
             $sellerNames = $directSellers->pluck('name')->filter()->unique()->values();
 
             $row->seller_breakdown = $sellerNames
-                ->map(fn(string $sellerName) => ['name' => $sellerName])
+                ->map(function (string $sellerName) use ($directSellers) {
+                    $seller = $directSellers->firstWhere('name', $sellerName);
+
+                    return [
+                        'name' => $sellerName,
+                        'qty' => (int) ($seller['qty'] ?? 0),
+                    ];
+                })
                 ->values();
             $row->seller_names = $sellerNames->implode(', ');
 

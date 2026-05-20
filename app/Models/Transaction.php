@@ -17,6 +17,7 @@ class Transaction extends Model
         'installation_fee',
         'service_labor_fee',
         'shipping_fee',
+        'discount_fee',
         'marketing_fee',
         'final_total',
         'type',
@@ -32,6 +33,7 @@ class Transaction extends Model
         'installation_fee' => 'decimal:2',
         'service_labor_fee' => 'decimal:2',
         'shipping_fee' => 'decimal:2',
+        'discount_fee' => 'decimal:2',
         'marketing_fee' => 'decimal:2',
         'final_total' => 'decimal:2',
     ];

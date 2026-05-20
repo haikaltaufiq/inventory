@@ -86,6 +86,12 @@
                                 <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
                             </div>
                         </template>
+                        <template x-if="discountAmount > 0">
+                            <div class="flex items-center justify-between text-sm text-rose-600">
+                                <span>Diskon</span>
+                                <span>- Rp <span x-text="formatNumber(discountAmount)"></span></span>
+                            </div>
+                        </template>
                         <div class="flex items-center justify-between gap-3 border-t border-slate-200 pt-2">
                             <span class="text-xs font-semibold text-slate-700 xl:text-sm">Harga Jual Set</span>
                             <span class="text-right text-lg font-bold text-slate-900 tabular-nums xl:text-xl">
@@ -105,6 +111,10 @@
                         <div class="flex items-center justify-between text-xs text-slate-500 xl:text-sm">
                             <span>Biaya tambahan</span>
                             <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                        </div>
+                        <div class="flex items-center justify-between text-xs text-rose-600 xl:text-sm">
+                            <span>Diskon</span>
+                            <span>- Rp <span x-text="formatNumber(discountAmount)"></span></span>
                         </div>
                         <div class="flex items-center justify-between gap-3 border-t border-slate-200 pt-2">
                             <span class="text-xs font-medium text-slate-600 xl:text-sm">Total bill</span>

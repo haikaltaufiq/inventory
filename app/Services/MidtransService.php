@@ -39,7 +39,7 @@ class MidtransService
         $params = [
             'transaction_details' => [
                 'order_id'     => 'TRX-' . $transaction->id . '-' . time(),
-                'gross_amount' => (int) $transaction->total_price,
+                'gross_amount' => (int) $transaction->final_total,
             ],
             'customer_details' => [
                 'first_name' => $transaction->customer?->name ?? 'Customer',
@@ -105,22 +105,43 @@ class MidtransService
 
         // Tambahkan biaya tambahan jika ada
         $additionalFields = [
-            'installation'  => 'Biaya Instalasi',
-            'service_labor' => 'Jasa Layanan',
-            'shipping'      => 'Ongkos Kirim',
-            'marketing'     => 'Biaya Marketing',
+            'installation_fee'  => 'Biaya Instalasi',
+            'service_labor_fee' => 'Jasa Layanan',
         ];
 
         foreach ($additionalFields as $field => $label) {
             $amount = (int) ($transaction->{$field} ?? 0);
             if ($amount > 0) {
                 $items[] = [
-                    'id'       => 'FEE-' . strtoupper($field),
+                    'id'       => 'FEE-' . strtoupper(str_replace('_fee', '', $field)),
                     'price'    => $amount,
                     'quantity' => 1,
                     'name'     => $label,
                 ];
             }
+        }
+
+        $listedFeeAmount = (int) ($transaction->installation_fee ?? 0)
+            + (int) ($transaction->service_labor_fee ?? 0);
+        $otherFeeAmount = max(0, (int) ($transaction->service_fee ?? 0) - $listedFeeAmount);
+
+        if ($otherFeeAmount > 0) {
+            $items[] = [
+                'id' => 'FEE-ADJUSTMENT',
+                'price' => $otherFeeAmount,
+                'quantity' => 1,
+                'name' => 'Penyesuaian Harga',
+            ];
+        }
+
+        $discountAmount = (int) ($transaction->discount_fee ?? 0);
+        if ($discountAmount > 0) {
+            $items[] = [
+                'id' => 'DISCOUNT',
+                'price' => -$discountAmount,
+                'quantity' => 1,
+                'name' => 'Diskon Transaksi',
+            ];
         }
 
         return $items;

@@ -29,10 +29,15 @@ class TransactionService
 
             $installationFee = (float) data_get($validated, 'additional_fees.installation', 0);
             $serviceLaborFee = (float) data_get($validated, 'additional_fees.service_labor', 0);
-            $shippingFee = (float) data_get($validated, 'additional_fees.shipping', 0);
-            $marketingFee = (float) data_get($validated, 'additional_fees.marketing', 0);
+            $discountFee = (float) data_get($validated, 'additional_fees.discount', 0);
             $serviceFee = (float) $validated['service_fee'];
-            $finalTotal = $subtotal + $serviceFee;
+            if ($discountFee > ($subtotal + $serviceFee)) {
+                throw ValidationException::withMessages([
+                    'additional_fees.discount' => ['Diskon tidak boleh melebihi subtotal dan biaya tambahan.'],
+                ]);
+            }
+
+            $finalTotal = $subtotal + $serviceFee - $discountFee;
 
             $pcSpecification = $mode === 'rakit_pc'
                 ? $this->buildPcSpecification($cart->all())
@@ -46,8 +51,9 @@ class TransactionService
                 'service_fee' => $serviceFee,
                 'installation_fee' => $installationFee,
                 'service_labor_fee' => $serviceLaborFee,
-                'shipping_fee' => $shippingFee,
-                'marketing_fee' => $marketingFee,
+                'shipping_fee' => 0,
+                'discount_fee' => $discountFee,
+                'marketing_fee' => 0,
                 'final_total' => $finalTotal,
                 'status' => 'Pending',
                 'type' => $validated['transaction_data']['type'] ?? 'Invoice',

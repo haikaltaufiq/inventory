@@ -176,14 +176,10 @@
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                            <label class="text-sm font-medium text-slate-600">Biaya tambahan - Ongkos kirim</label>
-                            <input type="number" min="0" step="0.01" x-model.number="additionalFees.shipping" placeholder="0"
+                            <label class="text-sm font-medium text-slate-600">Diskon transaksi</label>
+                            <input type="number" min="0" step="0.01" x-model.number="additionalFees.discount" placeholder="0"
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
-                        </div>
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                            <label class="text-sm font-medium text-slate-600">Biaya tambahan - Marketing</label>
-                            <input type="number" min="0" step="0.01" x-model.number="additionalFees.marketing" placeholder="0"
-                                class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                            <p class="mt-2 text-xs text-slate-400">Diskon mengurangi total tagihan dan tercantum di invoice.</p>
                         </div>
 
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -224,6 +220,10 @@
                                 <span>Biaya tambahan</span>
                                 <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
                             </div>
+                            <div class="flex items-center justify-between text-sm text-rose-600">
+                                <span>Diskon</span>
+                                <span>- Rp <span x-text="formatNumber(discountAmount)"></span></span>
+                            </div>
                             <div class="flex items-center justify-between border-t border-slate-200 pt-3">
                                 <span class="text-sm font-semibold text-slate-700">Total Tagihan</span>
                                 <span class="text-2xl font-bold text-slate-900">
@@ -243,6 +243,10 @@
                             <div class="flex items-center justify-between text-sm text-slate-500">
                                 <span>Biaya tambahan</span>
                                 <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm text-rose-600">
+                                <span>Diskon</span>
+                                <span>- Rp <span x-text="formatNumber(discountAmount)"></span></span>
                             </div>
                             <div class="flex items-center justify-between border-t border-slate-200 pt-3">
                                 <span class="text-sm font-medium text-slate-600">Total tagihan</span>
@@ -352,6 +356,91 @@
     </div>
 </div>
 
+{{-- MODAL: BUILD DETAIL --}}
+<div x-show="buildDetailOpen" x-transition x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-6" @click.self="closeBuildDetail()">
+    <div class="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl md:max-h-[calc(100vh-3rem)]">
+        <div class="flex items-start justify-between border-b border-slate-100 px-5 py-4 md:px-6">
+            <div>
+                <p class="text-xs text-slate-500">Detail build</p>
+                <h3 class="mt-1 text-lg font-semibold leading-7 text-slate-900" x-text="detailBuild?.name"></h3>
+            </div>
+            <button @click="closeBuildDetail()"
+                class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-900">
+                <i class="fas fa-times text-sm"></i>
+            </button>
+        </div>
+
+        <div class="overflow-y-auto p-5 md:p-6">
+            <div class="grid gap-5 lg:grid-cols-[1fr,0.8fr]">
+                <div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500"
+                            x-text="detailBuild?.status === 'draft' ? 'Draft' : detailBuild?.status === 'deal' ? 'Deal' : 'Cancelled'"></span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
+                            <span x-text="buildComponentCount(detailBuild)"></span> komponen
+                        </span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
+                            Margin <span x-text="detailBuild?.margin_pct || 0"></span>%
+                        </span>
+                    </div>
+
+                    <p x-show="detailBuild?.notes" x-cloak
+                        class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-500"
+                        x-text="detailBuild?.notes"></p>
+
+                    <div class="mt-5 overflow-hidden rounded-2xl border border-slate-200">
+                        <div class="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                            <p class="text-sm font-medium text-slate-700">Rincian komponen</p>
+                        </div>
+                        <div class="divide-y divide-slate-200">
+                            <template x-for="component in buildComponents(detailBuild)" :key="component.id || component.name">
+                                <div class="flex items-center justify-between gap-4 bg-white px-4 py-3">
+                                    <div class="min-w-0">
+                                        <p class="truncate text-sm font-medium text-slate-800" x-text="component.name"></p>
+                                        <p class="mt-1 text-xs text-slate-400" x-text="component.brand || component.category || 'Komponen build'"></p>
+                                    </div>
+                                    <p class="shrink-0 text-sm font-semibold text-slate-900">
+                                        Rp <span x-text="formatNumber(component.price || 0)"></span>
+                                    </p>
+                                </div>
+                            </template>
+                            <template x-if="buildComponentCount(detailBuild) === 0">
+                                <div class="bg-white px-4 py-6 text-center text-sm text-slate-400">
+                                    Belum ada komponen tersimpan.
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p class="text-sm font-medium text-slate-700">Ringkasan build</p>
+                    <div class="mt-4 space-y-3">
+                        <div class="flex items-center justify-between text-sm text-slate-500">
+                            <span>Total modal</span>
+                            <span x-text="detailBuild?.total_fmt || 'Rp 0'"></span>
+                        </div>
+                        <div class="flex items-center justify-between text-sm text-emerald-600">
+                            <span>Margin</span>
+                            <span><span x-text="detailBuild?.margin_pct || 0"></span>%</span>
+                        </div>
+                        <div class="flex items-center justify-between border-t border-slate-200 pt-3">
+                            <span class="text-sm font-semibold text-slate-700">Harga jual set</span>
+                            <span class="text-xl font-bold text-slate-900" x-text="detailBuild?.harga_jual_fmt || 'Rp 0'"></span>
+                        </div>
+                    </div>
+
+                    <button @click="applyBuild(detailBuild)" :disabled="detailBuild?.status === 'cancelled'"
+                        class="mt-5 w-full rounded-xl bg-slate-900 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30">
+                        Muat ke order
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- MODAL: IMAGE FULLSCREEN --}}
 <div x-show="imageViewerOpen" x-transition x-cloak
     class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-6" @click.self="closeImageViewer()">
@@ -368,88 +457,3 @@
     </div>
 </div>
 
-<x-modal id="modalSavedBuilds" title="Saved Builds" size="lg">
-    <div class="space-y-3">
-        <template x-for="build in savedBuilds" :key="build.id">
-            <div class="rounded-xl border p-4 transition"
-                :class="{
-                    'border-slate-200 bg-white': build.status === 'draft',
-                    'border-green-200 bg-green-50': build.status === 'deal',
-                    'border-red-200 bg-red-50 opacity-60': build.status === 'cancelled'
-                }">
-
-                {{-- Info Build --}}
-                <div class="flex justify-between items-start mb-3 gap-4">
-                    {{-- Sisi Kiri: Nama, Status, & Metadata --}}
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap mb-1">
-                            <p class="font-semibold text-slate-800 text-sm truncate" x-text="build.name"></p>
-
-                            {{-- Badge Status --}}
-                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider"
-                                :class="{
-                                    'bg-slate-100 text-slate-500': build.status === 'draft',
-                                    'bg-green-100 text-green-700': build.status === 'deal',
-                                    'bg-red-100 text-red-600': build.status === 'cancelled'
-                                }"
-                                x-text="build.status === 'draft' ? 'Draft' : build.status === 'deal' ? 'Deal ✓' : 'Cancelled ✕'">
-                            </span>
-                        </div>
-
-                        {{-- Metadata & Notes --}}
-                        <div class="text-xs text-slate-400 space-y-0.5">
-                            <p x-text="build.created_at + ' · ' + (build.created_by || 'Unknown')"></p>
-                            <p class="text-slate-500 italic" x-show="build.notes" x-text="build.notes"></p>
-                        </div>
-                    </div>
-
-                    {{-- Sisi Kanan: Harga & Margin --}}
-                    <div class="text-right shrink-0">
-                        <p class="font-bold text-slate-900 text-sm" x-text="build.harga_jual_fmt"></p>
-                        <div class="text-[11px] text-slate-400 mt-0.5">
-                            <span>Mod: <span x-text="build.total_fmt"></span></span>
-                            <span class="mx-1 text-slate-300">|</span>
-                            <span class="font-medium text-blue-600" x-text="build.margin_pct + '%'"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                {{-- Action Buttons --}}
-                <div class="flex gap-2 pt-2 border-t border-slate-100">
-
-                    {{-- Load ke Cart (hanya kalau bukan cancelled) --}}
-                    <button x-show="build.status !== 'cancelled'"
-                        @click="applyBuild(build)"
-                        class="flex-1 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-700 transition">
-                        ↓ Load ke Cart
-                    </button>
-
-                    {{-- Tandai Deal (hanya kalau draft) --}}
-                    <button x-show="build.status === 'draft'"
-                        @click="updateBuildStatus(build, 'deal')"
-                        class="flex-1 py-1.5 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition">
-                        ✓ Deal
-                    </button>
-
-                    {{-- Cancel (draft atau deal bisa cancel) --}}
-                    <button x-show="build.status !== 'cancelled'"
-                        @click="updateBuildStatus(build, 'cancelled')"
-                        class="py-1.5 px-3 rounded-lg bg-red-100 text-red-600 text-xs font-medium hover:bg-red-200 transition">
-                        ✕ Cancel
-                    </button>
-
-                    {{-- Kalau sudah cancelled --}}
-                    <p x-show="build.status === 'cancelled'"
-                        class="text-xs text-red-400 italic self-center">
-                        Transaksi ini sudah dibatalkan.
-                    </p>
-                </div>
-
-            </div>
-        </template>
-
-        <template x-if="savedBuilds.length === 0">
-            <p class="text-center text-slate-400 py-8 text-sm">Belum ada build yang disimpan.</p>
-        </template>
-    </div>
-</x-modal>

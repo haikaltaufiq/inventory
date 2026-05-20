@@ -108,7 +108,11 @@
         $details = $transaction->details ?? collect();
         $subtotal = $transaction->subtotal ?? $details->sum(fn($d) => ($d->price_at_transaction ?? 0) * ($d->quantity ?? 0));
         $serviceFee = $transaction->service_fee ?? 0;
-        $finalTotal = $transaction->final_total ?? ($subtotal + $serviceFee);
+        $installationFee = $transaction->installation_fee ?? 0;
+        $serviceLaborFee = $transaction->service_labor_fee ?? 0;
+        $discountFee = $transaction->discount_fee ?? 0;
+        $otherFee = max(0, $serviceFee - $installationFee - $serviceLaborFee);
+        $finalTotal = $transaction->final_total ?? max(0, $subtotal + $serviceFee - $discountFee);
         $showPricing = $document_type !== 'Delivery Order';
     @endphp
 
@@ -199,6 +203,30 @@
                         <td class="label-cell">Service Fee</td>
                         <td class="value-cell">Rp {{ number_format($serviceFee, 0, ',', '.') }}</td>
                     </tr>
+                    @if($installationFee > 0)
+                        <tr>
+                            <td class="label-cell">Detail Biaya Instalasi</td>
+                            <td class="value-cell">Rp {{ number_format($installationFee, 0, ',', '.') }}</td>
+                        </tr>
+                    @endif
+                    @if($serviceLaborFee > 0)
+                        <tr>
+                            <td class="label-cell">Detail Jasa Layanan</td>
+                            <td class="value-cell">Rp {{ number_format($serviceLaborFee, 0, ',', '.') }}</td>
+                        </tr>
+                    @endif
+                    @if($otherFee > 0)
+                        <tr>
+                            <td class="label-cell">Detail Penyesuaian Harga</td>
+                            <td class="value-cell">Rp {{ number_format($otherFee, 0, ',', '.') }}</td>
+                        </tr>
+                    @endif
+                    @if($discountFee > 0)
+                        <tr>
+                            <td class="label-cell">Diskon Transaksi</td>
+                            <td class="value-cell">- Rp {{ number_format($discountFee, 0, ',', '.') }}</td>
+                        </tr>
+                    @endif
                     <tr>
                         <td class="label-cell" style="font-weight: 700;">Grand Total</td>
                         <td class="value-cell" style="font-size: 14px;">Rp {{ number_format($finalTotal, 0, ',', '.') }}</td>
