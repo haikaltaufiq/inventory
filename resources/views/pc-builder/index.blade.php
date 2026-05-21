@@ -3,7 +3,34 @@
 @section('title', 'Simulasi Rakit PC')
 
 @section('content')
+@php
+    $pcBuilderComponents = [
+        ['key' => 'cpu', 'label' => 'Processor', 'type' => 'Processor'],
+        ['key' => 'motherboard', 'label' => 'Motherboard', 'type' => 'Motherboard'],
+        ['key' => 'ram', 'label' => 'RAM', 'type' => 'RAM'],
+        ['key' => 'casing', 'label' => 'Casing', 'type' => 'Casing'],
+        ['key' => 'psu', 'label' => 'Power Supply', 'type' => 'Power Supply'],
+        ['key' => 'harddisk', 'label' => 'Hardisk', 'type' => 'Storage', 'storage_filter' => 'hdd'],
+        ['key' => 'ssd', 'label' => 'SSD Sata / NVMe', 'type' => 'Storage', 'storage_filter' => 'ssd'],
+        ['key' => 'vga', 'label' => 'Graphic Cards', 'type' => 'VGA'],
+        ['key' => 'assembly', 'label' => 'Jasa Rakit PC', 'type' => 'Jasa Rakit PC'],
+        ['key' => 'monitor', 'label' => 'Monitor', 'type' => 'Monitor'],
+        ['key' => 'cpu_cooler', 'label' => 'Cooler CPU', 'type' => 'CPU Cooler'],
+        ['key' => 'case_fan', 'label' => 'Fan Casing', 'type' => 'Fan Casing'],
+        ['key' => 'os', 'label' => 'Operating System', 'type' => 'Operating System'],
+        ['key' => 'mouse', 'label' => 'Mouse', 'type' => 'Mouse'],
+        ['key' => 'mousepad', 'label' => 'Mousepad', 'type' => 'Mousepad'],
+        ['key' => 'keyboard', 'label' => 'Keyboard', 'type' => 'Keyboard'],
+        ['key' => 'headset', 'label' => 'Headset', 'type' => 'Headset'],
+        ['key' => 'webcam', 'label' => 'Webcam', 'type' => 'Webcam'],
+        ['key' => 'networking', 'label' => 'Networking', 'type' => 'Networking (Wifi/LAN)'],
+        ['key' => 'ups', 'label' => 'UPS', 'type' => 'UPS'],
+    ];
+@endphp
 <div class="px-5 pb-10">
+    <div id="success-toast"
+        class="fixed top-5 right-5 z-[70] hidden max-w-sm rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 shadow-lg">
+    </div>
 
     {{-- ===================================================================
          HEADER
@@ -12,7 +39,7 @@
         <div>
             <h1 class="text-2xl font-semibold tracking-tight text-slate-800">Simulasi Rakit PC</h1>
             <p class="text-sm text-slate-500 mt-1">
-                Pilih Motherboard terlebih dahulu — CPU dan RAM akan otomatis menyesuaikan.
+                Bebas pilih komponen dari mana saja. Pilihan berikutnya otomatis mengikuti spesifikasi yang sudah dipilih.
             </p>
         </div>
         <button onclick="resetBuild()"
@@ -35,146 +62,30 @@
         =============================================================== --}}
         <div class="lg:col-span-2 space-y-3">
 
-            {{-- 1. MOTHERBOARD --}}
-            <div class="bg-white rounded-2xl shadow-sm p-5" id="row-motherboard">
+            @foreach($pcBuilderComponents as $index => $component)
+            <div class="bg-white rounded-2xl shadow-sm p-5 transition-opacity duration-300" id="row-{{ $component['key'] }}">
                 <div class="flex items-center justify-between gap-4">
                     <div class="flex items-center gap-4 flex-1 min-w-0">
-                        <div id="icon-motherboard"
+                        <div id="icon-{{ $component['key'] }}"
                             class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold flex-shrink-0">
-                            1
+                            {{ $index + 1 }}
                         </div>
                         <div class="min-w-0">
-                            <p class="text-xs uppercase tracking-wider text-slate-400 font-medium mb-0.5">Motherboard</p>
-                            <p id="name-motherboard"
-                               class="font-medium text-slate-400 italic text-sm truncate">Pilih Motherboard terlebih dahulu</p>
-                            <p id="price-motherboard" class="text-xs text-emerald-600 font-medium mt-0.5 hidden"></p>
+                            <p class="text-xs uppercase tracking-wider text-slate-400 font-medium mb-0.5">{{ $component['label'] }}</p>
+                            <p id="name-{{ $component['key'] }}"
+                               class="font-medium text-slate-400 italic text-sm truncate">Belum dipilih</p>
+                            <p id="price-{{ $component['key'] }}" class="text-xs text-emerald-600 font-medium mt-0.5 hidden"></p>
+                            <p id="hint-{{ $component['key'] }}" class="text-xs text-blue-500 mt-0.5 hidden"></p>
                         </div>
                     </div>
-                    <button onclick="openComponentModal('Motherboard', 'motherboard')"
-                        id="btn-motherboard"
+                    <button onclick="openComponentModal('{{ $component['type'] }}', '{{ $component['key'] }}')"
+                        id="btn-{{ $component['key'] }}"
                         class="flex-shrink-0 px-4 py-2 rounded-xl bg-slate-900 text-white text-sm hover:bg-slate-700 transition font-medium">
                         Pilih
                     </button>
                 </div>
             </div>
-
-            {{-- 2. CPU --}}
-            <div class="bg-white rounded-2xl shadow-sm p-5 opacity-50 transition-opacity duration-300" id="row-cpu">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-4 flex-1 min-w-0">
-                        <div id="icon-cpu"
-                            class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold flex-shrink-0">
-                            2
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-xs uppercase tracking-wider text-slate-400 font-medium mb-0.5">Processor (CPU)</p>
-                            <p id="name-cpu"
-                               class="font-medium text-slate-400 italic text-sm truncate">Pilih Motherboard dulu</p>
-                            <p id="price-cpu" class="text-xs text-emerald-600 font-medium mt-0.5 hidden"></p>
-                            <p id="hint-cpu" class="text-xs text-blue-500 mt-0.5 hidden"></p>
-                        </div>
-                    </div>
-                    <button onclick="openComponentModal('Processor', 'cpu')"
-                        id="btn-cpu" disabled
-                        class="flex-shrink-0 px-4 py-2 rounded-xl bg-slate-200 text-slate-400 text-sm cursor-not-allowed transition font-medium">
-                        Pilih
-                    </button>
-                </div>
-            </div>
-
-            {{-- 3. RAM --}}
-            <div class="bg-white rounded-2xl shadow-sm p-5 opacity-50 transition-opacity duration-300" id="row-ram">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-4 flex-1 min-w-0">
-                        <div id="icon-ram"
-                            class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold flex-shrink-0">
-                            3
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-xs uppercase tracking-wider text-slate-400 font-medium mb-0.5">RAM</p>
-                            <p id="name-ram"
-                               class="font-medium text-slate-400 italic text-sm truncate">Pilih Motherboard dulu</p>
-                            <p id="price-ram" class="text-xs text-emerald-600 font-medium mt-0.5 hidden"></p>
-                            <p id="hint-ram" class="text-xs text-blue-500 mt-0.5 hidden"></p>
-                        </div>
-                    </div>
-                    <button onclick="openComponentModal('RAM', 'ram')"
-                        id="btn-ram" disabled
-                        class="flex-shrink-0 px-4 py-2 rounded-xl bg-slate-200 text-slate-400 text-sm cursor-not-allowed transition font-medium">
-                        Pilih
-                    </button>
-                </div>
-            </div>
-
-            {{-- 4. VGA --}}
-            <div class="bg-white rounded-2xl shadow-sm p-5 opacity-50 transition-opacity duration-300" id="row-vga">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-4 flex-1 min-w-0">
-                        <div id="icon-vga"
-                            class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold flex-shrink-0">
-                            4
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-xs uppercase tracking-wider text-slate-400 font-medium mb-0.5">VGA / GPU</p>
-                            <p id="name-vga"
-                               class="font-medium text-slate-400 italic text-sm truncate">Pilih CPU dulu</p>
-                            <p id="price-vga" class="text-xs text-emerald-600 font-medium mt-0.5 hidden"></p>
-                        </div>
-                    </div>
-                    <button onclick="openComponentModal('VGA', 'vga')"
-                        id="btn-vga" disabled
-                        class="flex-shrink-0 px-4 py-2 rounded-xl bg-slate-200 text-slate-400 text-sm cursor-not-allowed transition font-medium">
-                        Pilih
-                    </button>
-                </div>
-            </div>
-
-            {{-- 5. STORAGE --}}
-            <div class="bg-white rounded-2xl shadow-sm p-5 opacity-50 transition-opacity duration-300" id="row-storage">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-4 flex-1 min-w-0">
-                        <div id="icon-storage"
-                            class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold flex-shrink-0">
-                            5
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-xs uppercase tracking-wider text-slate-400 font-medium mb-0.5">Storage</p>
-                            <p id="name-storage"
-                               class="font-medium text-slate-400 italic text-sm truncate">Pilih Motherboard dulu</p>
-                            <p id="price-storage" class="text-xs text-emerald-600 font-medium mt-0.5 hidden"></p>
-                        </div>
-                    </div>
-                    <button onclick="openComponentModal('Storage', 'storage')"
-                        id="btn-storage" disabled
-                        class="flex-shrink-0 px-4 py-2 rounded-xl bg-slate-200 text-slate-400 text-sm cursor-not-allowed transition font-medium">
-                        Pilih
-                    </button>
-                </div>
-            </div>
-
-            {{-- 6. PSU --}}
-            <div class="bg-white rounded-2xl shadow-sm p-5 opacity-50 transition-opacity duration-300" id="row-psu">
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-4 flex-1 min-w-0">
-                        <div id="icon-psu"
-                            class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold flex-shrink-0">
-                            6
-                        </div>
-                        <div class="min-w-0">
-                            <p class="text-xs uppercase tracking-wider text-slate-400 font-medium mb-0.5">Power Supply</p>
-                            <p id="name-psu"
-                               class="font-medium text-slate-400 italic text-sm truncate">Pilih CPU & VGA dulu</p>
-                            <p id="price-psu" class="text-xs text-emerald-600 font-medium mt-0.5 hidden"></p>
-                            <p id="hint-psu" class="text-xs text-blue-500 mt-0.5 hidden"></p>
-                        </div>
-                    </div>
-                    <button onclick="openComponentModal('Power Supply', 'psu')"
-                        id="btn-psu" disabled
-                        class="flex-shrink-0 px-4 py-2 rounded-xl bg-slate-200 text-slate-400 text-sm cursor-not-allowed transition font-medium">
-                        Pilih
-                    </button>
-                </div>
-            </div>
+            @endforeach
 
             {{-- STATUS KOMPATIBILITAS --}}
             <div id="compat-status" class="hidden rounded-2xl p-5 transition-all"></div>
@@ -188,23 +99,19 @@
             <h2 class="text-base font-semibold text-slate-800 mb-5">Ringkasan Build</h2>
 
             {{-- Daftar komponen --}}
-            <div class="space-y-3 text-sm">
-                @foreach([
-                    'motherboard' => 'Motherboard',
-                    'cpu'         => 'Processor',
-                    'ram'         => 'RAM',
-                    'vga'         => 'VGA',
-                    'storage'     => 'Storage',
-                    'psu'         => 'PSU',
-                ] as $key => $label)
-                    <div class="flex justify-between items-start gap-2" id="summary-row-{{ $key }}">
-                        <span class="text-slate-500 flex-shrink-0">{{ $label }}</span>
+            <div id="summary-selected-list" class="space-y-3 text-sm">
+                <p id="summary-empty" class="text-sm text-slate-400 italic">Belum ada item dipilih.</p>
+                {{--
+                @foreach($pcBuilderComponents as $component)
+                    <div class="flex justify-between items-start gap-2" id="summary-row-{{ $component['key'] }}">
+                        <span class="text-slate-500 flex-shrink-0">{{ $component['label'] }}</span>
                         <div class="text-right">
-                            <span id="summary-price-{{ $key }}" class="text-slate-300 text-sm">—</span>
-                            <p id="summary-name-{{ $key }}" class="text-xs text-slate-400 hidden mt-0.5 leading-tight"></p>
+                            <span id="summary-price-{{ $component['key'] }}" class="text-slate-300 text-sm">—</span>
+                            <p id="summary-name-{{ $component['key'] }}" class="text-xs text-slate-400 hidden mt-0.5 leading-tight"></p>
                         </div>
                     </div>
                 @endforeach
+                --}}
             </div>
 
             {{-- Estimasi daya --}}
@@ -214,7 +121,7 @@
                     <span class="font-semibold text-slate-700" id="summary-watt">— W</span>
                 </div>
                 <p class="text-xs text-slate-400 leading-relaxed" id="summary-psu-rec">
-                    Pilih CPU & VGA untuk estimasi daya
+                    Pilih CPU atau GPU untuk estimasi daya
                 </p>
             </div>
 
@@ -380,100 +287,197 @@
 // =============================================================================
 // STATE — semua komponen yang sudah dipilih
 // =============================================================================
-const build = {
-    motherboard: null,
-    cpu:         null,
-    ram:         null,
-    vga:         null,
-    storage:     null,
-    psu:         null,
-};
+const COMPONENTS = @json($pcBuilderComponents);
+const COMPONENT_BY_KEY = Object.fromEntries(COMPONENTS.map(component => [component.key, component]));
+const TOTAL_COMPONENTS = COMPONENTS.length;
+const NO_IMAGE_URL = @json(asset('assets/no-image.svg'));
+
+const build = Object.fromEntries(COMPONENTS.map(component => [component.key, null]));
+const STEP_NUMBERS = Object.fromEntries(COMPONENTS.map((component, index) => [component.key, String(index + 1)]));
+const LABELS = Object.fromEntries(COMPONENTS.map(component => [component.key, component.label]));
 
 let currentModalKey  = null;
-let allModalProducts = [];  // simpan semua produk modal untuk fitur search
+let allModalProducts = [];
 
-// =============================================================================
-// FILTER PARAMS
-//
-// Satu fungsi terpusat yang menentukan filter apa yang dikirim ke server.
-// Key yang dikirim HARUS cocok dengan yang diterima PcBuilderController::getCompatible().
-//
-// Mapping:
-//   CPU/CPU Cooler → socket_type dari mobo
-//   RAM            → ram_type dari mobo.ram_type_slot
-//   PSU            → min_wattage dihitung dari cpu.tdp_watt + vga.min_psu_watt
-// =============================================================================
+function getSpec(product, key) {
+    return product?.[key] ?? product?.specs?.[key] ?? null;
+}
+
+function productQty(product) {
+    const qty = parseInt(product?.qty, 10);
+    return Number.isFinite(qty) && qty > 0 ? qty : 1;
+}
+
+function productLineTotal(product) {
+    return (product?.price || 0) * productQty(product);
+}
+
+function intSpec(product, key) {
+    const value = parseInt(getSpec(product, key), 10);
+    return Number.isFinite(value) ? value : 0;
+}
+
+function normalizeValue(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function splitSpecValues(value) {
+    return String(value || '')
+        .split(/[\/,+|]/)
+        .map(item => normalizeValue(item))
+        .filter(Boolean);
+}
+
+function specSupports(containerValue, requiredValue) {
+    if (!containerValue || !requiredValue) return true;
+
+    const required = normalizeValue(requiredValue);
+    const supported = splitSpecValues(containerValue);
+
+    if (!supported.length) return normalizeValue(containerValue) === required;
+    return supported.includes(required);
+}
+
+function getSelectedSocket(exceptKey = null) {
+    const sources = ['cpu', 'motherboard', 'cpu_cooler'].filter(key => key !== exceptKey);
+    return sources.map(key => getSpec(build[key], 'socket_type')).find(Boolean) || null;
+}
+
+function getSelectedRamType(exceptKey = null) {
+    const moboRam = exceptKey !== 'motherboard' ? getSpec(build.motherboard, 'ram_type_slot') : null;
+    const ramType = exceptKey !== 'ram' ? getSpec(build.ram, 'ram_type') : null;
+    const cpuRam  = exceptKey !== 'cpu' ? getSpec(build.cpu, 'ram_type_support') : null;
+
+    if (moboRam) return moboRam;
+    if (ramType) return ramType;
+    if (cpuRam && !String(cpuRam).includes('/')) return cpuRam;
+    return null;
+}
+
+function getRecommendedPsuWatt() {
+    const cpuTdp    = intSpec(build.cpu, 'tdp_watt');
+    const gpuMinPsu = intSpec(build.vga, 'min_psu_watt');
+    const totalNeed = cpuTdp + gpuMinPsu;
+
+    return totalNeed > 0 ? Math.ceil((totalNeed * 1.3) / 50) * 50 : 0;
+}
+
 function buildFilterParams(key, type) {
     const params = new URLSearchParams({ type });
+    const socketType = getSelectedSocket(key);
+    const ramType = getSelectedRamType(key);
+    const minWattage = getRecommendedPsuWatt();
 
-    switch (key) {
-        case 'cpu':
-        case 'cpu_cooler':
-            // Kirim socket_type Motherboard → controller filter Processor by socket_type
-            if (build.motherboard?.socket_type) {
-                params.set('socket_type', build.motherboard.socket_type);
-            }
-            break;
+    if (socketType && ['cpu', 'motherboard', 'cpu_cooler'].includes(key)) {
+        params.set('socket_type', socketType);
+    }
 
-        case 'ram':
-            // Kirim ram_type_slot dari Motherboard sebagai param 'ram_type'
-            // Controller akan filter RAM by spec_key='ram_type' dengan value ini
-            // Mobo punya: ram_type_slot = 'DDR5'
-            // RAM punya:  ram_type      = 'DDR5'  ← yang dicocokkan
-            if (build.motherboard?.ram_type_slot) {
-                params.set('ram_type', build.motherboard.ram_type_slot);
-            }
-            break;
+    if (ramType && ['ram', 'motherboard'].includes(key)) {
+        params.set('ram_type', ramType);
+    }
 
-        case 'psu':
-            // Estimasi kebutuhan daya = (cpu_tdp + gpu_min_psu) * 1.3, bulatkan ke 50W
-            const cpuTdp    = build.cpu?.tdp_watt    || 0;
-            const gpuMinPsu = build.vga?.min_psu_watt || 0;
-            const totalNeed = cpuTdp + gpuMinPsu;
-
-            if (totalNeed > 0) {
-                const minWattage = Math.ceil((totalNeed * 1.3) / 50) * 50;
-                params.set('min_wattage', minWattage);
-            }
-            break;
+    if (key === 'psu' && minWattage > 0) {
+        params.set('min_wattage', minWattage);
     }
 
     return params;
 }
 
-// =============================================================================
-// COMPAT INFO TEXT — teks hint yang ditampilkan di header modal
-// =============================================================================
-function getCompatInfoText(key) {
-    switch (key) {
-        case 'cpu':
-            return build.motherboard?.socket_type
-                ? `Menampilkan Processor dengan socket ${build.motherboard.socket_type}`
-                : 'Semua Processor ditampilkan';
-
-        case 'ram':
-            return build.motherboard?.ram_type_slot
-                ? `Menampilkan RAM tipe ${build.motherboard.ram_type_slot} sesuai slot Motherboard`
-                : 'Semua RAM ditampilkan';
-
-        case 'psu': {
-            const cpuTdp    = build.cpu?.tdp_watt    || 0;
-            const gpuMinPsu = build.vga?.min_psu_watt || 0;
-            if (cpuTdp || gpuMinPsu) {
-                const minW = Math.ceil(((cpuTdp + gpuMinPsu) * 1.3) / 50) * 50;
-                return `Estimasi kebutuhan: CPU ${cpuTdp}W + GPU ${gpuMinPsu}W → filter PSU ≥ ${minW}W`;
-            }
-            return 'Semua PSU ditampilkan';
-        }
-
-        default:
-            return '';
-    }
+function applyModalFilters(products, key) {
+    return products.filter(product => {
+        if (!matchesStorageFilter(product, key)) return false;
+        return isProductCompatible(key, product, key);
+    });
 }
 
-// =============================================================================
-// OPEN COMPONENT MODAL
-// =============================================================================
+function matchesStorageFilter(product, key) {
+    const filter = COMPONENT_BY_KEY[key]?.storage_filter;
+    if (!filter) return true;
+
+    const name = normalizeValue(product.name);
+    const formFactor = normalizeValue(getSpec(product, 'form_factor'));
+    const interfaceType = normalizeValue(getSpec(product, 'interface_type'));
+
+    if (filter === 'hdd') {
+        return name.includes('hdd') || formFactor === '3.5' || formFactor === '3.5 inch';
+    }
+
+    if (filter === 'ssd') {
+        return interfaceType.includes('nvme') || interfaceType.includes('sata') || formFactor === 'm.2' || formFactor === '2.5' || name.includes('ssd');
+    }
+
+    return true;
+}
+
+function isProductCompatible(key, product, exceptKey = null) {
+    if (!product) return true;
+
+    const socketType = getSpec(product, 'socket_type');
+    const selectedSocket = getSelectedSocket(exceptKey);
+    if (socketType && selectedSocket && ['cpu', 'motherboard', 'cpu_cooler'].includes(key) && socketType !== selectedSocket) {
+        return false;
+    }
+
+    if (key === 'ram') {
+        const ramType = getSpec(product, 'ram_type');
+        const moboRam = exceptKey !== 'motherboard' ? getSpec(build.motherboard, 'ram_type_slot') : null;
+        const cpuRam = exceptKey !== 'cpu' ? getSpec(build.cpu, 'ram_type_support') : null;
+        if (moboRam && ramType && ramType !== moboRam) return false;
+        if (cpuRam && ramType && !specSupports(cpuRam, ramType)) return false;
+    }
+
+    if (key === 'motherboard') {
+        const moboRam = getSpec(product, 'ram_type_slot');
+        const selectedRam = exceptKey !== 'ram' ? getSpec(build.ram, 'ram_type') : null;
+        if (moboRam && selectedRam && moboRam !== selectedRam) return false;
+    }
+
+    if (key === 'psu') {
+        const recommended = getRecommendedPsuWatt();
+        const wattage = intSpec(product, 'total_wattage');
+        if (recommended > 0 && wattage > 0 && wattage < recommended) return false;
+    }
+
+    return matchesPhysicalFit(key, product, exceptKey);
+}
+
+function matchesPhysicalFit(key, product, exceptKey = null) {
+    const casing = key === 'casing' ? product : build.casing;
+    if (!casing) return true;
+
+    const supportedMobo = getSpec(casing, 'supported_motherboard_sizes');
+    const mobo = key === 'motherboard' ? product : build.motherboard;
+    const moboFormFactor = getSpec(mobo, 'form_factor');
+    if (supportedMobo && moboFormFactor && !specSupports(supportedMobo, moboFormFactor)) return false;
+
+    const maxGpuLength = intSpec(casing, 'max_gpu_length_mm');
+    const gpu = key === 'vga' ? product : build.vga;
+    const gpuLength = intSpec(gpu, 'length_mm');
+    if (maxGpuLength > 0 && gpuLength > 0 && gpuLength > maxGpuLength) return false;
+
+    const maxCoolerHeight = intSpec(casing, 'max_cpu_cooler_height_mm');
+    const cooler = key === 'cpu_cooler' ? product : build.cpu_cooler;
+    const coolerHeight = intSpec(cooler, 'height_mm');
+    if (maxCoolerHeight > 0 && coolerHeight > 0 && coolerHeight > maxCoolerHeight) return false;
+
+    return true;
+}
+
+function getCompatInfoText(key) {
+    const parts = [];
+    const socketType = getSelectedSocket(key);
+    const ramType = getSelectedRamType(key);
+    const recommendedPsu = getRecommendedPsuWatt();
+
+    if (socketType && ['cpu', 'motherboard', 'cpu_cooler'].includes(key)) parts.push(`socket ${socketType}`);
+    if (ramType && ['ram', 'motherboard'].includes(key)) parts.push(`RAM ${ramType}`);
+    if (key === 'psu' && recommendedPsu > 0) parts.push(`PSU minimal ${recommendedPsu}W`);
+    if (COMPONENT_BY_KEY[key]?.storage_filter === 'hdd') parts.push('hanya Hardisk');
+    if (COMPONENT_BY_KEY[key]?.storage_filter === 'ssd') parts.push('SSD SATA / NVMe');
+
+    return parts.length ? `Menampilkan produk kompatibel: ${parts.join(', ')}` : 'Semua produk stok tersedia ditampilkan';
+}
+
 async function openComponentModal(type, key) {
     currentModalKey  = key;
     allModalProducts = [];
@@ -482,11 +486,10 @@ async function openComponentModal(type, key) {
     overlay.classList.remove('hidden');
     overlay.classList.add('flex');
 
-    // Reset state modal
-    document.getElementById('modal-title').textContent   = 'Pilih ' + type;
+    document.getElementById('modal-title').textContent = 'Pilih ' + (LABELS[key] || type);
     document.getElementById('modal-compat-info').textContent = getCompatInfoText(key);
-    document.getElementById('modal-search').value        = '';
-    document.getElementById('modal-list').innerHTML      = '';
+    document.getElementById('modal-search').value = '';
+    document.getElementById('modal-list').innerHTML = '';
     document.getElementById('modal-empty').classList.add('hidden');
     document.getElementById('modal-loading').classList.remove('hidden');
 
@@ -494,13 +497,9 @@ async function openComponentModal(type, key) {
 
     try {
         const res = await fetch(`/pc-builder/compatible?${params}`);
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
 
-        if (!res.ok) {
-            throw new Error(`Server error ${res.status}`);
-        }
-
-        const products = await res.json();
-
+        const products = applyModalFilters(await res.json(), key);
         document.getElementById('modal-loading').classList.add('hidden');
 
         if (!products.length) {
@@ -510,7 +509,6 @@ async function openComponentModal(type, key) {
 
         allModalProducts = products;
         renderModalProducts(products, key);
-
     } catch (err) {
         console.error('[PC Builder] Fetch error:', err);
         document.getElementById('modal-loading').classList.add('hidden');
@@ -518,9 +516,6 @@ async function openComponentModal(type, key) {
     }
 }
 
-// =============================================================================
-// RENDER DAFTAR PRODUK DI MODAL
-// =============================================================================
 function renderModalProducts(products, key) {
     const list = document.getElementById('modal-list');
     list.innerHTML = '';
@@ -534,21 +529,24 @@ function renderModalProducts(products, key) {
 
     products.forEach(p => {
         const isSelected = build[key]?.id === p.id;
-
         const div = document.createElement('div');
         div.className = [
             'p-4 rounded-xl border cursor-pointer transition-all',
-            isSelected
-                ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
-                : 'border-slate-200 hover:border-slate-400 hover:bg-slate-50',
+            isSelected ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900' : 'border-slate-200 hover:border-slate-400 hover:bg-slate-50',
         ].join(' ');
 
         div.innerHTML = `
             <div class="flex items-start justify-between gap-3">
+                <div class="w-16 h-16 rounded-lg bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-100">
+                    <img src="${escapeHtml(p.image_url || NO_IMAGE_URL)}"
+                        alt="${escapeHtml(p.name)}"
+                        class="w-full h-full object-cover"
+                        onerror="this.src='${NO_IMAGE_URL}'">
+                </div>
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1">
                         ${p.brand ? `<span class="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded font-medium flex-shrink-0">${escapeHtml(p.brand)}</span>` : ''}
-                        ${isSelected ? '<span class="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded font-medium">✓ Dipilih</span>' : ''}
+                        ${isSelected ? '<span class="text-xs bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded font-medium">Dipilih</span>' : ''}
                     </div>
                     <p class="font-medium text-slate-800 text-sm leading-snug">${escapeHtml(p.name)}</p>
                     <p class="text-xs text-slate-400 mt-1 leading-relaxed">${formatSpecsDisplay(p.specs)}</p>
@@ -565,14 +563,14 @@ function renderModalProducts(products, key) {
     });
 }
 
-// Format specs jadi string singkat
-// Prioritaskan canonical key penting di urutan pertama
 function formatSpecsDisplay(specs) {
-    if (!specs || typeof specs !== 'object') return '—';
+    if (!specs || typeof specs !== 'object') return '-';
 
     const PRIORITY = [
-        'socket_type', 'ram_type', 'ram_type_slot', 'form_factor',
-        'tdp_watt', 'total_wattage', 'min_psu_watt', 'capacity_gb', 'speed_mhz',
+        'socket_type', 'ram_type', 'ram_type_slot', 'ram_type_support', 'form_factor',
+        'supported_motherboard_sizes', 'interface_type', 'capacity_gb', 'speed_mhz',
+        'tdp_watt', 'total_wattage', 'min_psu_watt', 'length_mm', 'max_gpu_length_mm',
+        'height_mm', 'max_cpu_cooler_height_mm',
     ];
 
     const allEntries = [
@@ -582,38 +580,30 @@ function formatSpecsDisplay(specs) {
 
     return allEntries
         .map(([k, v]) => `<span class="font-medium text-slate-500">${k.replace(/_/g, ' ')}:</span> ${escapeHtml(String(v))}`)
-        .join(' &nbsp;·&nbsp; ');
+        .join(' &nbsp;-&nbsp; ');
 }
 
-// Search / filter di dalam modal
 function filterModalList(query) {
     if (!allModalProducts.length) return;
 
     const q = query.toLowerCase().trim();
-
     const filtered = q
         ? allModalProducts.filter(p =>
             p.name.toLowerCase().includes(q) ||
             (p.brand || '').toLowerCase().includes(q) ||
-            Object.values(p.specs || {}).some(v =>
-                String(v).toLowerCase().includes(q)
-            )
+            Object.values(p.specs || {}).some(v => String(v).toLowerCase().includes(q))
           )
         : allModalProducts;
 
     renderModalProducts(filtered, currentModalKey);
 }
 
-// Escape HTML untuk mencegah XSS
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
 
-// =============================================================================
-// CLOSE MODAL
-// =============================================================================
 function closeComponentModal() {
     const overlay = document.getElementById('modal-overlay');
     overlay.classList.add('hidden');
@@ -622,85 +612,46 @@ function closeComponentModal() {
     allModalProducts = [];
 }
 
-// =============================================================================
-// SELECT COMPONENT — dipanggil saat user klik produk di modal
-// =============================================================================
 function selectComponent(key, product) {
-    const prevProduct = build[key];
-    build[key] = product;
-
+    const currentQty = build[key]?.id === product.id ? productQty(build[key]) : 1;
+    build[key] = { ...product, qty: currentQty };
     closeComponentModal();
 
-    // Kalau Motherboard diganti, reset komponen yang bergantung
-    if (key === 'motherboard' && prevProduct && prevProduct.id !== product.id) {
-        resetDependents(['cpu', 'ram', 'vga', 'psu', 'storage']);
-    }
-
-    // Kalau CPU diganti, reset VGA dan PSU
-    if (key === 'cpu' && prevProduct && prevProduct.id !== product.id) {
-        resetDependents(['psu']);
-    }
-
-    // Kalau VGA diganti, reset PSU
-    if (key === 'vga' && prevProduct && prevProduct.id !== product.id) {
-        resetDependents(['psu']);
-    }
-
     updateRow(key, product);
-    unlockNext(key);
+    clearInvalidSelections(key);
+    refreshHints();
     updateSummary();
     checkCompatibility();
 }
 
-// Reset komponen tertentu ke kondisi awal (ketika komponen yang jadi
-// prasyaratnya diganti)
-function resetDependents(keys) {
-    keys.forEach(key => {
-        if (!build[key]) return;
-
-        build[key] = null;
-
-        // Reset tampilan baris
-        const nameEl  = document.getElementById(`name-${key}`);
-        const priceEl = document.getElementById(`price-${key}`);
-        const hintEl  = document.getElementById(`hint-${key}`);
-        const iconEl  = document.getElementById(`icon-${key}`);
-        const btnEl   = document.getElementById(`btn-${key}`);
-        const rowEl   = document.getElementById(`row-${key}`);
-
-        const PLACEHOLDERS = {
-            cpu:     'Pilih Motherboard dulu',
-            ram:     'Pilih Motherboard dulu',
-            vga:     'Pilih CPU dulu',
-            storage: 'Pilih Motherboard dulu',
-            psu:     'Pilih CPU & VGA dulu',
-        };
-
-        if (nameEl)  { nameEl.textContent = PLACEHOLDERS[key] ?? 'Belum dipilih'; nameEl.classList.add('text-slate-400', 'italic'); nameEl.classList.remove('text-slate-800'); }
-        if (priceEl) { priceEl.textContent = ''; priceEl.classList.add('hidden'); }
-        if (hintEl)  { hintEl.textContent = ''; hintEl.classList.add('hidden'); }
-        if (iconEl)  { iconEl.textContent = STEP_NUMBERS[key] ?? '?'; iconEl.classList.remove('bg-emerald-100', 'text-emerald-600'); iconEl.classList.add('bg-slate-100', 'text-slate-500'); }
-        if (btnEl)   { btnEl.textContent = 'Pilih'; btnEl.disabled = true; btnEl.classList.remove('bg-slate-900', 'text-white', 'hover:bg-slate-700'); btnEl.classList.add('bg-slate-200', 'text-slate-400', 'cursor-not-allowed'); }
-        if (rowEl)   { rowEl.classList.add('opacity-50'); }
-
-        // Reset summary
-        const summaryPrice = document.getElementById(`summary-price-${key}`);
-        const summaryName  = document.getElementById(`summary-name-${key}`);
-        if (summaryPrice) { summaryPrice.textContent = '—'; summaryPrice.classList.remove('text-slate-800', 'font-medium'); summaryPrice.classList.add('text-slate-300'); }
-        if (summaryName)  { summaryName.textContent = ''; summaryName.classList.add('hidden'); }
+function clearInvalidSelections(changedKey) {
+    Object.entries(build).forEach(([key, product]) => {
+        if (!product || key === changedKey) return;
+        if (!isProductCompatible(key, product, key)) {
+            build[key] = null;
+            resetRow(key);
+        }
     });
 }
 
-const STEP_NUMBERS = {
-    motherboard: '1', cpu: '2', ram: '3', vga: '4', storage: '5', psu: '6',
-};
+function resetRow(key) {
+    const nameEl  = document.getElementById(`name-${key}`);
+    const priceEl = document.getElementById(`price-${key}`);
+    const hintEl  = document.getElementById(`hint-${key}`);
+    const iconEl  = document.getElementById(`icon-${key}`);
+    const btnEl   = document.getElementById(`btn-${key}`);
 
-// Update tampilan baris setelah komponen berhasil dipilih
+    if (nameEl)  { nameEl.textContent = 'Belum dipilih'; nameEl.classList.add('text-slate-400', 'italic'); nameEl.classList.remove('text-slate-800'); }
+    if (priceEl) { priceEl.textContent = ''; priceEl.classList.add('hidden'); }
+    if (hintEl)  { hintEl.textContent = ''; hintEl.classList.add('hidden'); }
+    if (iconEl)  { iconEl.textContent = STEP_NUMBERS[key] ?? '?'; iconEl.classList.remove('bg-emerald-100', 'text-emerald-600'); iconEl.classList.add('bg-slate-100', 'text-slate-500'); }
+    if (btnEl)   { btnEl.textContent = 'Pilih'; btnEl.disabled = false; btnEl.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed'); btnEl.classList.add('bg-slate-900', 'text-white', 'hover:bg-slate-700'); }
+}
+
 function updateRow(key, product) {
     const nameEl  = document.getElementById(`name-${key}`);
     const priceEl = document.getElementById(`price-${key}`);
     const iconEl  = document.getElementById(`icon-${key}`);
-    const rowEl   = document.getElementById(`row-${key}`);
     const btnEl   = document.getElementById(`btn-${key}`);
 
     if (nameEl) {
@@ -715,173 +666,133 @@ function updateRow(key, product) {
     }
 
     if (iconEl) {
-        iconEl.textContent = '✓';
+        iconEl.textContent = 'OK';
         iconEl.classList.remove('bg-slate-100', 'text-slate-500');
         iconEl.classList.add('bg-emerald-100', 'text-emerald-600');
     }
 
-    if (rowEl) rowEl.classList.remove('opacity-50');
-
     if (btnEl) {
         btnEl.textContent = 'Ganti';
-        btnEl.disabled    = false;
+        btnEl.disabled = false;
         btnEl.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
         btnEl.classList.add('bg-slate-900', 'text-white', 'hover:bg-slate-700');
     }
 }
 
-// =============================================================================
-// UNLOCK NEXT — aktifkan baris komponen setelah prasyaratnya dipenuhi
-//
-//   Motherboard dipilih → CPU, RAM, Storage aktif
-//   CPU dipilih         → VGA aktif
-//   CPU + VGA dipilih   → PSU aktif
-// =============================================================================
-function unlockNext(key) {
-    if (key === 'motherboard') {
-        const socketHint = build.motherboard?.socket_type
-            ? `Filter socket: ${build.motherboard.socket_type}`
-            : 'Bebas pilih Processor';
+function changeQty(key, delta) {
+    if (!build[key]) return;
 
-        const ramHint = build.motherboard?.ram_type_slot
-            ? `Filter RAM: ${build.motherboard.ram_type_slot}`
-            : 'Bebas pilih RAM';
-
-        enableRow('cpu',     socketHint,          'hint-cpu');
-        enableRow('ram',     ramHint,              'hint-ram');
-        enableRow('storage', 'Bebas pilih Storage', null);
+    const nextQty = productQty(build[key]) + delta;
+    if (nextQty < 1) {
+        removeComponent(key);
+        return;
     }
 
-    if (key === 'cpu') {
-        enableRow('vga', 'Bebas pilih VGA', null);
-    }
-
-    if ((key === 'cpu' || key === 'vga') && build.cpu && build.vga) {
-        const cpuTdp    = build.cpu?.tdp_watt    || 0;
-        const gpuMinPsu = build.vga?.min_psu_watt || 0;
-        const minW      = Math.ceil(((cpuTdp + gpuMinPsu) * 1.3) / 50) * 50;
-
-        enableRow('psu', `Pilih`, `hint-psu`);
-
-        const hintPsu = document.getElementById('hint-psu');
-        if (hintPsu) {
-            hintPsu.textContent = `Filter PSU ≥ ${minW}W (CPU ${cpuTdp}W + GPU ${gpuMinPsu}W + headroom 30%)`;
-            hintPsu.classList.remove('hidden');
-        }
-    }
+    build[key].qty = nextQty;
+    updateSummary();
 }
 
-function enableRow(key, placeholder, hintId) {
-    const row  = document.getElementById(`row-${key}`);
-    const btn  = document.getElementById(`btn-${key}`);
-    const name = document.getElementById(`name-${key}`);
-    const hint = hintId ? document.getElementById(hintId) : null;
+function removeComponent(key) {
+    if (!build[key]) return;
 
-    if (row)  row.classList.remove('opacity-50');
-
-    if (btn) {
-        btn.disabled = false;
-        btn.classList.remove('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
-        btn.classList.add('bg-slate-900', 'text-white', 'hover:bg-slate-700');
-    }
-
-    if (name && !build[key]) {
-        name.textContent = placeholder;
-        name.classList.add('text-slate-400', 'italic');
-        name.classList.remove('text-slate-800');
-    }
-
-    if (hint && !build[key]) {
-        // hint diisi oleh unlockNext setelah enableRow
-    }
+    build[key] = null;
+    resetRow(key);
+    refreshHints();
+    updateSummary();
+    checkCompatibility();
 }
 
-// =============================================================================
-// UPDATE SUMMARY — hitung total harga + estimasi daya
-// =============================================================================
-// =============================================================================
-// UPDATE SUMMARY — hitung total modal + margin + harga jual
-// =============================================================================
-function updateSummary() {
-    let totalModal = 0;
+function refreshHints() {
+    COMPONENTS.forEach(component => {
+        const hintEl = document.getElementById(`hint-${component.key}`);
+        if (!hintEl || build[component.key]) return;
 
-    Object.entries(build).forEach(([key, product]) => {
-        const priceEl = document.getElementById(`summary-price-${key}`);
-        const nameEl  = document.getElementById(`summary-name-${key}`);
-
-        if (product) {
-            if (priceEl) {
-                // Tampilkan harga beli (modal)
-                priceEl.textContent = product.price_fmt;
-                priceEl.classList.remove('text-slate-300');
-                priceEl.classList.add('text-slate-800', 'font-medium');
-            }
-            if (nameEl) {
-                nameEl.textContent = product.name;
-                nameEl.classList.remove('hidden');
-            }
-            totalModal += product.price; // price = harga_beli
+        const text = getCompatInfoText(component.key);
+        if (text && text !== 'Semua produk stok tersedia ditampilkan') {
+            hintEl.textContent = text;
+            hintEl.classList.remove('hidden');
         } else {
-            if (priceEl) {
-                priceEl.textContent = '—';
-                priceEl.classList.remove('text-slate-800', 'font-medium');
-                priceEl.classList.add('text-slate-300');
-            }
-            if (nameEl) {
-                nameEl.textContent = '';
-                nameEl.classList.add('hidden');
-            }
+            hintEl.textContent = '';
+            hintEl.classList.add('hidden');
         }
     });
+}
 
-    // Simpan total modal ke variabel global
+function updateSummary() {
+    let totalModal = 0;
+    const selectedEntries = Object.entries(build).filter(([, product]) => product);
+    const listEl = document.getElementById('summary-selected-list');
+
+    selectedEntries.forEach(([, product]) => {
+        totalModal += productLineTotal(product);
+    });
+
+    if (listEl) {
+        if (!selectedEntries.length) {
+            listEl.innerHTML = '<p id="summary-empty" class="text-sm text-slate-400 italic">Belum ada item dipilih.</p>';
+        } else {
+            listEl.innerHTML = selectedEntries.map(([key, product]) => `
+                <div class="rounded-xl border border-slate-100 bg-slate-50 p-3" id="summary-row-${key}">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="text-[11px] uppercase tracking-wider text-slate-400 font-medium">${escapeHtml(LABELS[key] || key)}</p>
+                            <p class="text-sm font-medium text-slate-800 leading-snug mt-0.5">${escapeHtml(product.name)}</p>
+                            <p class="text-xs text-emerald-600 font-medium mt-1">${product.price_fmt} x ${productQty(product)}</p>
+                        </div>
+                        <button type="button" onclick="removeComponent('${key}')"
+                            class="w-7 h-7 rounded-lg bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 transition flex items-center justify-center"
+                            aria-label="Hapus ${escapeHtml(LABELS[key] || key)}">
+                            &times;
+                        </button>
+                    </div>
+                    <div class="mt-3 flex items-center justify-between">
+                        <div class="inline-flex items-center rounded-lg border border-slate-200 bg-white overflow-hidden">
+                            <button type="button" onclick="changeQty('${key}', -1)"
+                                class="w-8 h-8 text-slate-500 hover:bg-slate-100 transition">-</button>
+                            <span class="w-9 text-center text-sm font-semibold text-slate-700">${productQty(product)}</span>
+                            <button type="button" onclick="changeQty('${key}', 1)"
+                                class="w-8 h-8 text-slate-500 hover:bg-slate-100 transition">+</button>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-800">Rp ${productLineTotal(product).toLocaleString('id-ID')}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
     window._totalModal = totalModal;
-
-    // Update tampilan total modal
-    document.getElementById('summary-total-modal').textContent =
-        'Rp ' + totalModal.toLocaleString('id-ID');
-
-    // Hitung harga jual dengan margin
+    document.getElementById('summary-total-modal').textContent = 'Rp ' + totalModal.toLocaleString('id-ID');
     updateMargin();
 
-    // Estimasi daya
-    const cpuTdp    = build.cpu?.tdp_watt    || 0;
-    const gpuMinPsu = build.vga?.min_psu_watt || 0;
+    const cpuTdp    = intSpec(build.cpu, 'tdp_watt');
+    const gpuMinPsu = intSpec(build.vga, 'min_psu_watt');
     const totalNeed = cpuTdp + gpuMinPsu;
-
     const wattEl = document.getElementById('summary-watt');
     const recEl  = document.getElementById('summary-psu-rec');
 
     if (totalNeed > 0) {
-        const recommended = Math.ceil((totalNeed * 1.3) / 50) * 50;
+        const recommended = getRecommendedPsuWatt();
         wattEl.textContent = `${totalNeed} W`;
         recEl.textContent  = `Rekomendasi PSU minimal ${recommended}W`;
     } else {
-        wattEl.textContent = '— W';
-        recEl.textContent  = 'Pilih CPU & VGA untuk estimasi daya';
+        wattEl.textContent = '- W';
+        recEl.textContent  = 'Pilih CPU atau GPU untuk estimasi daya';
     }
 
     validatePsuWattage();
 }
 
-// =============================================================================
-// UPDATE MARGIN — dipanggil saat input margin berubah atau summary diupdate
-// =============================================================================
 function updateMargin() {
     const totalModal    = window._totalModal || 0;
     const marginPct     = parseFloat(document.getElementById('input-margin')?.value) || 0;
     const marginAmount  = Math.round(totalModal * marginPct / 100);
     const totalJual     = totalModal + marginAmount;
 
-    // Simpan harga jual ke global (dipakai saat save build)
     window._totalJual  = totalJual;
     window._marginPct  = marginPct;
 
-    document.getElementById('summary-margin-amount').textContent =
-        '+ Rp ' + marginAmount.toLocaleString('id-ID');
-
-    document.getElementById('summary-total-jual').textContent =
-        'Rp ' + totalJual.toLocaleString('id-ID');
+    document.getElementById('summary-margin-amount').textContent = '+ Rp ' + marginAmount.toLocaleString('id-ID');
+    document.getElementById('summary-total-jual').textContent = 'Rp ' + totalJual.toLocaleString('id-ID');
 }
 
 function validatePsuWattage() {
@@ -892,78 +803,85 @@ function validatePsuWattage() {
         return;
     }
 
-    const cpuTdp      = build.cpu?.tdp_watt     || 0;
-    const gpuMinPsu   = build.vga?.min_psu_watt  || 0;
-    const totalNeed   = cpuTdp + gpuMinPsu;
-    const recommended = Math.ceil((totalNeed * 1.3) / 50) * 50;
-    const psuWattage  = build.psu?.total_wattage || 0;
+    const recommended = getRecommendedPsuWatt();
+    const psuWattage  = intSpec(build.psu, 'total_wattage');
 
-    if (psuWattage > 0 && psuWattage < recommended) {
-        warningEl.textContent = `⚠ PSU ${psuWattage}W mungkin tidak cukup untuk build ini. Direkomendasikan ≥ ${recommended}W.`;
+    if (psuWattage > 0 && recommended > 0 && psuWattage < recommended) {
+        warningEl.textContent = `PSU ${psuWattage}W mungkin tidak cukup untuk build ini. Direkomendasikan minimal ${recommended}W.`;
         warningEl.classList.remove('hidden');
     } else {
         warningEl.classList.add('hidden');
     }
 }
 
-// =============================================================================
-// CEK KOMPATIBILITAS
-//
-// Dijalankan setiap kali komponen dipilih atau diganti.
-// Menggunakan canonical key yang konsisten dengan data dari server.
-//
-// Cek yang dilakukan:
-//   1. socket_type CPU harus cocok dengan socket_type Motherboard
-//   2. ram_type RAM harus cocok dengan ram_type_slot Motherboard
-// =============================================================================
+function getCompatibilityIssues() {
+    const issues = [];
+
+    if (build.cpu && build.motherboard) {
+        const cpuSocket = getSpec(build.cpu, 'socket_type');
+        const moboSocket = getSpec(build.motherboard, 'socket_type');
+        if (cpuSocket && moboSocket && cpuSocket !== moboSocket) issues.push(`Socket CPU (${cpuSocket}) tidak cocok dengan Motherboard (${moboSocket})`);
+    }
+
+    if (build.cpu_cooler && build.motherboard) {
+        const coolerSocket = getSpec(build.cpu_cooler, 'socket_type');
+        const moboSocket = getSpec(build.motherboard, 'socket_type');
+        if (coolerSocket && moboSocket && coolerSocket !== moboSocket) issues.push(`Socket Cooler (${coolerSocket}) tidak cocok dengan Motherboard (${moboSocket})`);
+    }
+
+    if (build.ram && build.motherboard) {
+        const ramType = getSpec(build.ram, 'ram_type');
+        const moboRam = getSpec(build.motherboard, 'ram_type_slot');
+        if (ramType && moboRam && ramType !== moboRam) issues.push(`Tipe RAM (${ramType}) tidak cocok dengan slot Motherboard (${moboRam})`);
+    }
+
+    if (build.ram && build.cpu) {
+        const ramType = getSpec(build.ram, 'ram_type');
+        const cpuRam = getSpec(build.cpu, 'ram_type_support');
+        if (ramType && cpuRam && !specSupports(cpuRam, ramType)) issues.push(`RAM ${ramType} tidak ada di dukungan Processor (${cpuRam})`);
+    }
+
+    if (build.casing && build.motherboard) {
+        const supported = getSpec(build.casing, 'supported_motherboard_sizes');
+        const formFactor = getSpec(build.motherboard, 'form_factor');
+        if (supported && formFactor && !specSupports(supported, formFactor)) issues.push(`Casing tidak mendukung form factor Motherboard ${formFactor}`);
+    }
+
+    if (build.casing && build.vga) {
+        const maxGpu = intSpec(build.casing, 'max_gpu_length_mm');
+        const gpuLength = intSpec(build.vga, 'length_mm');
+        if (maxGpu > 0 && gpuLength > 0 && gpuLength > maxGpu) issues.push(`Panjang GPU ${gpuLength}mm melebihi kapasitas casing ${maxGpu}mm`);
+    }
+
+    if (build.casing && build.cpu_cooler) {
+        const maxCooler = intSpec(build.casing, 'max_cpu_cooler_height_mm');
+        const coolerHeight = intSpec(build.cpu_cooler, 'height_mm');
+        if (maxCooler > 0 && coolerHeight > 0 && coolerHeight > maxCooler) issues.push(`Tinggi Cooler ${coolerHeight}mm melebihi kapasitas casing ${maxCooler}mm`);
+    }
+
+    return issues;
+}
+
 function checkCompatibility() {
     const statusEl  = document.getElementById('compat-status');
     const warningEl = document.getElementById('compat-warning');
+    const issues = getCompatibilityIssues();
 
-    // --- CEK 1: Socket CPU vs Motherboard ---
-    if (build.cpu && build.motherboard) {
-        const cpuSocket  = build.cpu.socket_type;
-        const moboSocket = build.motherboard.socket_type;
-
-        if (cpuSocket && moboSocket && cpuSocket !== moboSocket) {
-            showCompatError(
-                statusEl,
-                '⚠ Tidak Kompatibel: Socket tidak cocok',
-                `CPU membutuhkan socket ${cpuSocket}, Motherboard punya socket ${moboSocket}`
-            );
-            warningEl.textContent = `Socket tidak cocok: CPU (${cpuSocket}) ≠ Motherboard (${moboSocket})`;
-            warningEl.classList.remove('hidden');
-            return;
-        }
+    if (issues.length) {
+        showCompatError(statusEl, 'Tidak kompatibel', issues[0]);
+        warningEl.textContent = issues.join(' | ');
+        warningEl.classList.remove('hidden');
+        return;
     }
 
-    // --- CEK 2: RAM type vs Motherboard slot ---
-    if (build.ram && build.motherboard) {
-        const moboRamSlot = build.motherboard.ram_type_slot;  // dari Motherboard
-        const ramType     = build.ram.ram_type;               // dari RAM
-
-        if (moboRamSlot && ramType && moboRamSlot !== ramType) {
-            showCompatError(
-                statusEl,
-                '⚠ Tidak Kompatibel: Tipe RAM tidak cocok',
-                `Slot Motherboard: ${moboRamSlot} — RAM yang dipilih: ${ramType}`
-            );
-            warningEl.textContent = `Tipe RAM tidak cocok: Slot Motherboard (${moboRamSlot}) ≠ RAM (${ramType})`;
-            warningEl.classList.remove('hidden');
-            return;
-        }
-    }
-
-    // Semua kompatibel
     warningEl.classList.add('hidden');
-
     const filled = Object.values(build).filter(Boolean).length;
 
     if (filled >= 2) {
-        statusEl.className   = 'rounded-2xl p-4 bg-emerald-50 border border-emerald-100';
-        statusEl.innerHTML   = `
-            <p class="text-sm font-medium text-emerald-700">✓ Semua komponen yang dipilih kompatibel</p>
-            <p class="text-xs text-emerald-600 mt-0.5">${filled} dari 6 komponen sudah dipilih</p>
+        statusEl.className = 'rounded-2xl p-4 bg-emerald-50 border border-emerald-100';
+        statusEl.innerHTML = `
+            <p class="text-sm font-medium text-emerald-700">Semua komponen yang dipilih kompatibel</p>
+            <p class="text-xs text-emerald-600 mt-0.5">${filled} dari ${TOTAL_COMPONENTS} komponen sudah dipilih</p>
         `;
         statusEl.classList.remove('hidden');
     } else {
@@ -980,58 +898,33 @@ function showCompatError(el, title, detail) {
     el.classList.remove('hidden');
 }
 
-// =============================================================================
-// RESET BUILD
-// =============================================================================
 function resetBuild() {
     if (!confirm('Reset semua pilihan komponen?')) return;
     Object.keys(build).forEach(k => build[k] = null);
     location.reload();
 }
 
-// =============================================================================
-// SAVE BUILD — Cetak Estimasi
-// =============================================================================
 function saveBuild() {
     const filled = Object.entries(build).filter(([, v]) => v !== null);
-
     if (filled.length === 0) {
         alert('Pilih minimal satu komponen terlebih dahulu.');
         return;
     }
 
-    const LABELS = {
-        motherboard: 'Motherboard',
-        cpu:         'Processor (CPU)',
-        ram:         'RAM',
-        vga:         'VGA / GPU',
-        storage:     'Storage',
-        psu:         'Power Supply',
-    };
-
-    const cpuTdp      = build.cpu?.tdp_watt    || 0;
-    const gpuMinPsu   = build.vga?.min_psu_watt || 0;
+    const cpuTdp      = intSpec(build.cpu, 'tdp_watt');
+    const gpuMinPsu   = intSpec(build.vga, 'min_psu_watt');
     const totalNeed   = cpuTdp + gpuMinPsu;
-    const recommended = totalNeed > 0 ? Math.ceil((totalNeed * 1.3) / 50) * 50 : null;
-    const psuWattage  = build.psu?.total_wattage || 0;
+    const recommended = totalNeed > 0 ? getRecommendedPsuWatt() : null;
+    const psuWattage  = intSpec(build.psu, 'total_wattage');
 
     let total = 0;
-    Object.values(build).forEach(p => { if (p) total += p.price; });
+    Object.values(build).forEach(p => { if (p) total += productLineTotal(p); });
+    const totalJual = window._totalJual || total;
 
-    // Bangun baris komponen
-    const rows = Object.entries(LABELS).map(([key, label]) => {
+    const rows = Object.entries(LABELS).filter(([key]) => build[key]).map(([key, label]) => {
         const p = build[key];
-        if (!p) return `
-            <tr>
-                <td class="label">${label}</td>
-                <td class="name" colspan="2" style="color:#94a3b8;font-style:italic;">Belum dipilih</td>
-            </tr>`;
-
-        // Specs penting untuk ditampilkan
         const specStr = p.specs
-            ? Object.entries(p.specs).slice(0, 4)
-                .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
-                .join(' · ')
+            ? Object.entries(p.specs).slice(0, 4).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(' - ')
             : '';
 
         return `
@@ -1040,24 +933,15 @@ function saveBuild() {
                 <td class="name">
                     ${p.brand ? `<span class="badge">${p.brand}</span> ` : ''}
                     ${p.name}
+                    ${productQty(p) > 1 ? `<span class="qty">x${productQty(p)}</span>` : ''}
                     ${specStr ? `<br><span class="specs">${specStr}</span>` : ''}
                 </td>
-                <td class="price">${p.price_fmt}</td>
             </tr>`;
     }).join('');
 
-    // Peringatan kompatibilitas
-    let compatWarning = '';
-    if (build.cpu && build.motherboard && build.cpu.socket_type && build.motherboard.socket_type
-        && build.cpu.socket_type !== build.motherboard.socket_type) {
-        compatWarning += `<div class="warning">⚠ Socket tidak cocok: CPU (${build.cpu.socket_type}) ≠ Motherboard (${build.motherboard.socket_type})</div>`;
-    }
-    if (build.ram && build.motherboard && build.ram.ram_type && build.motherboard.ram_type_slot
-        && build.ram.ram_type !== build.motherboard.ram_type_slot) {
-        compatWarning += `<div class="warning">⚠ Tipe RAM tidak cocok: Slot Motherboard (${build.motherboard.ram_type_slot}) ≠ RAM (${build.ram.ram_type})</div>`;
-    }
+    let compatWarning = getCompatibilityIssues().map(issue => `<div class="warning">${issue}</div>`).join('');
     if (psuWattage > 0 && recommended && psuWattage < recommended) {
-        compatWarning += `<div class="warning">⚠ PSU ${psuWattage}W mungkin tidak cukup. Direkomendasikan ≥ ${recommended}W.</div>`;
+        compatWarning += `<div class="warning">PSU ${psuWattage}W mungkin tidak cukup. Direkomendasikan minimal ${recommended}W.</div>`;
     }
 
     const printDate = new Date().toLocaleDateString('id-ID', {
@@ -1070,85 +954,36 @@ function saveBuild() {
         <meta charset="UTF-8">
         <title>Estimasi Rakit PC</title>
         <style>
-            @page {
-                margin: 0;
-                size: A4 portrait;
-            }
+            @page { margin: 0; size: A4 portrait; }
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body {
-                font-family: 'Segoe UI', Arial, sans-serif;
-                font-size: 13px;
-                color: #1e293b;
-                padding: 32px;
-                background: #fff;
-            }
-            .header {
-                border-bottom: 2px solid #0f172a;
-                padding-bottom: 14px;
-                margin-bottom: 20px;
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-end;
-            }
+            body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1e293b; padding: 32px; background: #fff; }
+            .header { border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
             .header h1 { font-size: 20px; font-weight: 700; color: #0f172a; }
             .header p  { font-size: 11px; color: #64748b; margin-top: 3px; }
-            .date       { font-size: 11px; color: #64748b; text-align: right; }
-
+            .date { font-size: 11px; color: #64748b; text-align: right; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
             thead tr { background: #0f172a; color: #fff; }
             thead th { padding: 9px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
             tbody tr { border-bottom: 1px solid #e2e8f0; }
             tbody tr:last-child { border-bottom: none; }
             td { padding: 10px 12px; vertical-align: top; }
-
-            td.label { font-weight: 600; color: #475569; width: 160px; white-space: nowrap; }
-            td.name  { color: #1e293b; line-height: 1.5; }
-            td.price { text-align: right; font-weight: 600; white-space: nowrap; color: #0f172a; width: 130px; }
-
+            td.label { font-weight: 600; color: #475569; width: 170px; white-space: nowrap; }
+            td.name { color: #1e293b; line-height: 1.5; }
             .badge { display: inline-block; font-size: 10px; background: #f1f5f9; color: #64748b; padding: 1px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; }
+            .qty { display: inline-block; font-size: 10px; background: #ecfdf5; color: #047857; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 5px; }
             .specs { font-size: 10px; color: #94a3b8; }
-
             .total-row { background: #f8fafc; }
             .total-row td { padding: 12px; font-weight: 700; font-size: 14px; }
-
-            .section {
-                background: #f8fafc;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 14px 16px;
-                margin-bottom: 14px;
-            }
+            .section { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
             .section-title { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: #64748b; margin-bottom: 8px; }
             .watt-info { display: flex; justify-content: space-between; font-size: 12px; color: #334155; }
             .watt-info span { font-weight: 600; }
-
-            .warning {
-                background: #fff7ed;
-                border: 1px solid #fed7aa;
-                border-radius: 6px;
-                padding: 8px 12px;
-                margin-bottom: 8px;
-                color: #c2410c;
-                font-size: 11px;
-            }
-
-            .footer {
-                margin-top: 28px;
-                border-top: 1px solid #e2e8f0;
-                padding-top: 12px;
-                font-size: 10px;
-                color: #94a3b8;
-                text-align: center;
-            }
-
-            @media print {
-                body { padding: 20px; }
-                button { display: none !important; }
-            }
+            .warning { background: #fff7ed; border: 1px solid #fed7aa; border-radius: 6px; padding: 8px 12px; margin-bottom: 8px; color: #c2410c; font-size: 11px; }
+            .footer { margin-top: 28px; border-top: 1px solid #e2e8f0; padding-top: 12px; font-size: 10px; color: #94a3b8; text-align: center; }
+            @media print { body { padding: 20px; } button { display: none !important; } }
         </style>
     </head>
     <body>
-
         <div class="header">
             <div>
                 <h1>Estimasi Rakit PC</h1>
@@ -1161,44 +996,25 @@ function saveBuild() {
 
         <table>
             <thead>
-                <tr>
-                    <th>Komponen</th>
-                    <th>Produk</th>
-                    <th style="text-align:right">Harga</th>
-                </tr>
+                <tr><th>Komponen</th><th>Rincian Item</th></tr>
             </thead>
             <tbody>
                 ${rows}
-                <tr class="total-row">
-                    <td colspan="2">Total Estimasi</td>
-                    <td class="price" style="font-size:15px;">Rp ${total.toLocaleString('id-ID')}</td>
-                </tr>
+                <tr class="total-row"><td>Total Estimasi</td><td style="font-size:16px;color:#0f172a;">Rp ${totalJual.toLocaleString('id-ID')}</td></tr>
             </tbody>
         </table>
 
         ${totalNeed > 0 ? `
         <div class="section">
             <div class="section-title">Estimasi Konsumsi Daya</div>
-            <div class="watt-info">
-                <span>CPU TDP</span><span>${cpuTdp} W</span>
-            </div>
-            <div class="watt-info">
-                <span>GPU Min PSU</span><span>${gpuMinPsu} W</span>
-            </div>
-            <div class="watt-info" style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;">
-                <span>Total Estimasi</span><span>${totalNeed} W</span>
-            </div>
-            <div class="watt-info">
-                <span>Rekomendasi PSU (headroom 30%)</span>
-                <span style="color:#0f172a;">≥ ${recommended} W</span>
-            </div>
+            <div class="watt-info"><span>CPU TDP</span><span>${cpuTdp} W</span></div>
+            <div class="watt-info"><span>GPU Min PSU</span><span>${gpuMinPsu} W</span></div>
+            <div class="watt-info" style="margin-top:6px;padding-top:6px;border-top:1px solid #e2e8f0;"><span>Total Estimasi</span><span>${totalNeed} W</span></div>
+            <div class="watt-info"><span>Rekomendasi PSU (headroom 30%)</span><span style="color:#0f172a;">minimal ${recommended} W</span></div>
             ${psuWattage ? `<div class="watt-info"><span>PSU Dipilih</span><span>${psuWattage} W</span></div>` : ''}
         </div>` : ''}
 
-        <div class="footer">
-            Dokumen ini merupakan estimasi. Harga dapat berubah sewaktu-waktu.
-        </div>
-
+        <div class="footer">Dokumen ini merupakan estimasi. Harga dapat berubah sewaktu-waktu.</div>
         <script>window.onload = () => { window.print(); }<\/script>
     </body>
     </html>`;
@@ -1207,7 +1023,6 @@ function saveBuild() {
     w.document.write(html);
     w.document.close();
 }
-
 const CSRF_TOKEN = '{{ csrf_token() }}';
 
 // =============================================================================
@@ -1226,6 +1041,19 @@ function openSaveBuildModal() {
 function closeSaveBuildModal() {
     document.getElementById('modal-save-build').classList.add('hidden');
     document.getElementById('modal-save-build').classList.remove('flex');
+}
+
+function showSuccessMessage(message) {
+    const toast = document.getElementById('success-toast');
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.classList.remove('hidden');
+
+    clearTimeout(window._successToastTimer);
+    window._successToastTimer = setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3500);
 }
 
 async function confirmSaveBuild() {
@@ -1265,7 +1093,7 @@ async function confirmSaveBuild() {
         closeSaveBuildModal();
         document.getElementById('save-build-name').value  = '';
         document.getElementById('save-build-notes').value = '';
-        alert('✓ Build berhasil disimpan!');
+        showSuccessMessage('Build berhasil disimpan.');
     } catch (err) {
         alert('Error: ' + err.message);
     }
@@ -1289,3 +1117,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 @endsection
+
+
+
+

@@ -29,13 +29,9 @@ class TransactionService
 
             $installationFee = (float) data_get($validated, 'additional_fees.installation', 0);
             $serviceLaborFee = (float) data_get($validated, 'additional_fees.service_labor', 0);
-            $discountFee = (float) data_get($validated, 'additional_fees.discount', 0);
+            $discountPercent = min(100, max(0, (float) data_get($validated, 'additional_fees.discount', 0)));
             $serviceFee = (float) $validated['service_fee'];
-            if ($discountFee > ($subtotal + $serviceFee)) {
-                throw ValidationException::withMessages([
-                    'additional_fees.discount' => ['Diskon tidak boleh melebihi subtotal dan biaya tambahan.'],
-                ]);
-            }
+            $discountFee = round(($subtotal + $serviceFee) * $discountPercent / 100, 2);
 
             $finalTotal = $subtotal + $serviceFee - $discountFee;
 

@@ -406,6 +406,169 @@ return [
             ],
         ],
 
+        // =====================================================================
+        // MONITOR
+        // =====================================================================
+        'monitor' => [
+            'labels' => ['Monitor'],
+            'fields' => [
+                [
+                    'key'         => 'screen_size',
+                    'label'       => 'Screen size',
+                    'placeholder' => '24 / 27',
+                    'hint'        => 'Opsional. Ukuran layar monitor dalam inch.',
+                    'lookup_keys' => ['screen_size', 'size', 'Size'],
+                ],
+                [
+                    'key'         => 'resolution',
+                    'label'       => 'Resolution',
+                    'placeholder' => '1080p / 1440p / 4K',
+                    'hint'        => 'Opsional. Resolusi monitor.',
+                    'lookup_keys' => ['resolution', 'Resolution'],
+                ],
+                [
+                    'key'         => 'refresh_rate',
+                    'label'       => 'Refresh rate',
+                    'placeholder' => '75Hz / 144Hz',
+                    'hint'        => 'Opsional. Refresh rate monitor.',
+                    'lookup_keys' => ['refresh_rate', 'Refresh Rate'],
+                ],
+            ],
+        ],
+
+        // =====================================================================
+        // PERIPHERAL & ACCESSORIES
+        // =====================================================================
+        'keyboard' => [
+            'labels' => ['Keyboard'],
+            'fields' => [
+                [
+                    'key'         => 'connection_type',
+                    'label'       => 'Connection type',
+                    'placeholder' => 'Wired / Wireless',
+                    'hint'        => 'Opsional. Jenis koneksi keyboard.',
+                    'lookup_keys' => ['connection_type', 'connection', 'Connection'],
+                ],
+            ],
+        ],
+
+        'mouse' => [
+            'labels' => ['Mouse'],
+            'fields' => [
+                [
+                    'key'         => 'connection_type',
+                    'label'       => 'Connection type',
+                    'placeholder' => 'Wired / Wireless',
+                    'hint'        => 'Opsional. Jenis koneksi mouse.',
+                    'lookup_keys' => ['connection_type', 'connection', 'Connection'],
+                ],
+            ],
+        ],
+
+        'mousepad' => [
+            'labels' => ['Mousepad'],
+            'fields' => [
+                [
+                    'key'         => 'size',
+                    'label'       => 'Size',
+                    'placeholder' => 'M / L / XL',
+                    'hint'        => 'Opsional. Ukuran mousepad.',
+                    'lookup_keys' => ['size', 'Size'],
+                ],
+            ],
+        ],
+
+        'headset' => [
+            'labels' => ['Headset', 'Audio & Speaker'],
+            'fields' => [
+                [
+                    'key'         => 'connection_type',
+                    'label'       => 'Connection type',
+                    'placeholder' => '3.5mm / USB / Wireless',
+                    'hint'        => 'Opsional. Jenis koneksi headset.',
+                    'lookup_keys' => ['connection_type', 'connection', 'Connection'],
+                ],
+            ],
+        ],
+
+        'webcam' => [
+            'labels' => ['Webcam'],
+            'fields' => [
+                [
+                    'key'         => 'resolution',
+                    'label'       => 'Resolution',
+                    'placeholder' => '720p / 1080p / 4K',
+                    'hint'        => 'Opsional. Resolusi webcam.',
+                    'lookup_keys' => ['resolution', 'Resolution'],
+                ],
+            ],
+        ],
+
+        'networking' => [
+            'labels' => ['Networking (Wifi/LAN)', 'Networking'],
+            'fields' => [
+                [
+                    'key'         => 'connection_type',
+                    'label'       => 'Connection type',
+                    'placeholder' => 'WiFi / LAN / Bluetooth',
+                    'hint'        => 'Opsional. Jenis perangkat jaringan.',
+                    'lookup_keys' => ['connection_type', 'connection', 'Connection'],
+                ],
+            ],
+        ],
+
+        'operating_system' => [
+            'labels' => ['Operating System', 'Software & OS'],
+            'fields' => [
+                [
+                    'key'         => 'license_type',
+                    'label'       => 'License type',
+                    'placeholder' => 'OEM / Retail',
+                    'hint'        => 'Opsional. Jenis lisensi sistem operasi.',
+                    'lookup_keys' => ['license_type', 'license', 'License'],
+                ],
+            ],
+        ],
+
+        'case_fan' => [
+            'labels' => ['Fan Casing', 'Case Fan'],
+            'fields' => [
+                [
+                    'key'         => 'fan_size_mm',
+                    'label'       => 'Fan size mm',
+                    'placeholder' => '120 / 140',
+                    'hint'        => 'Opsional. Ukuran fan casing dalam mm.',
+                    'lookup_keys' => ['fan_size_mm', 'fan_size', 'Size'],
+                ],
+            ],
+        ],
+
+        'ups' => [
+            'labels' => ['UPS'],
+            'fields' => [
+                [
+                    'key'         => 'capacity_va',
+                    'label'       => 'Capacity VA',
+                    'placeholder' => '650 / 1200',
+                    'hint'        => 'Opsional. Kapasitas UPS dalam VA.',
+                    'lookup_keys' => ['capacity_va', 'capacity', 'Capacity'],
+                ],
+            ],
+        ],
+
+        'assembly_service' => [
+            'labels' => ['Jasa Rakit PC'],
+            'fields' => [
+                [
+                    'key'         => 'service_type',
+                    'label'       => 'Service type',
+                    'placeholder' => 'Basic / Premium',
+                    'hint'        => 'Opsional. Jenis jasa rakit PC.',
+                    'lookup_keys' => ['service_type', 'service', 'Service'],
+                ],
+            ],
+        ],
+
     ], // end categories
 
 ];

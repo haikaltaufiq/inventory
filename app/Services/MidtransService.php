@@ -136,11 +136,15 @@ class MidtransService
 
         $discountAmount = (int) ($transaction->discount_fee ?? 0);
         if ($discountAmount > 0) {
+            $discountBase = (float) ($transaction->subtotal ?? 0) + (float) ($transaction->service_fee ?? 0);
+            $discountPercent = $discountBase > 0 ? round(($discountAmount / $discountBase) * 100, 2) : 0;
+            $discountLabel = rtrim(rtrim(number_format($discountPercent, 2, '.', ''), '0'), '.');
+
             $items[] = [
                 'id' => 'DISCOUNT',
                 'price' => -$discountAmount,
                 'quantity' => 1,
-                'name' => 'Diskon Transaksi',
+                'name' => substr('Diskon Transaksi ' . $discountLabel . '%', 0, 50),
             ];
         }
 

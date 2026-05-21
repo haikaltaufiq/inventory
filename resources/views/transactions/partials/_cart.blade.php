@@ -88,7 +88,7 @@
                         </template>
                         <template x-if="discountAmount > 0">
                             <div class="flex items-center justify-between text-sm text-rose-600">
-                                <span>Diskon</span>
+                                <span>Diskon (<span x-text="additionalFees.discount || 0"></span>%)</span>
                                 <span>- Rp <span x-text="formatNumber(discountAmount)"></span></span>
                             </div>
                         </template>
@@ -113,7 +113,7 @@
                             <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
                         </div>
                         <div class="flex items-center justify-between text-xs text-rose-600 xl:text-sm">
-                            <span>Diskon</span>
+                            <span>Diskon (<span x-text="additionalFees.discount || 0"></span>%)</span>
                             <span>- Rp <span x-text="formatNumber(discountAmount)"></span></span>
                         </div>
                         <div class="flex items-center justify-between gap-3 border-t border-slate-200 pt-2">

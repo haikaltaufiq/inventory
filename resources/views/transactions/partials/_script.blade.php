@@ -126,9 +126,10 @@
                     return this.buildMarginAmount + this.serviceFee;
                 },
 
-                get discountAmount() {
-                    return Math.max(0, Number(this.additionalFees.discount) || 0);
-                },
+            get discountAmount() {
+                const discountPct = Math.min(100, Math.max(0, Number(this.additionalFees.discount) || 0));
+                return Math.round((this.subtotal + this.totalChargeAmount) * discountPct / 100);
+            },
 
                 // === COMPUTED: FINAL TOTAL (modal + margin + biaya tambahan - diskon) ===
                 get finalTotal() {
@@ -370,9 +371,9 @@
                 async submitOrder() {
                     if (!this.transactionData.sales) return alert('Sales wajib dipilih.');
                     if (!this.transactionData.customerName) return alert('Nama customer wajib diisi.');
-                    if (this.discountAmount > this.subtotal + this.totalChargeAmount) {
-                        return alert('Diskon tidak boleh melebihi subtotal dan biaya tambahan.');
-                    }
+                if ((Number(this.additionalFees.discount) || 0) > 100) {
+                    return alert('Diskon persentase tidak boleh lebih dari 100%.');
+                }
 
                     const payload = {
                         transaction_data: this.transactionData,

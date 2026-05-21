@@ -176,10 +176,10 @@
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                            <label class="text-sm font-medium text-slate-600">Diskon transaksi</label>
-                            <input type="number" min="0" step="0.01" x-model.number="additionalFees.discount" placeholder="0"
+                            <label class="text-sm font-medium text-slate-600">Diskon transaksi (%)</label>
+                            <input type="number" min="0" max="100" step="0.01" x-model.number="additionalFees.discount" placeholder="0"
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
-                            <p class="mt-2 text-xs text-slate-400">Diskon mengurangi total tagihan dan tercantum di invoice.</p>
+                            <p class="mt-2 text-xs text-slate-400">Masukkan persentase. Nominal diskon dihitung dari subtotal dan biaya tambahan.</p>
                         </div>
 
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -221,7 +221,7 @@
                                 <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
                             </div>
                             <div class="flex items-center justify-between text-sm text-rose-600">
-                                <span>Diskon</span>
+                                <span>Diskon (<span x-text="additionalFees.discount || 0"></span>%)</span>
                                 <span>- Rp <span x-text="formatNumber(discountAmount)"></span></span>
                             </div>
                             <div class="flex items-center justify-between border-t border-slate-200 pt-3">
@@ -245,7 +245,7 @@
                                 <span>Rp <span x-text="formatNumber(serviceFee)"></span></span>
                             </div>
                             <div class="flex items-center justify-between text-sm text-rose-600">
-                                <span>Diskon</span>
+                                <span>Diskon (<span x-text="additionalFees.discount || 0"></span>%)</span>
                                 <span>- Rp <span x-text="formatNumber(discountAmount)"></span></span>
                             </div>
                             <div class="flex items-center justify-between border-t border-slate-200 pt-3">

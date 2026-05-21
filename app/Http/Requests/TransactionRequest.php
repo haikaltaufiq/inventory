@@ -76,7 +76,7 @@ class TransactionRequest extends FormRequest
             'service_fee' => 'required|numeric|min:0',
             'additional_fees.installation' => 'nullable|numeric|min:0',
             'additional_fees.service_labor' => 'nullable|numeric|min:0',
-            'additional_fees.discount' => 'nullable|numeric|min:0',
+            'additional_fees.discount' => 'nullable|numeric|min:0|max:100',
             'cart' => 'required|array|min:1',
             'cart.*.product_id' => 'required|exists:products,id',
             'cart.*.supplier_id' => 'required|exists:suppliers,id',

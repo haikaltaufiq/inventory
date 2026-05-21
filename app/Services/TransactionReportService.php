@@ -131,6 +131,7 @@ class TransactionReportService
                 'td.price_at_transaction',
                 'ps.harga_beli',
                 't.service_fee',
+                't.discount_fee',
                 't.installation_fee',
                 't.service_labor_fee',
                 't.shipping_fee',
@@ -139,15 +140,51 @@ class TransactionReportService
                 'ps.warranty_detail',
             ])
             ->selectRaw('(td.quantity * COALESCE(ps.harga_beli, 0)) as modal_line')
-            ->selectRaw('(td.quantity * COALESCE(td.price_at_transaction, 0)) as selling_line')
             ->selectRaw('CASE
-                WHEN COALESCE(t.subtotal, 0) > 0
-                    THEN ROUND(COALESCE(t.service_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / t.subtotal), 2)
+                WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
+                    THEN ROUND(
+                        (td.quantity * COALESCE(td.price_at_transaction, 0))
+                        - (COALESCE(t.discount_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
+                        2
+                    )
+                ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
+            END as selling_line')
+            ->selectRaw('CASE
+                WHEN COALESCE(t.subtotal, 0) > 0 AND (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
+                    THEN ROUND(
+                        (COALESCE(t.service_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / t.subtotal))
+                        - (COALESCE(t.discount_fee, 0) * ((COALESCE(t.service_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / t.subtotal)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
+                        2
+                    )
                 ELSE 0
             END as service_line')
-            ->selectRaw('((td.quantity * COALESCE(td.price_at_transaction, 0)) - (td.quantity * COALESCE(ps.harga_beli, 0))) as gross_line')
-            ->selectRaw('ROUND((((td.quantity * COALESCE(td.price_at_transaction, 0)) - (td.quantity * COALESCE(ps.harga_beli, 0))) * 0.7), 2) as seller_line')
-            ->selectRaw('ROUND((((td.quantity * COALESCE(td.price_at_transaction, 0)) - (td.quantity * COALESCE(ps.harga_beli, 0))) * 0.3), 2) as natopc_line')
+            ->selectRaw('(CASE
+                WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
+                    THEN ROUND(
+                        (td.quantity * COALESCE(td.price_at_transaction, 0))
+                        - (COALESCE(t.discount_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
+                        2
+                    )
+                ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
+            END - (td.quantity * COALESCE(ps.harga_beli, 0))) as gross_line')
+            ->selectRaw('ROUND(((CASE
+                WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
+                    THEN ROUND(
+                        (td.quantity * COALESCE(td.price_at_transaction, 0))
+                        - (COALESCE(t.discount_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
+                        2
+                    )
+                ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
+            END - (td.quantity * COALESCE(ps.harga_beli, 0))) * 0.7), 2) as seller_line')
+            ->selectRaw('ROUND(((CASE
+                WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
+                    THEN ROUND(
+                        (td.quantity * COALESCE(td.price_at_transaction, 0))
+                        - (COALESCE(t.discount_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
+                        2
+                    )
+                ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
+            END - (td.quantity * COALESCE(ps.harga_beli, 0))) * 0.3), 2) as natopc_line')
             ->groupBy([
                 'td.id',
                 'td.transaction_id',
@@ -160,6 +197,7 @@ class TransactionReportService
                 'c.address',
                 't.subtotal',
                 't.service_fee',
+                't.discount_fee',
                 'td.item_name',
                 'td.item_specification',
                 'p.name',

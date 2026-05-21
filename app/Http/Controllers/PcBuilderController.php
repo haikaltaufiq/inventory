@@ -49,7 +49,7 @@ class PcBuilderController extends Controller
         // specs() sekarang ke spec_value_presets via pivot,
         // tapi whereHas tetap bisa query spec_key / spec_value di tabel preset.
         // =====================================================================
-        if ($socketType && in_array($type, ['Processor', 'CPU Cooler'], true)) {
+        if ($socketType && in_array($type, ['Processor', 'CPU Cooler', 'Motherboard'], true)) {
             $query->whereHas('specs', fn($q) =>
                 $q->where('spec_key', 'socket_type')
                   ->where('spec_value', $socketType)
@@ -64,6 +64,13 @@ class PcBuilderController extends Controller
             $query->whereHas('specs', fn($q) =>
                 $q->where('spec_key', 'ram_type')
                   ->where('spec_value', $ramType) // ← fix: $ramType bukan $socketType
+            );
+        }
+
+        if ($ramType && $type === 'Motherboard') {
+            $query->whereHas('specs', fn($q) =>
+                $q->where('spec_key', 'ram_type_slot')
+                  ->where('spec_value', $ramType)
             );
         }
 
@@ -107,6 +114,7 @@ class PcBuilderController extends Controller
             'id'             => $product->id,
             'name'           => $product->name,
             'brand'          => $product->brand ?? '',
+            'image_url'      => $product->image_url ?? asset('assets/no-image.svg'),
 
             // ← price sekarang = harga BELI (modal)
             'price'          => (int) $hargaBeli,
@@ -121,8 +129,16 @@ class PcBuilderController extends Controller
             'ram_type_slot'  => $specs['ram_type_slot'] ?? null,
             'tdp_watt'       => isset($specs['tdp_watt'])      ? (int) $specs['tdp_watt']      : null,
             'ram_type'       => $specs['ram_type']       ?? null,
+            'ram_type_support' => $specs['ram_type_support'] ?? null,
             'min_psu_watt'   => isset($specs['min_psu_watt'])  ? (int) $specs['min_psu_watt']  : null,
             'total_wattage'  => isset($specs['total_wattage']) ? (int) $specs['total_wattage'] : null,
+            'form_factor'    => $specs['form_factor'] ?? null,
+            'interface_type' => $specs['interface_type'] ?? null,
+            'length_mm'      => isset($specs['length_mm']) ? (int) $specs['length_mm'] : null,
+            'height_mm'      => isset($specs['height_mm']) ? (int) $specs['height_mm'] : null,
+            'supported_motherboard_sizes' => $specs['supported_motherboard_sizes'] ?? null,
+            'max_gpu_length_mm' => isset($specs['max_gpu_length_mm']) ? (int) $specs['max_gpu_length_mm'] : null,
+            'max_cpu_cooler_height_mm' => isset($specs['max_cpu_cooler_height_mm']) ? (int) $specs['max_cpu_cooler_height_mm'] : null,
         ];
     }
 

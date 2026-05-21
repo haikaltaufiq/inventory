@@ -111,6 +111,8 @@
         $installationFee = $transaction->installation_fee ?? 0;
         $serviceLaborFee = $transaction->service_labor_fee ?? 0;
         $discountFee = $transaction->discount_fee ?? 0;
+        $discountBase = $subtotal + $serviceFee;
+        $discountPercent = $discountBase > 0 ? round(($discountFee / $discountBase) * 100, 2) : 0;
         $otherFee = max(0, $serviceFee - $installationFee - $serviceLaborFee);
         $finalTotal = $transaction->final_total ?? max(0, $subtotal + $serviceFee - $discountFee);
         $showPricing = $document_type !== 'Delivery Order';
@@ -223,7 +225,7 @@
                     @endif
                     @if($discountFee > 0)
                         <tr>
-                            <td class="label-cell">Diskon Transaksi</td>
+                            <td class="label-cell">Diskon Transaksi ({{ rtrim(rtrim(number_format($discountPercent, 2, ',', '.'), '0'), ',') }}%)</td>
                             <td class="value-cell">- Rp {{ number_format($discountFee, 0, ',', '.') }}</td>
                         </tr>
                     @endif
