@@ -2,6 +2,37 @@
     <script>
         function posSystem() {
             return {
+                init() {
+                    this.loadProducts(true);
+
+                    this.$watch('searchQuery', () => {
+                        clearTimeout(this.productSearchTimer);
+                        this.productSearchTimer = setTimeout(() => {
+                            if (this.transactionData.transactionMode === 'sparepart') {
+                                this.loadProducts(true);
+                            }
+                        }, 250);
+                    });
+
+                    this.$watch('activeCat', () => {
+                        if (this.transactionData.transactionMode === 'sparepart') {
+                            this.loadProducts(true);
+                        }
+                    });
+
+                    this.$nextTick(() => {
+                        const scroller = this.$root.closest('section');
+                        if (!scroller) return;
+
+                        scroller.addEventListener('scroll', () => {
+                            if (this.transactionData.transactionMode !== 'sparepart') return;
+                            if (this.productLoading || !this.productHasMore) return;
+
+                            const nearBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 500;
+                            if (nearBottom) this.loadProducts(false);
+                        }, { passive: true });
+                    });
+                },
                 // === FILTER STATE ===
                 searchQuery: '',
                 activeCat: 'Semua',
@@ -22,36 +53,17 @@
                 detailProduct: null,
                 buildDetailOpen: false,
                 detailBuild: null,
+                modeSwitchWarningOpen: false,
+                pendingTransactionMode: null,
                 // === DATA SOURCES ===
                 customers: @json($customers),
                 categories: @json($categories),
-                products: @json($products).map(p => ({
-                    id: p.id,
-                    name: p.name,
-                    serial_number: p.serial_number ?? null,
-                    category_name: p.category ? p.category.name : 'Uncategorized',
-                    base_price: Number(p.base_price ?? 0),
-                    socket: p.socket ?? null,
-                    ram_type: p.ram_type ?? null,
-                    image: p.image_url ?? @json(asset('assets/no-image.svg')),
-                    description: p.description ?? null,
-                    specs: p.specs ?? [],
-                    suppliers: (p.suppliers || []).map(s => {
-                        const sourceKey = s.pivot && s.pivot.id ? `pivot-${s.pivot.id}` :
-                            `${s.supplier_id ?? s.id}-${s.pivot && s.pivot.condition ? s.pivot.condition : 'default'}`;
-
-                        return {
-                            id: s.id,
-                            supplier_id: s.supplier_id ?? s.id,
-                            source_key: sourceKey,
-                            product_supplier_id: s.pivot ? s.pivot.id : null,
-                            name: s.nama_supplier,
-                            condition: s.pivot ? s.pivot.condition : null,
-                            pivot_stock: Number(s.pivot ? s.pivot.stock : 0),
-                            pivot_price: Number(s.pivot ? s.pivot.harga_jual_manual : 0)
-                        };
-                    })
-                })),
+                products: [],
+                productPage: 1,
+                productHasMore: true,
+                productLoading: false,
+                productsLoaded: false,
+                productSearchTimer: null,
                 // === CART STATE ===
                 cart: [],
                 selectedProduct: {
@@ -75,18 +87,7 @@
 
                 // === COMPUTED: FILTERED PRODUCTS ===
                 get filteredProducts() {
-                    // Kalau sedang dalam build mode → hanya tampilkan produk dari build
-                    return this.products.filter(p => {
-                        const searchLower = String(this.searchQuery || '').trim().toLowerCase();
-                        const serialLower = String(p.serial_number || '').toLowerCase();
-                        const matchName = String(p.name || '').toLowerCase().includes(searchLower);
-                        const matchSerialFull = serialLower.includes(searchLower);
-                        const matchSerialLast4 = searchLower.length === 4 && /^\d+$/.test(searchLower) &&
-                            serialLower.endsWith(searchLower);
-                        const matchSearch = matchName || matchSerialFull || matchSerialLast4;
-                        const matchCat = this.activeCat === 'Semua' || p.category_name === this.activeCat;
-                        return matchSearch && matchCat;
-                    });
+                    return this.products;
                 },
 
                 get filteredBuilds() {
@@ -139,6 +140,102 @@
                 // === HELPER: NUMBER FORMAT ===
                 formatNumber(n) {
                     return new Intl.NumberFormat('id-ID').format(Number(n) || 0);
+                },
+
+                normalizeProduct(p) {
+                    return {
+                        id: p.id,
+                        name: p.name,
+                        serial_number: p.serial_number ?? null,
+                        category_name: p.category ? p.category.name : 'Uncategorized',
+                        base_price: Number(p.base_price ?? 0),
+                        socket: p.socket ?? null,
+                        ram_type: p.ram_type ?? null,
+                        image: p.image_url ?? @json(asset('assets/no-image.svg')),
+                        description: p.description ?? null,
+                        specs: p.specs ?? [],
+                        suppliers: (p.suppliers || []).map(s => {
+                            const sourceKey = s.pivot && s.pivot.id ? `pivot-${s.pivot.id}` :
+                                `${s.supplier_id ?? s.id}-${s.pivot && s.pivot.condition ? s.pivot.condition : 'default'}`;
+
+                            return {
+                                id: s.id,
+                                supplier_id: s.supplier_id ?? s.id,
+                                source_key: sourceKey,
+                                product_supplier_id: s.pivot ? s.pivot.id : null,
+                                name: s.nama_supplier,
+                                condition: s.pivot ? s.pivot.condition : null,
+                                pivot_stock: Number(s.pivot ? s.pivot.stock : 0),
+                                pivot_price: Number(s.pivot ? s.pivot.harga_jual_manual : 0)
+                            };
+                        })
+                    };
+                },
+
+                mergeProducts(rawProducts) {
+                    const byId = new Map(this.products.map(product => [Number(product.id), product]));
+                    rawProducts.map(product => this.normalizeProduct(product)).forEach(product => {
+                        byId.set(Number(product.id), product);
+                    });
+                    this.products = Array.from(byId.values());
+                },
+
+                async loadProducts(reset = false, ids = []) {
+                    if (this.productLoading) return;
+
+                    if (reset) {
+                        this.productPage = 1;
+                        this.productHasMore = true;
+                        this.products = [];
+                    }
+
+                    if (!this.productHasMore && ids.length === 0) return;
+
+                    this.productLoading = true;
+
+                    const params = new URLSearchParams({
+                        page: String(ids.length ? 1 : this.productPage),
+                        per_page: ids.length ? String(Math.max(ids.length, 24)) : '72',
+                    });
+
+                    if (ids.length) {
+                        ids.forEach(id => params.append('ids[]', id));
+                    } else {
+                        const search = String(this.searchQuery || '').trim();
+                        if (search) params.set('search', search);
+                        if (this.activeCat && this.activeCat !== 'Semua') params.set('category', this.activeCat);
+                    }
+
+                    try {
+                        const response = await fetch(`{{ route('transactions.products') }}?${params}`, {
+                            headers: { 'Accept': 'application/json' }
+                        });
+                        if (!response.ok) throw new Error(`Server error ${response.status}`);
+
+                        const result = await response.json();
+                        this.mergeProducts(result.data || []);
+                        this.productHasMore = Boolean(result.meta?.has_more);
+                        this.productPage = (Number(result.meta?.current_page) || this.productPage) + 1;
+                        this.productsLoaded = true;
+                    } catch (error) {
+                        console.error('loadProducts error:', error);
+                        this.productsLoaded = true;
+                    } finally {
+                        this.productLoading = false;
+                    }
+                },
+
+                async ensureProductsLoaded(productIds) {
+                    while (this.productLoading) {
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+
+                    const missingIds = [...new Set(productIds.map(Number))]
+                        .filter(id => id && !this.products.some(product => Number(product.id) === id));
+
+                    if (missingIds.length) {
+                        await this.loadProducts(false, missingIds);
+                    }
                 },
 
                 // === SPEC NORMALIZER ===
@@ -225,8 +322,14 @@
 
                 async setTransactionMode(mode) {
                     if (mode === 'sparepart' && this.activeBuild) {
-                        if (!this.exitBuildMode()) return;
-                        this.closeBuildDetail();
+                        this.pendingTransactionMode = mode;
+                        this.modeSwitchWarningOpen = true;
+                        return;
+                    }
+
+                    if (mode === 'rakit_pc' && !this.activeBuild && this.cart.length > 0) {
+                        this.pendingTransactionMode = mode;
+                        this.modeSwitchWarningOpen = true;
                         return;
                     }
 
@@ -241,6 +344,35 @@
                     if (mode === 'rakit_pc') {
                         this.activeCat = 'Semua';
                         await this.loadSavedBuilds();
+                    }
+                },
+
+                cancelModeSwitch() {
+                    this.pendingTransactionMode = null;
+                    this.modeSwitchWarningOpen = false;
+                },
+
+                confirmCancelCurrentOrder() {
+                    this.cart = [];
+                    this.activeBuild = null;
+                    this.buildMarginPct = 0;
+                    this.transactionData.transactionMode = this.pendingTransactionMode || 'sparepart';
+                    this.transactionData.buildName = '';
+                    this.additionalFees = {
+                        installation: 0,
+                        service_labor: 0,
+                        discount: 0,
+                    };
+                    this.closeBuildDetail();
+                    this.cancelModeSwitch();
+
+                    if (this.transactionData.transactionMode === 'sparepart' && this.products.length === 0) {
+                        this.loadProducts(true);
+                    }
+
+                    if (this.transactionData.transactionMode === 'rakit_pc') {
+                        this.activeCat = 'Semua';
+                        this.loadSavedBuilds();
                     }
                 },
 
@@ -429,7 +561,11 @@
                     this.savedBuilds = await res.json();
                     this.savedBuildsLoaded = true;
                 },
-                applyBuild(buildData) {
+                async applyBuild(buildData) {
+                    await this.ensureProductsLoaded(Object.values(buildData.components || {})
+                        .filter(Boolean)
+                        .map(component => component.id));
+
                     this.cart = [];
                     this.activeBuild = buildData;
                     this.buildMarginPct = Number(buildData.margin_pct) || 0;
@@ -466,6 +602,33 @@
 
                     if (skipped.length > 0) {
                         alert('Beberapa komponen tidak bisa dimuat:\n- ' + skipped.join('\n- '));
+                    }
+                },
+
+                async deleteBuild(buildId) {
+                    if (!buildId) return;
+                    if (!confirm('Apakah Anda yakin ingin menghapus build ini? Tindakan ini tidak dapat dibatalkan.')) return;
+
+                    try {
+                        const response = await fetch(`/pc-builder/builds/${buildId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            this.closeBuildDetail();
+                            await this.loadSavedBuilds();
+                            alert('Build berhasil dihapus.');
+                        } else {
+                            const err = await response.json().catch(() => ({}));
+                            alert('Gagal menghapus build: ' + (err.message || 'Kesalahan server'));
+                        }
+                    } catch (error) {
+                        console.error('Delete build error:', error);
+                        alert('Tidak dapat terhubung ke server.');
                     }
                 },
 

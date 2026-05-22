@@ -69,16 +69,12 @@
         <div class="border-t border-slate-100 bg-white px-4 py-4 xl:px-5">
             <div class="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 xl:p-4">
 
-                {{-- Build mode: tampilkan breakdown modal + margin --}}
+                {{-- Build mode: tampilkan breakdown tanpa margin --}}
                 <template x-if="activeBuild">
                     <div class="space-y-2">
-                        <div class="flex items-center justify-between text-xs text-slate-500 xl:text-sm">
-                            <span>Total Modal</span>
-                            <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
-                        </div>
-                        <div class="flex items-center justify-between text-xs text-emerald-600 xl:text-sm">
-                            <span>Margin (<span x-text="buildMarginPct"></span>%)</span>
-                            <span>+ Rp <span x-text="formatNumber(buildMarginAmount)"></span></span>
+                        <div class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2">
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-blue-500">Build PC</p>
+                            <p class="mt-0.5 truncate text-sm font-semibold text-blue-800" x-text="activeBuild.name"></p>
                         </div>
                         <template x-if="serviceFee > 0">
                             <div class="flex items-center justify-between text-sm text-slate-500">

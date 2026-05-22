@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
+use App\Support\CacheVersions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -14,7 +15,7 @@ class TransactionService
 {
     public function storeTransaction(array $validated): Transaction
     {
-        return DB::transaction(function () use ($validated) {
+        $transaction = DB::transaction(function () use ($validated) {
             $customer = $this->resolveCustomer($validated['transaction_data']);
             $cart = collect($validated['cart']);
             $subtotal = $cart->sum(fn($item) => $item['price'] * $item['qty']);
@@ -96,13 +97,17 @@ class TransactionService
 
             return $transaction;
         });
+
+        CacheVersions::bumpCatalog();
+
+        return $transaction;
     }
 
     public function storeLegacyTransaction(array $validated, ?string $userName): Transaction
     {
         $salesName = trim((string) ($userName ?? 'Guest'));
 
-        return DB::transaction(function () use ($validated, $salesName) {
+        $transaction = DB::transaction(function () use ($validated, $salesName) {
             if (!empty($validated['customer_address'])) {
                 Customer::query()
                     ->whereKey($validated['customer_id'])
@@ -161,6 +166,10 @@ class TransactionService
 
             return $transaction;
         });
+
+        CacheVersions::bumpCatalog();
+
+        return $transaction;
     }
 
     public function deleteTransaction(Transaction $transaction): void
@@ -200,6 +209,8 @@ class TransactionService
 
             $transaction->delete();
         });
+
+        CacheVersions::bumpCatalog();
     }
 
     public function updateDescription(Transaction $transaction, ?string $description): void

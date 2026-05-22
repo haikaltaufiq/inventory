@@ -110,6 +110,7 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('transactions')->name('transactions.')->group(function () {
         Route::get('/', [TransactionController::class, 'index'])->name('index');
+        Route::get('/products/list', [TransactionController::class, 'products'])->name('products');
         // Route::get('/create', [TransactionController::class, 'create'])->name('create');
         Route::post('/', [TransactionController::class, 'store'])->name('store');
         Route::get('/{transaction}/document/{type}', [TransactionController::class, 'downloadDocument'])->name('document');
@@ -143,7 +144,7 @@ Route::middleware('auth')->group(function () {
         // Tambah ini:
         Route::post('/builds',            [PcBuilderController::class, 'store'])->name('builds.store');
         Route::get('/builds/list',        [PcBuilderController::class, 'list'])->name('builds.list');
-        Route::patch('/builds/{build}/status', [PcBuilderController::class, 'updateStatus']);
+        Route::delete('/builds/{build}',   [PcBuilderController::class, 'destroy'])->name('builds.destroy');
     });
 
     /*

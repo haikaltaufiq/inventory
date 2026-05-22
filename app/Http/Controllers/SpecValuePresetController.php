@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SpecValuePreset;
+use App\Support\CacheVersions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -124,5 +125,6 @@ class SpecValuePresetController extends Controller
     private function forgetCaches(): void
     {
         Cache::forget(self::SPEC_OPTIONS_CACHE_KEY);
+        CacheVersions::bumpCatalog();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class UserController extends Controller
 {
@@ -51,6 +52,7 @@ class UserController extends Controller
         $validated['password'] = bcrypt($validated['password']);
 
         User::create($validated);
+        Cache::forget('transactions:sales_users');
 
         return redirect()->route('users.index')
             ->with('success', 'User berhasil ditambahkan');
@@ -83,6 +85,7 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+        Cache::forget('transactions:sales_users');
 
         return redirect()->route('users.index')
             ->with('success', 'User berhasil diupdate');
@@ -94,6 +97,7 @@ class UserController extends Controller
     public function destroy(User $user)
     {
         $user->delete();
+        Cache::forget('transactions:sales_users');
 
         return redirect()->route('users.index')
             ->with('success', 'User berhasil dihapus');

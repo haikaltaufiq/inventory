@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Transaction;
+use App\Support\CacheVersions;
 use App\Services\MidtransService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,5 +85,7 @@ class MidtransWebhookController extends Controller
                 Log::info("Stock returned for product: {$detail->product_id} qty: {$detail->quantity}");
             }
         }
+
+        CacheVersions::bumpCatalog();
     }
 }

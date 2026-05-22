@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\PcBuild;
 use App\Models\Product;
+use App\Support\CacheVersions;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class PcBuilderController extends Controller
 {
@@ -41,8 +43,15 @@ class PcBuilderController extends Controller
         $categoryNames = $this->getCategoryNames($type);
 
         $query = Product::query()
+            ->select(['id', 'category_id', 'name', 'brand', 'image_url'])
             ->whereHas('category', fn($q) => $q->whereIn('name', $categoryNames))
-            ->with(['specs', 'suppliers']);
+            ->with([
+                'specs' => fn($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
+                'suppliers' => fn($q) => $q
+                    ->select('suppliers.id', 'suppliers.nama_supplier')
+                    ->where('product_supplier.stock', '>', 0)
+                    ->withPivot('stock', 'harga_beli', 'harga_jual_manual'),
+            ]);
 
         // =====================================================================
         // FILTER SOCKET TYPE — Processor & CPU Cooler
@@ -90,9 +99,16 @@ class PcBuilderController extends Controller
             $q->where('product_supplier.stock', '>', 0)
         );
 
-        return response()->json(
-            $query->get()->map(fn($p) => $this->formatProduct($p))
-        );
+        $cacheKey = 'pc-builder:compatible:v'.CacheVersions::catalog().':'.
+            md5(json_encode($request->only(['type', 'socket_type', 'ram_type', 'min_wattage'])));
+
+        $products = Cache::remember($cacheKey, now()->addMinutes(5), fn () => $query
+                ->orderBy('name')
+                ->limit(120)
+                ->get()
+                ->map(fn($p) => $this->formatProduct($p)));
+
+        return response()->json($products);
     }
 
     private function formatProduct($product): array
@@ -164,14 +180,17 @@ class PcBuilderController extends Controller
             'created_by'  => auth()->id(),
         ]);
 
+        CacheVersions::bumpPcBuilds();
+
         return response()->json(['status' => 'success', 'build' => $build]);
     }
 
     // TAMBAH: untuk halaman transaksi — ambil semua saved build
     public function list()
     {
-        $builds = PcBuild::with('creator')
+        $builds = Cache::remember('pc-builder:builds:v'.CacheVersions::pcBuilds(), now()->addMinutes(5), fn () => PcBuild::with('creator:id,name')
             ->latest()
+            ->limit(100)
             ->get()
             ->map(fn($b) => [
                 'id'            => $b->id,
@@ -182,28 +201,19 @@ class PcBuilderController extends Controller
                 'harga_jual'    => $b->harga_jual,                                           // ← baru
                 'harga_jual_fmt'=> 'Rp ' . number_format($b->harga_jual, 0, ',', '.'),      // ← baru
                 'margin_pct'    => $b->margin_pct,                                           // ← baru
-                'status'        => $b->status,
                 'created_by'    => $b->creator?->name,
                 'components'    => $b->components,
                 'created_at'    => $b->created_at->format('d M Y'),
-            ]);
+            ]));
 
         return response()->json($builds);
     }
 
-    // PcBuilderController.php
-    public function updateStatus(Request $request, PcBuild $build)
+    public function destroy(PcBuild $build)
     {
-        $request->validate([
-            'status' => 'required|in:draft,deal,cancelled'
-        ]);
+        $build->delete();
+        CacheVersions::bumpPcBuilds();
 
-        if ($build->status === 'cancelled') {
-            return response()->json(['message' => 'Build sudah cancelled, tidak bisa diubah.'], 422);
-        }
-
-        $build->update(['status' => $request->status]);
-
-        return response()->json(['status' => 'success']);
+        return response()->json(['status' => 'success', 'message' => 'Build berhasil dihapus']);
     }
 }

@@ -116,6 +116,7 @@
         $otherFee = max(0, $serviceFee - $installationFee - $serviceLaborFee);
         $finalTotal = $transaction->final_total ?? max(0, $subtotal + $serviceFee - $discountFee);
         $showPricing = $document_type !== 'Delivery Order';
+        $showItemPricing = $showPricing && empty($isPcBuilder);
     @endphp
 
     <div class="page">
@@ -167,7 +168,7 @@
                         <th style="width: 6%;">No</th>
                         <th>Item</th>
                         <th style="width: 12%; text-align: right;">Qty</th>
-                        @if($showPricing)
+                        @if($showItemPricing)
                             <th style="width: 18%; text-align: right;">Unit Price</th>
                             <th style="width: 18%; text-align: right;">Subtotal</th>
                         @endif
@@ -179,14 +180,14 @@
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $detail->product?->name ?? 'Item' }}</td>
                             <td style="text-align: right;">{{ $detail->quantity ?? 0 }}</td>
-                            @if($showPricing)
+                            @if($showItemPricing)
                                 <td style="text-align: right;">Rp {{ number_format($detail->price_at_transaction ?? 0, 0, ',', '.') }}</td>
                                 <td style="text-align: right;">Rp {{ number_format(($detail->price_at_transaction ?? 0) * ($detail->quantity ?? 0), 0, ',', '.') }}</td>
                             @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ $showPricing ? 5 : 3 }}" class="subtle">Tidak ada detail transaksi.</td>
+                            <td colspan="{{ $showItemPricing ? 5 : 3 }}" class="subtle">Tidak ada detail transaksi.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -197,14 +198,16 @@
             {{-- SECTION: TOTALS --}}
             <div class="section">
                 <table class="totals">
-                    <tr>
-                        <td class="label-cell" style="width: 70%;">Subtotal</td>
-                        <td class="value-cell">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
-                    </tr>
-                    <tr>
-                        <td class="label-cell">Service Fee</td>
-                        <td class="value-cell">Rp {{ number_format($serviceFee, 0, ',', '.') }}</td>
-                    </tr>
+                    @unless($isPcBuilder)
+                        <tr>
+                            <td class="label-cell" style="width: 70%;">Subtotal</td>
+                            <td class="value-cell">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
+                        </tr>
+                        <tr>
+                            <td class="label-cell">Service Fee</td>
+                            <td class="value-cell">Rp {{ number_format($serviceFee, 0, ',', '.') }}</td>
+                        </tr>
+                    @endunless
                     @if($installationFee > 0)
                         <tr>
                             <td class="label-cell">Detail Biaya Instalasi</td>
@@ -217,7 +220,7 @@
                             <td class="value-cell">Rp {{ number_format($serviceLaborFee, 0, ',', '.') }}</td>
                         </tr>
                     @endif
-                    @if($otherFee > 0)
+                    @if($otherFee > 0 && !$isPcBuilder)
                         <tr>
                             <td class="label-cell">Detail Penyesuaian Harga</td>
                             <td class="value-cell">Rp {{ number_format($otherFee, 0, ',', '.') }}</td>

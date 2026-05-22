@@ -27,11 +27,24 @@ class TransactionController extends Controller
     public function index()
     {
         $salesUsers = $this->repository->getSalesUsers();
-        $products = $this->repository->getProductsForIndex();
         $categories = $this->repository->getCategories();
         $customers = Customer::select('id','name','phone','address')->get();
 
-        return view('transactions.index', compact('products', 'categories', 'salesUsers', 'customers'));
+        return view('transactions.index', compact('categories', 'salesUsers', 'customers'));
+    }
+
+    public function products(Request $request)
+    {
+        $products = $this->repository->getProductsForIndexPage($request);
+
+        return response()->json([
+            'data' => $products->items(),
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'has_more' => $products->hasMorePages(),
+            ],
+        ]);
     }
 
     public function create()
@@ -141,11 +154,14 @@ class TransactionController extends Controller
             'details.product:id,name',
         ]);
 
+        $isPcBuilder = $transaction->transaction_mode === 'rakit_pc';
+
         $pdf = Pdf::loadView('transactions.document', [
             'transaction' => $transaction,
             'document_type' => $typeLabel,
             'document_code' => strtoupper($typeKey === 'delivery-order' ? 'DO' : $typeKey),
             'issued_at' => now(),
+            'isPcBuilder' => $isPcBuilder,
         ])->setPaper('a4');
 
         $fileName = strtolower($typeLabel) . '-' . $transaction->id . '.pdf';

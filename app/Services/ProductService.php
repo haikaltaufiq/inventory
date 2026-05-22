@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
+use App\Support\CacheVersions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,7 @@ class ProductService
         $this->deleteProductImage($product);
         $product->delete();
         $this->forgetProductOptionCaches();
+        CacheVersions::bumpCatalog();
     }
 
     public function persistProduct(?Product $product, array $validated, ?UploadedFile $imageFile = null): Product
@@ -66,6 +68,7 @@ class ProductService
         $this->specService->syncSpecs($product, $specPayload);
         $this->syncProductSuppliers($product, $resolvedSuppliers);
         $this->forgetProductOptionCaches();
+        CacheVersions::bumpCatalog();
 
         return $product;
     }
@@ -261,5 +264,6 @@ class ProductService
     public function forgetProductOptionCaches(): void
     {
         Cache::forget(self::SPEC_OPTIONS_CACHE_KEY);
+        Cache::forget('transactions:categories');
     }
 }

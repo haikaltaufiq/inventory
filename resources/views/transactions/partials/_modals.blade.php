@@ -95,7 +95,7 @@
                             class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
                             <option value="" disabled>Pilih Sales</option>
                             @foreach ($salesUsers as $salesUser)
-                            <option value="{{ $salesUser->name }}">{{ $salesUser->name }}</option>
+                                <option value="{{ $salesUser->name }}">{{ $salesUser->name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -107,8 +107,7 @@
                             <label class="text-sm font-medium mt-3 text-slate-600">Pilih Customer</label>
 
                             <div class="flex gap-2">
-                                <select x-model="selectedCustomerId"
-                                    @change="selectCustomer"
+                                <select x-model="selectedCustomerId" @change="selectCustomer"
                                     class="w-full rounded-xl border px-4 py-3 text-sm">
 
                                     <option value="">-- Customer Baru / Pilih --</option>
@@ -118,68 +117,68 @@
                                     </template>
                                 </select>
 
-                                <button type="button"
-                                    @click="resetCustomer"
+                                <button type="button" @click="resetCustomer"
                                     class="px-3 py-2 bg-red-500 text-white rounded-xl text-sm">
                                     Reset
                                 </button>
                             </div>
                         </div>
 
-                        <div class="mt-3 flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700">
-                            <svg xmlns="http://www.w3.org/2000/svg"
-                                class="w-5 h-5 mt-0.5 text-blue-500"
-                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div
+                            class="mt-3 flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 p-3 text-sm text-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 mt-0.5 text-blue-500" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M13 16h-1v-4h-1m1-4h.01M12 20h.01M12 4a8 8 0 100 16 8 8 0 000-16z" />
                             </svg>
 
                             <p>
-                                Jika customer belum terdaftar, silakan isi data pada form di bawah ini untuk menambahkan customer baru.
+                                Jika customer belum terdaftar, silakan isi data pada form di bawah ini untuk menambahkan
+                                customer baru.
                             </p>
                         </div>
 
                         <!-- NAMA -->
                         <div class="mt-3">
                             <label class="text-sm">Nama</label>
-                            <input type="text"
-                                x-model="transactionData.customerName"
+                            <input type="text" x-model="transactionData.customerName"
                                 class="w-full border rounded-xl px-4 py-3">
                         </div>
 
                         <!-- PHONE -->
                         <div class="mt-3">
                             <label class="text-sm">No HP</label>
-                            <input type="text"
-                                x-model="transactionData.customerPhone"
+                            <input type="text" x-model="transactionData.customerPhone"
                                 class="w-full border rounded-xl px-4 py-3">
                         </div>
 
                         <!-- ADDRESS -->
                         <div class="mt-3">
                             <label class="text-sm">Alamat</label>
-                            <textarea
-                                x-model="transactionData.customerAddress"
-                                class="w-full border rounded-xl px-4 py-3"></textarea>
+                            <textarea x-model="transactionData.customerAddress" class="w-full border rounded-xl px-4 py-3"></textarea>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                             <label class="text-sm font-medium text-slate-600">Biaya tambahan - Instalasi</label>
-                            <input type="number" min="0" step="0.01" x-model.number="additionalFees.installation" placeholder="0"
+                            <input type="number" min="0" step="0.01"
+                                x-model.number="additionalFees.installation" placeholder="0"
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                             <label class="text-sm font-medium text-slate-600">Biaya tambahan - Jasa layanan</label>
-                            <input type="number" min="0" step="0.01" x-model.number="additionalFees.service_labor" placeholder="0"
+                            <input type="number" min="0" step="0.01"
+                                x-model.number="additionalFees.service_labor" placeholder="0"
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
                         </div>
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                             <label class="text-sm font-medium text-slate-600">Diskon transaksi (%)</label>
-                            <input type="number" min="0" max="100" step="0.01" x-model.number="additionalFees.discount" placeholder="0"
+                            <input type="number" min="0" max="100" step="0.01"
+                                x-model.number="additionalFees.discount" placeholder="0"
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
-                            <p class="mt-2 text-xs text-slate-400">Masukkan persentase. Nominal diskon dihitung dari subtotal dan biaya tambahan.</p>
+                            <p class="mt-2 text-xs text-slate-400">Masukkan persentase. Nominal diskon dihitung dari
+                                subtotal dan biaya tambahan.</p>
                         </div>
 
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -190,7 +189,8 @@
                                 <option value="Quotation">Quotation</option>
                                 <option value="DO">Delivery Order</option>
                             </select>
-                            <p class="mt-2 text-xs text-slate-400">Dokumen PDF akan otomatis diunduh setelah transaksi berhasil disimpan.</p>
+                            <p class="mt-2 text-xs text-slate-400">Dokumen PDF akan otomatis diunduh setelah transaksi
+                                berhasil disimpan.</p>
                         </div>
                     </div>
                 </div>
@@ -204,17 +204,11 @@
                         <div class="mt-5 space-y-2">
                             {{-- Info build --}}
                             <div class="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2 mb-3">
-                                <p class="text-xs font-semibold text-blue-700" x-text="'Rakitan: ' + activeBuild.name"></p>
+                                <p class="text-xs font-semibold text-blue-700"
+                                    x-text="'Rakitan: ' + activeBuild.name"></p>
                                 <p class="text-xs text-blue-500 mt-0.5"
-                                x-text="Object.values(activeBuild.components).filter(Boolean).length + ' komponen'"></p>
-                            </div>
-                            <div class="flex items-center justify-between text-sm text-slate-500">
-                                <span>Total Modal</span>
-                                <span>Rp <span x-text="formatNumber(subtotal)"></span></span>
-                            </div>
-                            <div class="flex items-center justify-between text-sm text-emerald-600 font-medium">
-                                <span>Margin (<span x-text="buildMarginPct"></span>%)</span>
-                                <span>+ Rp <span x-text="formatNumber(buildMarginAmount)"></span></span>
+                                    x-text="Object.values(activeBuild.components).filter(Boolean).length + ' komponen'">
+                                </p>
                             </div>
                             <div class="flex items-center justify-between text-sm text-slate-500">
                                 <span>Biaya tambahan</span>
@@ -267,10 +261,41 @@
     </div>
 </div>
 
+{{-- MODAL: KONFIRMASI PINDAH MODE TRANSAKSI --}}
+<div x-show="modeSwitchWarningOpen" x-transition x-cloak
+    class="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-6">
+    <div class="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+        <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 text-amber-600">
+            <i class="fas fa-exclamation-triangle text-lg"></i>
+        </div>
+        <div class="mt-4 text-center">
+            <h3 class="text-base font-semibold text-slate-900">Batalkan order saat ini?</h3>
+            <p class="mt-2 text-sm leading-6 text-slate-500">
+                Order
+                <span class="font-semibold text-slate-700"
+                    x-text="activeBuild?.name || (cart.length + ' item sparepart')"></span>
+                akan dikosongkan sebelum pindah ke mode
+                <span x-text="pendingTransactionMode === 'rakit_pc' ? 'Rakit PC' : 'Sparepart only'"></span>.
+            </p>
+        </div>
+        <div class="mt-5 grid grid-cols-2 gap-3">
+            <button type="button" @click="cancelModeSwitch()"
+                class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-50">
+                Tidak
+            </button>
+            <button type="button" @click="confirmCancelCurrentOrder()"
+                class="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800">
+                Ya, batalkan
+            </button>
+        </div>
+    </div>
+</div>
+
 {{-- MODAL: PRODUCT DETAIL --}}
 <div x-show="detailOpen" x-transition x-cloak
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-6" @click.self="closeDetail()">
-    <div class="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl md:max-h-[calc(100vh-3rem)]">
+    <div
+        class="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl md:max-h-[calc(100vh-3rem)]">
         {{-- MODAL HEADER --}}
         <div class="flex items-start justify-between border-b border-slate-100 px-5 py-4 md:px-6">
             <div>
@@ -325,7 +350,8 @@
                         <p class="text-sm font-medium text-slate-700">Spesifikasi</p>
                         <div class="mt-3 overflow-hidden rounded-2xl border border-slate-200">
                             <ul class="divide-y divide-slate-200 text-sm text-slate-600">
-                                <template x-for="spec in getSpecs(detailProduct)" :key="spec.key + spec.value + 'detail'">
+                                <template x-for="spec in getSpecs(detailProduct)"
+                                    :key="spec.key + spec.value + 'detail'">
                                     <li class="grid grid-cols-[120px,1fr] gap-3 bg-white px-4 py-3">
                                         <span class="font-medium text-slate-500" x-text="spec.key"></span>
                                         <span class="text-slate-800 break-words" x-text="spec.value"></span>
@@ -358,8 +384,10 @@
 
 {{-- MODAL: BUILD DETAIL --}}
 <div x-show="buildDetailOpen" x-transition x-cloak
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-6" @click.self="closeBuildDetail()">
-    <div class="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl md:max-h-[calc(100vh-3rem)]">
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 md:p-6"
+    @click.self="closeBuildDetail()">
+    <div
+        class="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-2xl md:max-h-[calc(100vh-3rem)]">
         <div class="flex items-start justify-between border-b border-slate-100 px-5 py-4 md:px-6">
             <div>
                 <p class="text-xs text-slate-500">Detail build</p>
@@ -375,8 +403,6 @@
             <div class="grid gap-5 lg:grid-cols-[1fr,0.8fr]">
                 <div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500"
-                            x-text="detailBuild?.status === 'draft' ? 'Draft' : detailBuild?.status === 'deal' ? 'Deal' : 'Cancelled'"></span>
                         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-500">
                             <span x-text="buildComponentCount(detailBuild)"></span> komponen
                         </span>
@@ -394,11 +420,14 @@
                             <p class="text-sm font-medium text-slate-700">Rincian komponen</p>
                         </div>
                         <div class="divide-y divide-slate-200">
-                            <template x-for="component in buildComponents(detailBuild)" :key="component.id || component.name">
+                            <template x-for="component in buildComponents(detailBuild)"
+                                :key="component.id || component.name">
                                 <div class="flex items-center justify-between gap-4 bg-white px-4 py-3">
                                     <div class="min-w-0">
-                                        <p class="truncate text-sm font-medium text-slate-800" x-text="component.name"></p>
-                                        <p class="mt-1 text-xs text-slate-400" x-text="component.brand || component.category || 'Komponen build'"></p>
+                                        <p class="truncate text-sm font-medium text-slate-800"
+                                            x-text="component.name"></p>
+                                        <p class="mt-1 text-xs text-slate-400"
+                                            x-text="component.brand || component.category || 'Komponen build'"></p>
                                     </div>
                                     <p class="shrink-0 text-sm font-semibold text-slate-900">
                                         Rp <span x-text="formatNumber(component.price || 0)"></span>
@@ -427,13 +456,19 @@
                         </div>
                         <div class="flex items-center justify-between border-t border-slate-200 pt-3">
                             <span class="text-sm font-semibold text-slate-700">Harga jual set</span>
-                            <span class="text-xl font-bold text-slate-900" x-text="detailBuild?.harga_jual_fmt || 'Rp 0'"></span>
+                            <span class="text-xl font-bold text-slate-900"
+                                x-text="detailBuild?.harga_jual_fmt || 'Rp 0'"></span>
                         </div>
                     </div>
 
-                    <button @click="applyBuild(detailBuild)" :disabled="detailBuild?.status === 'cancelled'"
-                        class="mt-5 w-full rounded-xl bg-slate-900 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30">
+                    <button @click="applyBuild(detailBuild)"
+                        class="mt-5 w-full rounded-xl bg-slate-900 py-3 text-sm font-medium text-white transition hover:bg-slate-800">
                         Muat ke order
+                    </button>
+
+                    <button @click="deleteBuild(detailBuild?.id)" :disabled="!detailBuild?.id"
+                        class="mt-2 w-full rounded-xl bg-red-50 py-3 text-sm font-medium text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-30 border border-red-200">
+                        Hapus Build
                     </button>
                 </div>
             </div>
@@ -456,4 +491,3 @@
         </button>
     </div>
 </div>
-

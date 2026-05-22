@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Supplier;
+use App\Support\CacheVersions;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
@@ -37,6 +38,7 @@ class SupplierController extends Controller
         ]);
 
         Supplier::create($validated);
+        CacheVersions::bumpCatalog();
 
         return redirect()->route('supplier.index')
             ->with('success', 'Supplier berhasil ditambahkan');
@@ -55,6 +57,7 @@ class SupplierController extends Controller
         ]);
 
         $supplier->update($validated);
+        CacheVersions::bumpCatalog();
 
         return redirect()->route('supplier.index')
             ->with('success', 'Supplier berhasil diupdate');
@@ -63,6 +66,7 @@ class SupplierController extends Controller
     public function destroy (Supplier $supplier)
     {
         $supplier->delete();
+        CacheVersions::bumpCatalog();
 
         return redirect()->route('supplier.index')
             ->with('success', 'Supplier berhasil dihapus');
