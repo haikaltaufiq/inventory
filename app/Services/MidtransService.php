@@ -7,6 +7,7 @@ use App\Models\Transaction;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class MidtransService
 {
@@ -63,12 +64,16 @@ class MidtransService
                 ? 'https://app.midtrans.com/snap/v2/vtweb/' . $snapToken
                 : 'https://app.sandbox.midtrans.com/snap/v2/vtweb/' . $snapToken;
 
-            // Simpan snap_token & url ke transaksi
-            $transaction->update([
-                'snap_token'     => $snapToken,
-                'payment_url'    => $snapUrl,
-                'payment_status' => 'pending',
-            ]);
+            $updatePayload = [
+                'snap_token' => $snapToken,
+                'payment_url' => $snapUrl,
+            ];
+
+            if (Schema::hasColumn('transactions', 'payment_status')) {
+                $updatePayload['payment_status'] = 'pending';
+            }
+
+            $transaction->update($updatePayload);
 
             return [
                 'status'     => 'success',
@@ -224,10 +229,25 @@ class MidtransService
 
         // Update status di database
         // Sesuaikan mapping 'paid' atau 'pending' dengan kolom 'status' di tabel kamu
-        $transaction->update([
-            'status' => ($newStatus === 'paid') ? 'Completed' : ucfirst($newStatus),
-        ]);
+        $transaction->update($this->paymentUpdatePayload($newStatus));
 
         Log::info("Midtrans Status Updated: TRX-{$transactionId} to {$newStatus}");
+    }
+
+    public function paymentUpdatePayload(string $paymentStatus): array
+    {
+        $dbStatus = match ($paymentStatus) {
+            'paid' => 'Completed',
+            'failed', 'expired' => 'Cancelled',
+            default => 'Pending',
+        };
+
+        $payload = ['status' => $dbStatus];
+
+        if (Schema::hasColumn('transactions', 'payment_status')) {
+            $payload['payment_status'] = $paymentStatus;
+        }
+
+        return $payload;
     }
 }

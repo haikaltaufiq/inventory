@@ -154,6 +154,7 @@
         window.snap.pay(_snapToken, {
             onSuccess: function (result) {
                 console.log('Snap success:', result);
+                markTransactionPaid(_paymentTrxId);
                 showPaymentStatus('success',
                     '<i class="fas fa-check-circle mr-2"></i> Pembayaran berhasil!');
                 stopPolling();
@@ -224,6 +225,27 @@
     // ─────────────────────────────────────────────────────────────────
     // Tutup modal
     // ─────────────────────────────────────────────────────────────────
+    async function markTransactionPaid(transactionId) {
+        if (!transactionId) return;
+
+        try {
+            const res = await fetch(`/transactions/${transactionId}/mark-paid`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                console.error('mark-paid HTTP error:', res.status, text);
+            }
+        } catch (err) {
+            console.error('mark-paid error:', err);
+        }
+    }
+
     function closePaymentModal() {
         stopPolling();
         const modal = document.getElementById('modalPayment');

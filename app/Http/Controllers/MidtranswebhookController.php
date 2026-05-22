@@ -57,14 +57,12 @@ class MidtransWebhookController extends Controller
             $payload['fraud_status'] ?? ''
         );
 
-        // Pastikan mapping output
-        $dbStatus = ($newStatus === 'paid') ? 'Completed' : ucfirst($newStatus);
-
-        $transaction->update(['status' => $dbStatus]);
+        $transaction->update($this->midtrans->paymentUpdatePayload($newStatus));
 
         Log::info('Midtrans webhook: status updated', [
             'transaction_id' => $transactionId,
-            'status'         => $dbStatus,
+            'payment_status' => $newStatus,
+            'status'         => $transaction->fresh()?->status,
         ]);
 
         return response()->json(['message' => 'OK']);

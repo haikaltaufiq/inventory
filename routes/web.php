@@ -120,6 +120,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/{transaction}/snap-token', [TransactionController::class, 'getSnapToken'])->name('transactions.snap-token');
         Route::get('/{transaction}/payment-status', [TransactionController::class, 'checkPaymentStatus'])->name('transactions.payment-status');
+        Route::post('/{transaction}/mark-paid', [TransactionController::class, 'markPaid'])->name('transactions.mark-paid');
     });
 
     /*

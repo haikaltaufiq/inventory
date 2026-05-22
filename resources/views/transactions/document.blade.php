@@ -152,7 +152,6 @@
                         <td style="width: 50%;">
                             <div class="label">Sales</div>
                             <p style="font-weight: 700; margin: 4px 0 2px;">{{ $transaction->sales_name ?? '-' }}</p>
-                            <p class="subtle" style="margin: 0;">Status: {{ $transaction->status ?? 'Completed' }}</p>
                             <p class="subtle" style="margin: 0;">Type: {{ $transaction->type ?? $document_type }}</p>
                         </td>
                     </tr>

@@ -70,7 +70,6 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
         'TOTAL PROFIT',
         'PENJUAL',
         'NATOPC',
-        'STATUS',
         'CATATAN',
         'GARANSI',
     ];
@@ -103,16 +102,16 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
 
         $summary = $this->buildSummary($transactions);
         $dataRows = [
-            array_fill(0, 20, null),
-            array_fill(0, 20, null),
-            array_fill(0, 20, null),
-            array_fill(0, 20, null),
+            array_fill(0, 19, null),
+            array_fill(0, 19, null),
+            array_fill(0, 19, null),
+            array_fill(0, 19, null),
             array_merge(
-                [$this->titleLabel(), null, null, null, null, null, null],
+                [$this->titleLabel(), null, null, null, null, null],
                 ['MODAL', 'TOTAL MODAL', 'TOTAL OMSET', 'TOTAL INSTALL', 'TOTAL JASA', 'TOTAL ONGKIR', 'TOTAL MARKETING', 'GROSS PROFIT', 'PENJUAL', 'NATOPC', 'PROFIT KOTOR', $summary['gross_profit'], 'persentase %']
             ),
             array_merge(
-                array_fill(0, 7, null),
+                array_fill(0, 6, null),
                 [$summary['modal'], $summary['total_modal'], $summary['omset'], $summary['install'], $summary['jasa'], $summary['kurir'], $summary['marketing'], $summary['gross_profit'], $summary['penjual'], $summary['natopc'], null, null, $summary['percent']]
             ),
             self::HEADINGS,
@@ -145,7 +144,6 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
                     $isFirst ? $totals['profit'] : null,
                     $isFirst ? $totals['seller'] : null,
                     $isFirst ? $totals['natopc'] : null,
-                    $isFirst ? $this->statusLabel($row->status ?? null) : null,
                     $isFirst ? ($row->transaction_description ?: '-') : null,
                     $isFirst ? ($row->warranty_detail ?: '-') : null,
                 ];
@@ -170,16 +168,16 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
                 $lastRow = max(7, $sheet->getHighestRow());
-                $lastCol = 'T';
+                $lastCol = 'S';
 
-                $sheet->mergeCells('A5:G6');
-                $sheet->getStyle('A5:T6')->applyFromArray([
+                $sheet->mergeCells('A5:F6');
+                $sheet->getStyle('A5:S6')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0000FF']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 ]);
 
-                $sheet->getStyle('A7:T7')->applyFromArray([
+                $sheet->getStyle('A7:S7')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['rgb' => 'FFD966']],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '000000']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -198,13 +196,13 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
                 $sheet->getStyle("A8:{$lastCol}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle("D8:D{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setWrapText(true);
                 $sheet->getStyle("G8:G{$lastRow}")->getAlignment()->setWrapText(true);
-                $sheet->getStyle("T8:T{$lastRow}")->getAlignment()->setWrapText(true);
-                $sheet->getStyle("H6:Q{$lastRow}")->getNumberFormat()->setFormatCode('"Rp"#,##0');
-                $sheet->getStyle("S5:S5")->getNumberFormat()->setFormatCode('"Rp"#,##0');
-                $sheet->getStyle("T6:T6")->getNumberFormat()->setFormatCode('0.00');
+                $sheet->getStyle("S8:S{$lastRow}")->getAlignment()->setWrapText(true);
+                $sheet->getStyle("G6:Q{$lastRow}")->getNumberFormat()->setFormatCode('"Rp"#,##0');
+                $sheet->getStyle("R5:R5")->getNumberFormat()->setFormatCode('"Rp"#,##0');
+                $sheet->getStyle("S6:S6")->getNumberFormat()->setFormatCode('0.00');
 
                 foreach ($this->transactionRanges as [$startRow, $endRow, $isRakitPc]) {
-                    $mergedColumns = ['A', 'B', 'E', 'F', 'G', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T'];
+                    $mergedColumns = ['A', 'B', 'E', 'F', 'G', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'];
 
                     if ($isRakitPc) {
                         $mergedColumns[] = 'C';
@@ -233,9 +231,8 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
                     'O' => 14,
                     'P' => 14,
                     'Q' => 14,
-                    'R' => 14,
-                    'S' => 20,
-                    'T' => 24,
+                    'R' => 20,
+                    'S' => 24,
                 ] as $column => $width) {
                     $sheet->getColumnDimension($column)->setWidth($width);
                 }
@@ -341,16 +338,6 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
     private function specification(object $row): string
     {
         return $row->line_specification ?: ($row->sparepart_line_nama ?: '-');
-    }
-
-    private function statusLabel(?string $status): string
-    {
-        return match ($status) {
-            'Completed' => 'LUNAS',
-            'Pending' => 'BELUM LUNAS',
-            'Cancelled' => 'BATAL',
-            default => $status ?: '-',
-        };
     }
 
     private function formatDate($date): string

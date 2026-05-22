@@ -53,7 +53,6 @@ class ProductOwnerStockSheet implements FromArray, WithTitle, WithEvents
         'SELLER',
         'PEMODAL',
         'QC TEST',
-        'STATUS',
         'DATE IN',
     ];
 
@@ -100,7 +99,6 @@ class ProductOwnerStockSheet implements FromArray, WithTitle, WithEvents
                 $this->sellerLabel($row),
                 $row->pemodal_name ?: $this->ownerName,
                 null,
-                $stockAwal - $soldQty > 0 ? 'READY' : 'SOLD',
                 $this->formatDate($row->entry_date ?? null),
             ];
         }
@@ -116,9 +114,9 @@ class ProductOwnerStockSheet implements FromArray, WithTitle, WithEvents
                 $lastRow = max(2, $sheet->getHighestRow());
 
                 $sheet->freezePane('A3');
-                $sheet->setAutoFilter("A2:M{$lastRow}");
+                $sheet->setAutoFilter("A2:L{$lastRow}");
 
-                $sheet->getStyle("A1:M{$lastRow}")->applyFromArray([
+                $sheet->getStyle("A1:L{$lastRow}")->applyFromArray([
                     'font' => [
                         'name' => 'Calibri',
                         'size' => 11,
@@ -133,11 +131,11 @@ class ProductOwnerStockSheet implements FromArray, WithTitle, WithEvents
                     ],
                 ]);
 
-                $sheet->getStyle('A1:M2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                $sheet->getStyle('A1:L2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
                 $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
                 $sheet->getStyle('B3:B' . $lastRow)->getAlignment()->setWrapText(true);
                 $sheet->getStyle('I3:I' . $lastRow)->getAlignment()->setWrapText(true);
-                $sheet->getStyle('A2:M2')->applyFromArray([
+                $sheet->getStyle('A2:L2')->applyFromArray([
                     'font' => [
                         'bold' => true,
                         'color' => ['rgb' => 'FFFFFF'],
@@ -151,11 +149,11 @@ class ProductOwnerStockSheet implements FromArray, WithTitle, WithEvents
                 $sheet->getStyle("C3:C{$lastRow}")->getNumberFormat()->setFormatCode('"Rp"#,##0');
                 $sheet->getStyle("G1:G{$lastRow}")->getNumberFormat()->setFormatCode('"Rp"#,##0');
                 $sheet->getStyle("D3:F{$lastRow}")->getNumberFormat()->setFormatCode('#,##0');
-                $sheet->getStyle("M3:M{$lastRow}")->getNumberFormat()->setFormatCode('dd/mm/yyyy');
+                $sheet->getStyle("L3:L{$lastRow}")->getNumberFormat()->setFormatCode('dd/mm/yyyy');
                 $sheet->getStyle("C3:C{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                 $sheet->getStyle("G1:G{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
-                $sheet->getStyle("A1:M{$lastRow}")->applyFromArray([
+                $sheet->getStyle("A1:L{$lastRow}")->applyFromArray([
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => Border::BORDER_THIN,
@@ -176,8 +174,7 @@ class ProductOwnerStockSheet implements FromArray, WithTitle, WithEvents
                     'I' => 26,
                     'J' => 16.38,
                     'K' => 12.13,
-                    'L' => 14.75,
-                    'M' => 11.5,
+                    'L' => 11.5,
                 ] as $column => $width) {
                     $sheet->getColumnDimension($column)->setWidth($width);
                 }

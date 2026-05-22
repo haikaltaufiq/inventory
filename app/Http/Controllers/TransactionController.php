@@ -12,6 +12,7 @@ use App\Services\TransactionService;
 use \App\Services\MidtransService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -193,7 +194,7 @@ class TransactionController extends Controller
     public function getSnapToken(Transaction $transaction)
     {
         // Pastikan hanya transaksi yang belum dibayar
-        if ($transaction->payment_status === 'paid') {
+        if ($transaction->status === 'Completed' || $transaction->payment_status === 'paid') {
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Transaksi ini sudah lunas.',
@@ -224,9 +225,31 @@ class TransactionController extends Controller
 
     public function checkPaymentStatus(Transaction $transaction)
     {
+        $paymentStatus = $transaction->payment_status
+            ?: ($transaction->status === 'Completed' ? 'paid' : 'pending');
+
         return response()->json([
             'status'         => 'success',
-            'payment_status' => $transaction->payment_status,
+            'transaction_status' => $transaction->status,
+            'payment_status' => $paymentStatus,
+        ]);
+    }
+
+    public function markPaid(Request $request, Transaction $transaction)
+    {
+        if ($transaction->status !== 'Completed') {
+            $payload = ['status' => 'Completed'];
+
+            if (Schema::hasColumn('transactions', 'payment_status')) {
+                $payload['payment_status'] = 'paid';
+            }
+
+            $transaction->update($payload);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'transaction_status' => $transaction->fresh()->status,
         ]);
     }
 }

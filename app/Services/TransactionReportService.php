@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Exports\ExportTransactionReport;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
@@ -100,6 +101,11 @@ class TransactionReportService
 
     private function buildTransactionReportLineSubquery(Request $request)
     {
+        $hasPaymentStatus = Schema::hasColumn('transactions', 'payment_status');
+        $statusSelect = $hasPaymentStatus
+            ? DB::raw("CASE WHEN t.payment_status = 'paid' THEN 'Completed' ELSE t.status END as status")
+            : 't.status';
+
         $query = DB::table('transaction_details as td')
             ->join('transactions as t', 'td.transaction_id', '=', 't.id')
             ->leftJoin('customers as c', 't.customer_id', '=', 'c.id')
@@ -113,7 +119,7 @@ class TransactionReportService
                 't.sales_name as seller_name',
                 't.transaction_mode',
                 't.transaction_date',
-                't.status',
+                $statusSelect,
                 'c.name as customer_name',
                 'c.phone as customer_phone',
                 'c.address as customer_address',
@@ -210,7 +216,8 @@ class TransactionReportService
                 't.marketing_fee',
                 't.description',
                 'ps.warranty_detail',
-            ]);
+            ])
+            ->when($hasPaymentStatus, fn ($q) => $q->groupBy('t.payment_status'));
 
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));

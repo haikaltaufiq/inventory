@@ -22,6 +22,9 @@ class Transaction extends Model
         'final_total',
         'type',
         'status',
+        'snap_token',
+        'payment_url',
+        'payment_status',
         'transaction_date',
         'description'
     ];
