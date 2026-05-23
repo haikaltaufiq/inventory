@@ -171,46 +171,7 @@
                 },
 
                 syncProductFormControls(retries = 0) {
-                    if (!this.formRow) return;
-
-                    this.$nextTick(() => {
-                        const form = document.getElementById('product-form');
-                        if (!form || !this.formRow) return;
-
-                        const setValue = (name, value) => {
-                            const field = form.elements.namedItem(name);
-                            if (!field || field.type === 'file') return;
-                            field.value = value ?? '';
-                            field.dispatchEvent(new Event('change', { bubbles: true }));
-                        };
-
-                        setValue('name', this.formRow.name);
-                        setValue('serial_number', this.formRow.serial_number);
-                        setValue('brand', this.formRow.brand);
-                        setValue('category_id', this.formRow.category_id);
-                        setValue('letak_barang', this.formRow.letak_barang);
-                        setValue('description', this.formRow.description);
-
-                        (this.formRow.suppliers || []).forEach((supplier, index) => {
-                            setValue(`suppliers[${index}][supplier_id]`, supplier.supplier_id);
-                            setValue(`suppliers[${index}][pemodal_user_id]`, supplier.pemodal_user_id);
-                            setValue(`suppliers[${index}][condition]`, supplier.condition);
-                            setValue(`suppliers[${index}][stock]`, supplier.stock);
-                            setValue(`suppliers[${index}][harga_beli]`, supplier.harga_beli);
-                            setValue(`suppliers[${index}][harga_jual]`, supplier.harga_jual);
-                            setValue(`suppliers[${index}][warranty_detail]`, supplier.warranty_detail);
-                            setValue(`suppliers[${index}][new_supplier_name]`, supplier.new_supplier_name);
-                            setValue(`suppliers[${index}][new_supplier_address]`, supplier.new_supplier_address);
-                        });
-
-                        Object.entries(this.formRow.specs || {}).forEach(([key, spec]) => {
-                            setValue(`specs[${key}][value]`, spec?.value || '');
-                        });
-
-                        if (retries > 0) {
-                            window.setTimeout(() => this.syncProductFormControls(retries - 1), 30);
-                        }
-                    });
+                    // Handled automatically by Alpine.js reactive data bindings.
                 },
 
                 rowFromPayload(payload = {}) {

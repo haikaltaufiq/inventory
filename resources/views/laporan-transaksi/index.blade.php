@@ -109,7 +109,6 @@
                             <th class="px-4 py-4 text-right font-medium">NATOPC</th>
                             <th class="px-4 py-4 text-left font-medium">Status</th>
                             <th class="px-4 py-4 text-left font-medium">Desc</th>
-                            <th class="px-4 py-4 text-left font-medium">Garansi</th>
                             <th class="px-4 py-4 text-center font-medium">Aksi</th>
                         </tr>
                     </thead>
@@ -216,28 +215,7 @@
                                         </button>
                                     </div>
                                 </td>
-                                <td class="px-4 py-4 align-top">
-                                    @php
-                                        $warranties = explode('<br>', (string) $row->warranty_details_list);
-                                        $wCount = count($warranties);
-                                        $wFirst = $warranties[0] === 'Kosong' ? '-' : $warranties[0];
-                                    @endphp
-                                    <div class="flex items-start gap-2">
-                                        <div>
-                                            <span
-                                                class="text-slate-700 text-xs font-medium max-w-[150px] line-clamp-1 break-words">{{ $wFirst }}</span>
-                                            @if ($wCount > 1)
-                                                <div class="mt-1 text-[10px] text-slate-500 whitespace-nowrap">+
-                                                    {{ $wCount - 1 }} lainnya</div>
-                                            @endif
-                                        </div>
-                                        <button type="button"
-                                            onclick="openWarrantyModal({{ $row->transaction_id }}, '{{ htmlspecialchars($wFirst === '-' ? '' : $wFirst, ENT_QUOTES) }}')"
-                                            class="p-1 text-slate-400 hover:text-slate-700 shrink-0">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    </div>
-                                </td>
+                                
                                 <td class="px-4 py-4 align-top text-center w-20">
                                     <button type="button" onclick="openDetailModal({{ $row->transaction_id }})"
                                         class="flex items-center justify-center h-8 w-max rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-200 transition-all whitespace-nowrap gap-1.5 px-3 mx-auto font-semibold text-xs shadow-sm">
@@ -279,25 +257,6 @@
         </form>
     </x-modal>
 
-    <x-modal id="warrantyModal" title="Edit Garansi (Semua Item di Transaksi Ini)">
-        <form id="warrantyForm" method="POST" action="">
-            @csrf
-            <div class="mb-4">
-                <label class="mb-2 block text-sm font-medium text-slate-700">Tahun Garansi</label>
-                <input type="text" name="warranty" id="warrantyInput"
-                    class="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:border-slate-400 focus:outline-none"
-                    placeholder="Misal: 1 Tahun">
-                <p class="mt-2 text-xs text-amber-600">Peringatan: Menyimpan form ini akan memperbarui status masa garansi
-                    bagi SEMUA item stock supplier yang disertakan dalam transaksi ini.</p>
-            </div>
-            <div class="flex justify-end gap-3">
-                <button type="button" onclick="closeModal('warrantyModal')"
-                    class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Batal</button>
-                <button type="submit"
-                    class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">Simpan</button>
-            </div>
-        </form>
-    </x-modal>
 
     <x-modal id="detailModal" title="Info Detail Transaksi" size="lg">
         <div id="detailContent" class="space-y-6">
