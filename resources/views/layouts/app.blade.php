@@ -208,24 +208,23 @@
                     <span
                         class="sidebar-label ml-3 {{ request()->routeIs('customers.*') ? 'font-semibold' : 'font-normal' }}">Pelanggan</span>
                 </a>
-
+                <a href="{{ route('supplier.index') }}"
+                    class="sidebar-item flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('supplier.*') ? 'nav-active' : 'hover:bg-white/10 text-white' }}"
+                    title="Supplier">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" class="lucide lucide-truck-icon lucide-truck">
+                        <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
+                        <path d="M15 18H9" />
+                        <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" />
+                        <circle cx="17" cy="18" r="2" />
+                        <circle cx="7" cy="18" r="2" />
+                    </svg>
+                    <span
+                        class="sidebar-label ml-3 {{ request()->routeIs('supplier.*') ? 'font-semibold' : 'font-normal' }}">Supplier</span>
+                </a>
                 {{-- Pembatasan Akses Halaman --}}
                 @if (auth()->user()->role === 'owner')
-                    <a href="{{ route('supplier.index') }}"
-                        class="sidebar-item flex items-center text-sm px-6 py-3 transition-all rounded-xl {{ request()->routeIs('supplier.*') ? 'nav-active' : 'hover:bg-white/10 text-white' }}"
-                        title="Supplier">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                            stroke-linejoin="round" class="lucide lucide-truck-icon lucide-truck">
-                            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2" />
-                            <path d="M15 18H9" />
-                            <path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14" />
-                            <circle cx="17" cy="18" r="2" />
-                            <circle cx="7" cy="18" r="2" />
-                        </svg>
-                        <span
-                            class="sidebar-label ml-3 {{ request()->routeIs('supplier.*') ? 'font-semibold' : 'font-normal' }}">Supplier</span>
-                    </a>
                     <a href="{{ route('report') }}"
                         class="sidebar-item flex items-center px-6 py-3 text-sm transition-all rounded-xl {{ request()->routeIs('report') ? 'nav-active' : 'hover:bg-white/10 text-white' }}"
                         title="Laporan Transaksi">
