@@ -146,6 +146,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/builds',            [PcBuilderController::class, 'store'])->name('builds.store');
         Route::get('/builds/list',        [PcBuilderController::class, 'list'])->name('builds.list');
         Route::delete('/builds/{build}',   [PcBuilderController::class, 'destroy'])->name('builds.destroy');
+        Route::get('/builds/{build}/pdf', [PcBuilderController::class, 'downloadPdf'])->name('builds.pdf');
     });
 
     /*

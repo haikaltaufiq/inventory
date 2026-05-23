@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Support\CacheVersions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PcBuilderController extends Controller
 {
@@ -215,5 +216,16 @@ class PcBuilderController extends Controller
         CacheVersions::bumpPcBuilds();
 
         return response()->json(['status' => 'success', 'message' => 'Build berhasil dihapus']);
+    }
+
+    public function downloadPdf(PcBuild $build)
+    {
+        $pdf = Pdf::loadView('pc-builder.pdf', [
+            'build' => $build,
+        ])->setPaper('a4');
+
+        $fileName = str_replace(' ', '-', strtolower($build->name)) . '-build-' . $build->created_at->format('d-m-Y') . '.pdf';
+
+        return $pdf->download($fileName);
     }
 }

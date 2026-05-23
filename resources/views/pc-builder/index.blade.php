@@ -65,7 +65,7 @@
             <div>
                 <h1 class="text-2xl font-semibold tracking-tight text-slate-800">Simulasi Rakit PC</h1>
                 <p class="text-sm text-slate-500 mt-1">
-                    Bebas pilih komponen dari mana saja. Pilihan berikutnya otomatis mengikuti spesifikasi yang sudah
+                    Pilih komponen dari mana saja. Pilihan berikutnya otomatis mengikuti spesifikasi yang sudah
                     dipilih.
                 </p>
             </div>
@@ -977,13 +977,7 @@
             location.reload();
         }
 
-        function saveBuild() {
-            const filled = Object.entries(build).filter(([, v]) => v !== null);
-            if (filled.length === 0) {
-                alert('Pilih minimal satu komponen terlebih dahulu.');
-                return;
-            }
-
+        function generateBuildHtml(customName = null, customNotes = null) {
             const cpuTdp = intSpec(build.cpu, 'tdp_watt');
             const gpuMinPsu = intSpec(build.vga, 'min_psu_watt');
             const totalNeed = cpuTdp + gpuMinPsu;
@@ -1027,11 +1021,18 @@
                 year: 'numeric',
             });
 
-            const html = `<!DOCTYPE html>
+            const documentTitle = customName ? customName : 'Estimasi Rakit PC';
+            const notesSection = customNotes ? `
+            <div class="section" style="margin-top: 14px;">
+                <div class="section-title">Catatan</div>
+                <div style="font-size: 12px; color: #334155; white-space: pre-line; line-height: 1.5;">${escapeHtml(customNotes)}</div>
+            </div>` : '';
+
+            return `<!DOCTYPE html>
     <html lang="id">
     <head>
         <meta charset="UTF-8">
-        <title>Estimasi Rakit PC</title>
+        <title>${escapeHtml(documentTitle)}</title>
         <style>
             @page { margin: 0; size: A4 portrait; }
             * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1065,7 +1066,7 @@
     <body>
         <div class="header">
             <div>
-                <h1>Estimasi Rakit PC</h1>
+                <h1>${escapeHtml(documentTitle)}</h1>
                 <p>Simulasi konfigurasi dan kompatibilitas komponen PC</p>
             </div>
             <div class="date">Dicetak: ${printDate}</div>
@@ -1093,11 +1094,22 @@
                 ${psuWattage ? `<div class="watt-info"><span>PSU Dipilih</span><span>${psuWattage} W</span></div>` : ''}
             </div>` : ''}
 
+        ${notesSection}
+
         <div class="footer">Dokumen ini merupakan estimasi. Harga dapat berubah sewaktu-waktu.</div>
         <script>window.onload = () => { window.print(); }<\/script>
     </body>
     </html>`;
+        }
 
+        function saveBuild() {
+            const filled = Object.entries(build).filter(([, v]) => v !== null);
+            if (filled.length === 0) {
+                alert('Pilih minimal satu komponen terlebih dahulu.');
+                return;
+            }
+
+            const html = generateBuildHtml();
             const w = window.open('', '_blank', 'width=800,height=700');
             w.document.write(html);
             w.document.close();
@@ -1170,6 +1182,14 @@
                 if (!res.ok) {
                     const err = await res.json().catch(() => ({}));
                     throw new Error(err.message || 'Gagal menyimpan');
+                }
+
+                const result = await res.json();
+                const buildId = result.build?.id;
+
+                if (buildId) {
+                    // Trigger direct PDF download using server-side DomPDF
+                    window.location.href = `/pc-builder/builds/${buildId}/pdf`;
                 }
 
                 closeSaveBuildModal();
