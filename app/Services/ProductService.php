@@ -10,12 +10,27 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
+use Cloudinary\Cloudinary;
+use Cloudinary\Configuration\Configuration;
 
 class ProductService
 {
     private const SPEC_OPTIONS_CACHE_KEY = 'products.spec_options';
 
+    private function getCloudinary(): Cloudinary
+    {
+        $config = Configuration::instance([
+            'cloud' => [
+                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                'api_key'    => env('CLOUDINARY_API_KEY'),
+                'api_secret' => env('CLOUDINARY_API_SECRET'),
+            ],
+            'url' => ['secure' => true],
+        ]);
+
+        return new Cloudinary($config);
+    }
+    
     public function __construct(
         private ProductSpecService $specService
     ) {}
@@ -73,25 +88,21 @@ class ProductService
         return $product;
     }
 
-    public function deleteProductImage(Product $product): void
-    {
-        if (empty($product->image_url)) {
-            return;
-        }
-
-        $oldPath = ltrim(str_replace('/storage/', '', $product->image_url), '/');
-        Storage::disk('public')->delete($oldPath);
-    }
-
     private function storeUploadedProductImage(?UploadedFile $imageFile): ?string
     {
         if ($imageFile === null) {
             return null;
         }
 
-        $path = $imageFile->store('products', 'public');
+        $result = $this->getCloudinary()
+            ->uploadApi()
+            ->upload($imageFile->getRealPath(), [
+                'folder' => 'products',
+                'quality' => 'auto',
+                'fetch_format' => 'auto',
+            ]);
 
-        return '/storage/'.ltrim($path, '/');
+        return $result['secure_url'];
     }
 
     private function replaceUploadedProductImage(Product $product, ?UploadedFile $imageFile): ?string
@@ -100,15 +111,22 @@ class ProductService
             return $product->image_url;
         }
 
-        $path = $imageFile->store('products', 'public');
-        $imageUrl = '/storage/'.ltrim($path, '/');
+        $this->deleteProductImage($product);
 
-        if (! empty($product->image_url)) {
-            $oldPath = ltrim(str_replace('/storage/', '', $product->image_url), '/');
-            Storage::disk('public')->delete($oldPath);
+        return $this->storeUploadedProductImage($imageFile);
+    }
+
+    public function deleteProductImage(Product $product): void
+    {
+        if (empty($product->image_url)) {
+            return;
         }
 
-        return $imageUrl;
+        if (preg_match('/\/products\/([^.\/]+)(?:\.[a-z]+)?$/', $product->image_url, $matches)) {
+            $this->getCloudinary()
+                ->uploadApi()
+                ->destroy('products/' . $matches[1]);
+        }
     }
 
     private function syncProductSuppliers(Product $product, array $suppliers): void
