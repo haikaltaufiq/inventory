@@ -60,9 +60,11 @@ class PcBuilderController extends Controller
         // tapi whereHas tetap bisa query spec_key / spec_value di tabel preset.
         // =====================================================================
         if ($socketType && in_array($type, ['Processor', 'CPU Cooler', 'Motherboard'], true)) {
-            $query->whereHas('specs', fn($q) =>
+            $query->whereHas(
+                'specs',
+                fn($q) =>
                 $q->where('spec_key', 'socket_type')
-                  ->where('spec_value', $socketType)
+                    ->where('spec_value', $socketType)
             );
         }
 
@@ -71,16 +73,20 @@ class PcBuilderController extends Controller
         // BUG LAMA: pakai $socketType — seharusnya $ramType ✓
         // =====================================================================
         if ($ramType && $type === 'RAM') {
-            $query->whereHas('specs', fn($q) =>
+            $query->whereHas(
+                'specs',
+                fn($q) =>
                 $q->where('spec_key', 'ram_type')
-                  ->where('spec_value', $ramType) // ← fix: $ramType bukan $socketType
+                    ->where('spec_value', $ramType) // ← fix: $ramType bukan $socketType
             );
         }
 
         if ($ramType && $type === 'Motherboard') {
-            $query->whereHas('specs', fn($q) =>
+            $query->whereHas(
+                'specs',
+                fn($q) =>
                 $q->where('spec_key', 'ram_type_slot')
-                  ->where('spec_value', $ramType)
+                    ->where('spec_value', $ramType)
             );
         }
 
@@ -90,24 +96,28 @@ class PcBuilderController extends Controller
         // perbandingan numerik CAST(spec_value AS UNSIGNED) >= $minWattage ✓
         // =====================================================================
         if ($minWattage && $type === 'Power Supply') {
-            $query->whereHas('specs', fn($q) =>
+            $query->whereHas(
+                'specs',
+                fn($q) =>
                 $q->where('spec_key', 'total_wattage')
-                  ->whereRaw('CAST(spec_value AS UNSIGNED) >= ?', [$minWattage]) // ← fix
+                    ->whereRaw('CAST(spec_value AS UNSIGNED) >= ?', [$minWattage]) // ← fix
             );
         }
 
-        $query->whereHas('suppliers', fn($q) =>
+        $query->whereHas(
+            'suppliers',
+            fn($q) =>
             $q->where('product_supplier.stock', '>', 0)
         );
 
-        $cacheKey = 'pc-builder:compatible:v'.CacheVersions::catalog().':'.
+        $cacheKey = 'pc-builder:compatible:v' . CacheVersions::catalog() . ':' .
             md5(json_encode($request->only(['type', 'socket_type', 'ram_type', 'min_wattage'])));
 
-        $products = Cache::remember($cacheKey, now()->addMinutes(5), fn () => $query
-                ->orderBy('name')
-                ->limit(120)
-                ->get()
-                ->map(fn($p) => $this->formatProduct($p)));
+        $products = Cache::remember($cacheKey, now()->addMinutes(5), fn() => $query
+            ->orderBy('name')
+            ->limit(120)
+            ->get()
+            ->map(fn($p) => $this->formatProduct($p)));
 
         return response()->json($products);
     }
@@ -189,7 +199,7 @@ class PcBuilderController extends Controller
     // TAMBAH: untuk halaman transaksi — ambil semua saved build
     public function list()
     {
-        $builds = Cache::remember('pc-builder:builds:v'.CacheVersions::pcBuilds(), now()->addMinutes(5), fn () => PcBuild::with('creator:id,name')
+        $builds = Cache::remember('pc-builder:builds:v' . CacheVersions::pcBuilds(), now()->addMinutes(5), fn() => PcBuild::with('creator:id,name')
             ->latest()
             ->limit(100)
             ->get()
@@ -200,7 +210,7 @@ class PcBuilderController extends Controller
                 'total_price'   => $b->total_price,
                 'total_fmt'     => 'Rp ' . number_format($b->total_price, 0, ',', '.'),
                 'harga_jual'    => $b->harga_jual,                                           // ← baru
-                'harga_jual_fmt'=> 'Rp ' . number_format($b->harga_jual, 0, ',', '.'),      // ← baru
+                'harga_jual_fmt' => 'Rp ' . number_format($b->harga_jual, 0, ',', '.'),      // ← baru
                 'margin_pct'    => $b->margin_pct,                                           // ← baru
                 'created_by'    => $b->creator?->name,
                 'components'    => $b->components,
@@ -227,5 +237,31 @@ class PcBuilderController extends Controller
         $fileName = str_replace(' ', '-', strtolower($build->name)) . '-build-' . $build->created_at->format('d-m-Y') . '.pdf';
 
         return $pdf->download($fileName);
+    }
+
+    public function previewPdf(Request $request)
+    {
+        $request->validate([
+            'components'  => ['required', 'array'],
+            'margin_pct'  => ['nullable', 'numeric', 'min:0'],
+            'total_modal' => ['nullable', 'integer', 'min:0'],
+            'harga_jual'  => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        // Build a value object that mirrors the PcBuild model's accessible attributes.
+        $build = (object) [
+            'name'        => 'Estimasi Rakit PC',
+            'notes'       => null,
+            'components'  => $request->input('components', []),
+            'margin_pct'  => $request->input('margin_pct', 0),
+            'total_price' => $request->input('total_modal', 0),
+            'harga_jual'  => $request->input('harga_jual', 0),
+            'created_at'  => now(),
+        ];
+
+        $pdf = Pdf::loadView('pc-builder.pdf', compact('build'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('estimasi-rakit-pc.pdf');
     }
 }

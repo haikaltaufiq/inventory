@@ -1102,18 +1102,47 @@
     </html>`;
         }
 
-        function saveBuild() {
-            const filled = Object.entries(build).filter(([, v]) => v !== null);
-            if (filled.length === 0) {
-                alert('Pilih minimal satu komponen terlebih dahulu.');
-                return;
-            }
+        async function saveBuild() {
+    const filled = Object.entries(build).filter(([, v]) => v !== null);
 
-            const html = generateBuildHtml();
-            const w = window.open('', '_blank', 'width=800,height=700');
-            w.document.write(html);
-            w.document.close();
-        }
+    if (filled.length === 0) {
+        alert('Pilih minimal satu komponen terlebih dahulu.');
+        return;
+    }
+
+    const payload = {
+        components:  build,
+        margin_pct:  window._marginPct  || 0,
+        total_modal: window._totalModal || 0,
+        harga_jual:  window._totalJual  || 0,
+    };
+
+    try {
+        const res = await fetch('/pc-builder/preview-pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error(`Server error ${res.status}`);
+
+        // Stream response sebagai blob lalu trigger download
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href     = url;
+        anchor.download = 'estimasi-rakit-pc.pdf';
+        anchor.click();
+        URL.revokeObjectURL(url);
+
+    } catch (err) {
+        console.error('[PC Builder] Preview PDF error:', err);
+        alert('Gagal menghasilkan PDF: ' + err.message);
+    }
+}
         const CSRF_TOKEN = '{{ csrf_token() }}';
 
         // =============================================================================
