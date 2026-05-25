@@ -281,7 +281,7 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
         $jasa = (float) ($first->service_labor_fee ?? $first->service_fee ?? 0);
         $kurir = (float) ($first->shipping_fee ?? 0);
         $marketing = (float) ($first->marketing_fee ?? 0);
-        $profit = $selling - $modal - $install - $jasa - $kurir - $marketing;
+        $profit = $selling - $modal;
 
         return [
             'modal' => $modal,
@@ -291,8 +291,8 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
             'kurir' => $kurir,
             'marketing' => $marketing,
             'profit' => $profit,
-            'seller' => round($profit * 0.75, 2),
-            'natopc' => round($profit * 0.25, 2),
+            'seller' => round($profit * 0.70, 2),
+            'natopc' => round($profit * 0.30, 2),
         ];
     }
 

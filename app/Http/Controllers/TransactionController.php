@@ -71,7 +71,16 @@ class TransactionController extends Controller
                     ->with('success', 'Transaksi berhasil disimpan.');
             }
 
-            $transaction = $this->service->storeTransaction($request->validated());
+            $transaction = \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+                $trx = $this->service->storeTransaction($request->validated());
+
+                $paymentMethod = $request->input('transaction_data.paymentMethod', 'midtrans');
+                if ($paymentMethod === 'midtrans') {
+                    $this->midtrans->createSnapToken($trx);
+                }
+
+                return $trx;
+            });
 
         } catch (ValidationException $exception) {
             throw $exception;
@@ -84,13 +93,13 @@ class TransactionController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Gagal menyimpan transaksi. Coba lagi.',
+                    'message' => 'Gagal menyimpan transaksi: ' . $exception->getMessage(),
                 ], 500);
             }
 
             return back()
                 ->withInput()
-                ->withErrors(['transaction' => 'Gagal menyimpan transaksi. Coba lagi.']);
+                ->withErrors(['transaction' => 'Gagal menyimpan transaksi: ' . $exception->getMessage()]);
         }
 
         if ($request->expectsJson()) {
@@ -106,6 +115,8 @@ class TransactionController extends Controller
                     'type' => $documentTypeKey,
                 ]),
                 'transaction_id' => $transaction->id,
+                'snap_token' => $transaction->snap_token,
+                'payment_method' => $request->input('transaction_data.paymentMethod', 'midtrans'),
             ], 201);
         }
 
@@ -199,6 +210,14 @@ class TransactionController extends Controller
                 'status'  => 'error',
                 'message' => 'Transaksi ini sudah lunas.',
             ], 422);
+        }
+
+        if ($transaction->snap_token) {
+            return response()->json([
+                'status'     => 'success',
+                'snap_token' => $transaction->snap_token,
+                'client_key' => $this->midtrans->getClientKey(),
+            ]);
         }
 
         try {

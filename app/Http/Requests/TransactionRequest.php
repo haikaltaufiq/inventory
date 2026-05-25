@@ -73,6 +73,7 @@ class TransactionRequest extends FormRequest
             'transaction_data.type' => 'nullable|string|in:Invoice,Quotation,DO',
             'transaction_data.transactionMode' => 'required|string|in:sparepart,rakit_pc',
             'transaction_data.buildName' => 'nullable|string|max:120',
+            'transaction_data.paymentMethod' => 'nullable|string|in:midtrans,cash',
             'service_fee' => 'required|numeric|min:0',
             'additional_fees.installation' => 'nullable|numeric|min:0',
             'additional_fees.service_labor' => 'nullable|numeric|min:0',

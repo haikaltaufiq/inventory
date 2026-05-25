@@ -192,7 +192,18 @@
                             <p class="mt-2 text-xs text-slate-400">Dokumen PDF akan otomatis diunduh setelah transaksi
                                 berhasil disimpan.</p>
                         </div>
+
+                        
                     </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                            <label class="text-sm font-medium text-slate-600">Metode Pembayaran</label>
+                            <select x-model="transactionData.paymentMethod"
+                                class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
+                                <option value="midtrans">Online (QRIS/Transfer/Card via Midtrans)</option>
+                                <option value="cash">Cash / Tunai</option>
+                            </select>
+                            <p class="mt-2 text-xs text-slate-400">Pilih metode pembayaran transaksi.</p>
+                        </div>
                 </div>
 
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:p-5">

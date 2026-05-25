@@ -40,6 +40,10 @@ class TransactionService
                 ? $this->buildPcSpecification($cart->all())
                 : null;
 
+            $paymentMethod = $validated['transaction_data']['paymentMethod'] ?? 'midtrans';
+            $status = $paymentMethod === 'cash' ? 'Completed' : 'Pending';
+            $paymentStatus = $paymentMethod === 'cash' ? 'paid' : 'pending';
+
             $transaction = Transaction::create([
                 'customer_id' => $customer->id,
                 'sales_name' => $validated['transaction_data']['sales'],
@@ -52,7 +56,8 @@ class TransactionService
                 'discount_fee' => $discountFee,
                 'marketing_fee' => 0,
                 'final_total' => $finalTotal,
-                'status' => 'Pending',
+                'status' => $status,
+                'payment_status' => $paymentStatus,
                 'type' => $validated['transaction_data']['type'] ?? 'Invoice',
                 'transaction_date' => now()->toDateString(),
             ]);

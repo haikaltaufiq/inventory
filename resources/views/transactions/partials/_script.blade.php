@@ -80,6 +80,7 @@
                     type: 'Invoice',
                     transactionMode: 'sparepart',
                     buildName: '',
+                    paymentMethod: 'midtrans',
                 },
                 // === BUILD MODE STATE ===
                 activeBuild: null,
@@ -536,12 +537,26 @@
                         const result = await response.json();
 
                         if (response.ok && result.status === 'success') {
-                            // ✅ Kirim document_url sebagai parameter ke-3
-                            openPaymentModal(
-                                result.transaction_id,
-                                'Rp ' + this.formatNumber(this.finalTotal),
-                                result.document_url // ← ini yang baru, untuk download invoice setelah bayar
-                            );
+                            if (result.payment_method === 'cash') {
+                                alert('Transaksi Cash berhasil disimpan!');
+                                if (result.document_url) {
+                                    const a = document.createElement('a');
+                                    a.href     = result.document_url;
+                                    a.target   = '_blank';
+                                    a.download = '';
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                }
+                                setTimeout(() => location.reload(), 1000);
+                            } else {
+                                // ✅ Kirim document_url sebagai parameter ke-3
+                                openPaymentModal(
+                                    result.transaction_id,
+                                    'Rp ' + this.formatNumber(this.finalTotal),
+                                    result.document_url // ← ini yang baru, untuk download invoice setelah bayar
+                                );
+                            }
                         } else {
                             alert('Gagal: ' + (result.message || 'Terjadi kesalahan.'));
                         }
