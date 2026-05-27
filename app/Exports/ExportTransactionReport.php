@@ -278,7 +278,9 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
         $modal = $rows->sum(fn($row) => (float) ($row->modal_line ?? 0));
         $selling = $rows->sum(fn($row) => (float) ($row->selling_line ?? 0));
         $install = (float) ($first->installation_fee ?? 0);
-        $jasa = (float) ($first->service_labor_fee ?? $first->service_fee ?? 0);
+        $jasa = (($first->transaction_mode ?? null) === 'rakit_pc')
+            ? (float) ($first->service_labor_fee ?? 0)
+            : (float) ($first->service_labor_fee ?? $first->service_fee ?? 0);
         $kurir = (float) ($first->shipping_fee ?? 0);
         $marketing = (float) ($first->marketing_fee ?? 0);
         $profit = $selling - $modal;
