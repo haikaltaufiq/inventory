@@ -145,52 +145,61 @@ class TransactionReportService
                 't.description as transaction_description',
                 'ps.warranty_detail',
             ])
-            ->selectRaw('(td.quantity * COALESCE(ps.harga_beli, 0)) as modal_line')
-            ->selectRaw('CASE
-                WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
-                    THEN ROUND(
-                        (td.quantity * COALESCE(td.price_at_transaction, 0))
-                        - (COALESCE(t.discount_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
-                        2
-                    )
-                ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
-            END as selling_line')
-            ->selectRaw('CASE
-                WHEN COALESCE(t.subtotal, 0) > 0 AND (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
-                    THEN ROUND(
-                        (COALESCE(t.service_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / t.subtotal))
-                        - (COALESCE(t.discount_fee, 0) * ((COALESCE(t.service_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / t.subtotal)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
-                        2
-                    )
-                ELSE 0
-            END as service_line')
-            ->selectRaw('(CASE
-                WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
-                    THEN ROUND(
-                        (td.quantity * COALESCE(td.price_at_transaction, 0))
-                        - (COALESCE(t.discount_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
-                        2
-                    )
-                ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
-            END - (td.quantity * COALESCE(ps.harga_beli, 0))) as gross_line')
-            ->selectRaw('ROUND(((CASE
-                WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
-                    THEN ROUND(
-                        (td.quantity * COALESCE(td.price_at_transaction, 0))
-                        - (COALESCE(t.discount_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
-                        2
-                    )
-                ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
-            END - (td.quantity * COALESCE(ps.harga_beli, 0))) * 0.7), 2) as seller_line')
-            ->selectRaw('ROUND(((CASE
-                WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0
-                    THEN ROUND(
-                        (td.quantity * COALESCE(td.price_at_transaction, 0))
-                        - (COALESCE(t.discount_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)))),
-                        2
-                    )
-                ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
-            END - (td.quantity * COALESCE(ps.harga_beli, 0))) * 0.3), 2) as natopc_line')
+            ->selectRaw('(td.quantity * COALESCE(ps.harga_beli, 0)) as modal_line');
+
+        $baseSellingSql = "CASE
+            WHEN t.transaction_mode = 'rakit_pc' THEN
+                CASE
+                    WHEN COALESCE(t.subtotal, 0) > 0 THEN
+                        (td.quantity * COALESCE(td.price_at_transaction, 0)) * (1 + (CASE WHEN COALESCE(t.service_fee, 0) > (COALESCE(t.installation_fee, 0) + COALESCE(t.service_labor_fee, 0)) THEN COALESCE(t.service_fee, 0) - COALESCE(t.installation_fee, 0) - COALESCE(t.service_labor_fee, 0) ELSE 0 END) / t.subtotal)
+                    ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
+                END
+            ELSE (td.quantity * COALESCE(td.price_at_transaction, 0))
+        END";
+
+        $baseServiceSql = "CASE
+            WHEN t.transaction_mode = 'rakit_pc' THEN
+                CASE
+                    WHEN COALESCE(t.subtotal, 0) > 0 THEN
+                        (COALESCE(t.installation_fee, 0) + COALESCE(t.service_labor_fee, 0)) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / t.subtotal)
+                    ELSE 0
+                END
+            ELSE
+                CASE
+                    WHEN COALESCE(t.subtotal, 0) > 0 THEN
+                        COALESCE(t.service_fee, 0) * ((td.quantity * COALESCE(td.price_at_transaction, 0)) / t.subtotal)
+                    ELSE 0
+                END
+        END";
+
+        $sellingLineSql = "CASE
+            WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0 THEN
+                ROUND(
+                    ({$baseSellingSql})
+                    - (COALESCE(t.discount_fee, 0) * ({$baseSellingSql}) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0))),
+                    2
+                )
+            ELSE {$baseSellingSql}
+        END";
+
+        $serviceLineSql = "CASE
+            WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0 THEN
+                ROUND(
+                    ({$baseServiceSql})
+                    - (COALESCE(t.discount_fee, 0) * ({$baseServiceSql}) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0))),
+                    2
+                )
+            ELSE 0
+        END";
+
+        $modalLineSql = "(td.quantity * COALESCE(ps.harga_beli, 0))";
+        $grossLineSql = "({$sellingLineSql} - {$modalLineSql})";
+
+        $query->selectRaw("{$sellingLineSql} as selling_line")
+            ->selectRaw("{$serviceLineSql} as service_line")
+            ->selectRaw("{$grossLineSql} as gross_line")
+            ->selectRaw("ROUND(({$grossLineSql} * 0.7), 2) as seller_line")
+            ->selectRaw("ROUND(({$grossLineSql} * 0.3), 2) as natopc_line")
             ->groupBy([
                 'td.id',
                 'td.transaction_id',
