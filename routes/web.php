@@ -91,20 +91,6 @@ Route::middleware('auth')->group(function () {
         ->name('products.suppliers');
     /*
     |--------------------------------------------------------------------------
-    | User
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('users')->name('users.')->group(function () {
-        Route::get('/', [UserController::class, 'index'])->name('index');
-        Route::get('/create', [UserController::class, 'create'])->name('create');
-        Route::post('/', [UserController::class, 'store'])->name('store');
-        Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
-        Route::put('/{user}', [UserController::class, 'update'])->name('update');
-        Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
-    });
-
-    /*
-    |--------------------------------------------------------------------------
     | Transactions
     |--------------------------------------------------------------------------
     */
@@ -125,39 +111,60 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Report
+    | Owner-Only Routes
     |--------------------------------------------------------------------------
     */
-    Route::get('/report', [TransactionController::class, 'report'])->name('report');
-    Route::get('/report/download', [TransactionController::class, 'downloadReport'])->name('report.download');
-    Route::get('/report-product', [ProductController::class, 'reportProduct'])->name('report.product');
-    Route::get('/report-product/download', [ProductController::class, 'downloadProductReport'])->name('report.product.download');
+    Route::middleware('role:owner')->group(function () {
+        /*
+        |--------------------------------------------------------------------------
+        | User
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/', [UserController::class, 'index'])->name('index');
+            Route::get('/create', [UserController::class, 'create'])->name('create');
+            Route::post('/', [UserController::class, 'store'])->name('store');
+            Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
+            Route::put('/{user}', [UserController::class, 'update'])->name('update');
+            Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
+        });
 
-    /*
-    |--------------------------------------------------------------------------
-    | pc-builder
-    |--------------------------------------------------------------------------
-    */
-    Route::prefix('pc-builder')->name('pc-builder.')->group(function () {
-        Route::get('/',            [PcBuilderController::class, 'index'])->name('index');
-        Route::get('/compatible',  [PcBuilderController::class, 'getCompatible'])->name('compatible');
+        /*
+        |--------------------------------------------------------------------------
+        | Report
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/report', [TransactionController::class, 'report'])->name('report');
+        Route::get('/report/download', [TransactionController::class, 'downloadReport'])->name('report.download');
+        Route::get('/report-product', [ProductController::class, 'reportProduct'])->name('report.product');
+        Route::get('/report-product/download', [ProductController::class, 'downloadProductReport'])->name('report.product.download');
 
-        // Tambah ini:
-        Route::post('/builds',            [PcBuilderController::class, 'store'])->name('builds.store');
-        Route::get('/builds/list',        [PcBuilderController::class, 'list'])->name('builds.list');
-        Route::delete('/builds/{build}',   [PcBuilderController::class, 'destroy'])->name('builds.destroy');
-        Route::get('/builds/{build}/pdf', [PcBuilderController::class, 'downloadPdf'])->name('builds.pdf');
-        Route::post('/preview-pdf', [PcBuilderController::class, 'previewPdf']);
+        /*
+        |--------------------------------------------------------------------------
+        | pc-builder
+        |--------------------------------------------------------------------------
+        */
+        Route::prefix('pc-builder')->name('pc-builder.')->group(function () {
+            Route::get('/',            [PcBuilderController::class, 'index'])->name('index');
+            Route::get('/compatible',  [PcBuilderController::class, 'getCompatible'])->name('compatible');
+
+            // Tambah ini:
+            Route::post('/builds',            [PcBuilderController::class, 'store'])->name('builds.store');
+            Route::get('/builds/list',        [PcBuilderController::class, 'list'])->name('builds.list');
+            Route::delete('/builds/{build}',   [PcBuilderController::class, 'destroy'])->name('builds.destroy');
+            Route::get('/builds/{build}/pdf', [PcBuilderController::class, 'downloadPdf'])->name('builds.pdf');
+            Route::post('/preview-pdf', [PcBuilderController::class, 'previewPdf']);
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Setting
+        |--------------------------------------------------------------------------
+        */
+        Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+        Route::post('/settings/midtrans', [SettingsController::class, 'saveMidtrans'])->name('settings.midtrans.save');
+        Route::get('/settings/midtrans-test', [SettingsController::class, 'testConnection'])->name('settings.midtrans.test');
     });
-
-    /*
-    |--------------------------------------------------------------------------
-    | Setting
-    |--------------------------------------------------------------------------
-    */
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
-    Route::post('/settings/midtrans', [SettingsController::class, 'saveMidtrans'])->name('settings.midtrans.save');
-    Route::get('/settings/midtrans-test', [SettingsController::class, 'testConnection'])->name('settings.midtrans.test');
 
     /*
     |--------------------------------------------------------------------------
