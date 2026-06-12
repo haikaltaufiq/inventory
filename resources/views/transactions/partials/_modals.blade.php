@@ -189,13 +189,17 @@
                                 <option value="Quotation">Quotation</option>
                                 <option value="DO">Delivery Order</option>
                             </select>
-                            <p class="mt-2 text-xs text-slate-400">Dokumen PDF akan otomatis diunduh setelah transaksi
-                                berhasil disimpan.</p>
+                            <p class="mt-2 text-xs text-slate-400"
+                                x-text="transactionData.type === 'Invoice'
+                                    ? 'Dokumen PDF akan otomatis diunduh setelah transaksi berhasil disimpan.'
+                                    : 'Dokumen PDF akan langsung diunduh tanpa menyimpan transaksi.'">
+                            </p>
                         </div>
 
                         
                     </div>
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                    <div x-show="transactionData.type === 'Invoice'" x-cloak
+                        class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                             <label class="text-sm font-medium text-slate-600">Metode Pembayaran</label>
                             <select x-model="transactionData.paymentMethod"
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
@@ -264,7 +268,7 @@
 
                     <button @click="submitOrder()"
                         class="mt-5 w-full rounded-xl bg-slate-900 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800">
-                        Simpan Transaksi
+                        <span x-text="documentActionLabel"></span>
                     </button>
                 </div>
             </div>

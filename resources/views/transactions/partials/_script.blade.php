@@ -138,6 +138,12 @@
                     return Math.max(0, this.subtotal + this.totalChargeAmount - this.discountAmount);
                 },
 
+                get documentActionLabel() {
+                    if (this.transactionData.type === 'Quotation') return 'Export Quotation';
+                    if (this.transactionData.type === 'DO') return 'Export Delivery Order';
+                    return 'Simpan Transaksi';
+                },
+
                 // === HELPER: NUMBER FORMAT ===
                 formatNumber(n) {
                     return new Intl.NumberFormat('id-ID').format(Number(n) || 0);
@@ -523,6 +529,11 @@
                         }))
                     };
 
+                    if (this.transactionData.type !== 'Invoice') {
+                        await this.exportDraftDocument(payload);
+                        return;
+                    }
+
                     try {
                         const response = await fetch("{{ route('transactions.store') }}", {
                             method: 'POST',
@@ -563,6 +574,44 @@
 
                     } catch (error) {
                         console.error('submitOrder error:', error);
+                        alert('Tidak dapat terhubung ke server.');
+                    }
+                },
+
+                async exportDraftDocument(payload) {
+                    try {
+                        const response = await fetch("{{ route('transactions.export-document') }}", {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json, application/pdf'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            const result = await response.json().catch(() => ({}));
+                            alert('Gagal: ' + (result.message || 'Terjadi kesalahan.'));
+                            return;
+                        }
+
+                        const blob = await response.blob();
+                        const disposition = response.headers.get('Content-Disposition') || '';
+                        const fileNameMatch = disposition.match(/filename="?([^"]+)"?/);
+                        const fileName = fileNameMatch?.[1] || `${this.transactionData.type.toLowerCase()}-${Date.now()}.pdf`;
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        window.URL.revokeObjectURL(url);
+                        closeModal('modalCheckout');
+                    } catch (error) {
+                        console.error('exportDraftDocument error:', error);
                         alert('Tidak dapat terhubung ke server.');
                     }
                 },

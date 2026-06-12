@@ -99,6 +99,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/products/list', [TransactionController::class, 'products'])->name('products');
         // Route::get('/create', [TransactionController::class, 'create'])->name('create');
         Route::post('/', [TransactionController::class, 'store'])->name('store');
+        Route::post('/export-document', [TransactionController::class, 'exportDraftDocument'])->name('export-document');
         Route::get('/{transaction}/document/{type}', [TransactionController::class, 'downloadDocument'])->name('document');
         Route::post('/{transaction}/desc', [TransactionController::class, 'updateDesc'])->name('updateDesc');
         Route::post('/{transaction}/warranty', [TransactionController::class, 'updateWarranty'])->name('updateWarranty');
