@@ -81,6 +81,21 @@ class SpecValuePresetController extends Controller
         return back()->with('success', 'Preset nilai berhasil dihapus.');
     }
 
+    /**
+     * Route: POST /spec-presets/import
+     * Import nilai dari produk yang sudah ada ke preset.
+     * Di arsitektur baru semua spec produk sudah tersimpan sebagai preset via pivot,
+     * sehingga method ini tidak melakukan apa-apa selain redirect balik.
+     */
+    public function importFromProducts(Request $request)
+    {
+        $request->validate([
+            'spec_key' => 'required|string|max:100',
+        ]);
+
+        return back()->with('success', 'Nilai sudah tersimpan sebagai preset.');
+    }
+
     // -------------------------------------------------------------------------
 
     private function collectAllFields(array $config): array

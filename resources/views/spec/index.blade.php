@@ -77,15 +77,15 @@
                             </div>
                         </div>
                         {{-- Import dari produk (kalau ada) --}}
-                        @if (!empty($section['product_values']))
+                        @if (!empty($section['product_values'] ?? []))
                             <form action="{{ route('spec-presets.import') }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="spec_key" value="{{ $section['key'] }}">
                                 <button type="submit"
                                     class="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-700 transition hover:bg-amber-100"
-                                    title="Import {{ count($section['product_values']) }} nilai dari produk yang sudah ada">
+                                    title="Import {{ count($section['product_values'] ?? []) }} nilai dari produk yang sudah ada">
                                     <i class="fas fa-download text-[10px]"></i>
-                                    Import {{ count($section['product_values']) }}
+                                    Import {{ count($section['product_values'] ?? []) }}
                                 </button>
                             </form>
                         @endif
@@ -124,12 +124,12 @@
                         @endif
 
                         {{-- Product values (belum jadi preset) --}}
-                        @if (!empty($section['product_values']))
+                        @if (!empty($section['product_values'] ?? []))
                             <div class="mt-3 border-t border-dashed border-slate-200 pt-3">
                                 <p class="mb-2 text-[10px] uppercase tracking-[0.14em] text-amber-600">Dari produk (belum
                                     preset)</p>
                                 <div class="flex flex-wrap gap-1.5">
-                                    @foreach ($section['product_values'] as $value)
+                                    @foreach ($section['product_values'] ?? [] as $value)
                                         <span
                                             class="rounded-full border border-dashed border-amber-300 bg-amber-50 px-2.5 py-1 text-[12px] text-amber-700">
                                             {{ $value }}
@@ -188,8 +188,8 @@
                     const inLabel = section.label.toLowerCase().includes(q);
                     const inCategory = section.category.toLowerCase().includes(q);
                     const inValues = [
-                        ...section.presets.map(p => p.value.toLowerCase()),
-                        ...section.product_values.map(v => v.toLowerCase()),
+                        ...(section.presets || []).map(p => p.value.toLowerCase()),
+                        ...(section.product_values || []).map(v => v.toLowerCase()),
                     ].some(v => v.includes(q));
 
                     return inKey || inLabel || inCategory || inValues;

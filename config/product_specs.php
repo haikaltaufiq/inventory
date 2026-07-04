@@ -569,6 +569,47 @@ return [
             ],
         ],
 
+        // =====================================================================
+        // LAPTOP
+        //
+        // Spesifikasi utama laptop: Processor, RAM, Storage, GPU.
+        // Laptop adalah produk all-in-one sehingga field-field ini
+        // berfungsi sebagai informasi, bukan untuk simulasi rakit PC.
+        // =====================================================================
+        'laptop' => [
+            'labels' => ['Laptop'],
+            'fields' => [
+                [
+                    'key'         => 'laptop_processor',
+                    'label'       => 'Processor',
+                    'placeholder' => 'Intel Core i7-13700H / AMD Ryzen 5 7535HS',
+                    'hint'        => 'Opsional. Nama atau seri prosesor laptop.',
+                    'lookup_keys' => ['laptop_processor', 'processor', 'Processor', 'cpu'],
+                ],
+                [
+                    'key'         => 'laptop_ram',
+                    'label'       => 'RAM',
+                    'placeholder' => '8GB / 16GB DDR5',
+                    'hint'        => 'Opsional. Kapasitas dan tipe RAM laptop.',
+                    'lookup_keys' => ['laptop_ram', 'ram', 'RAM', 'memory'],
+                ],
+                [
+                    'key'         => 'laptop_storage',
+                    'label'       => 'Storage',
+                    'placeholder' => '512GB NVMe SSD / 1TB SSD',
+                    'hint'        => 'Opsional. Kapasitas dan tipe storage laptop.',
+                    'lookup_keys' => ['laptop_storage', 'storage', 'Storage', 'ssd', 'hdd'],
+                ],
+                [
+                    'key'         => 'laptop_gpu',
+                    'label'       => 'GPU',
+                    'placeholder' => 'NVIDIA RTX 4060 / AMD Radeon RX 7600M',
+                    'hint'        => 'Opsional. GPU diskrit atau integrated yang dipakai laptop.',
+                    'lookup_keys' => ['laptop_gpu', 'gpu', 'GPU', 'vga', 'graphics'],
+                ],
+            ],
+        ],
+
     ], // end categories
 
 ];

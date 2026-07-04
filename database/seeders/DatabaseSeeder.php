@@ -62,6 +62,7 @@ class DatabaseSeeder extends Seeder
             'Thermal Paste',
             'Tools & Cleaning Kit',
             'Gaming Chair & Desk',
+            'Laptop',
             'Lainnya',
         ] as $categoryName) {
             Category::updateOrCreate(['name' => $categoryName]);
@@ -172,6 +173,58 @@ class DatabaseSeeder extends Seeder
 
             // --- interface_type (Storage) ---
             'interface_type' => ['NVME', 'SATA', 'SATA III', 'USB'],
+
+            // --- laptop_processor ---
+            'laptop_processor' => [
+                'Intel Core i3-1215U',
+                'Intel Core i5-12500H',
+                'Intel Core i5-13420H',
+                'Intel Core i7-12700H',
+                'Intel Core i7-13700H',
+                'Intel Core i9-13900H',
+                'AMD Ryzen 5 5600H',
+                'AMD Ryzen 5 7535HS',
+                'AMD Ryzen 7 5800H',
+                'AMD Ryzen 7 7745HX',
+                'AMD Ryzen 9 7945HX',
+            ],
+
+            // --- laptop_ram ---
+            'laptop_ram' => [
+                '8GB DDR4',
+                '8GB DDR5',
+                '16GB DDR4',
+                '16GB DDR5',
+                '32GB DDR4',
+                '32GB DDR5',
+                '64GB DDR5',
+            ],
+
+            // --- laptop_storage ---
+            'laptop_storage' => [
+                '256GB NVMe SSD',
+                '512GB NVMe SSD',
+                '1TB NVMe SSD',
+                '2TB NVMe SSD',
+                '512GB SATA SSD',
+                '1TB SATA SSD',
+                '1TB HDD',
+                '2TB HDD',
+            ],
+
+            // --- laptop_gpu ---
+            'laptop_gpu' => [
+                'Intel Iris Xe Graphics',
+                'AMD Radeon 610M',
+                'AMD Radeon 780M',
+                'NVIDIA GeForce RTX 3050',
+                'NVIDIA GeForce RTX 3060',
+                'NVIDIA GeForce RTX 4050',
+                'NVIDIA GeForce RTX 4060',
+                'NVIDIA GeForce RTX 4070',
+                'AMD Radeon RX 6600M',
+                'AMD Radeon RX 7600M XT',
+            ],
         ];
 
         foreach ($presets as $key => $values) {
