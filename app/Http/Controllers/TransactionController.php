@@ -71,6 +71,13 @@ class TransactionController extends Controller
                     ->with('success', 'Transaksi berhasil disimpan.');
             }
 
+            if ($request->input('transaction_data.type') !== 'Invoice') {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Quotation dan Delivery Order hanya boleh diexport PDF tanpa menyimpan transaksi.',
+                ], 422);
+            }
+
             $transaction = \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
                 $trx = $this->service->storeTransaction($request->validated());
 
@@ -179,6 +186,100 @@ class TransactionController extends Controller
         $fileName = strtolower($typeLabel) . '-' . $transaction->id . '.pdf';
 
         return $pdf->download($fileName);
+    }
+
+    public function exportDraftDocument(TransactionRequest $request)
+    {
+        $validated = $request->validated();
+        $type = data_get($validated, 'transaction_data.type');
+
+        if (!in_array($type, ['Quotation', 'DO'], true)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Export draft hanya tersedia untuk Quotation dan Delivery Order.',
+            ], 422);
+        }
+
+        $transaction = $this->makeDraftTransactionForDocument($validated);
+        $typeLabel = $type === 'DO' ? 'Delivery Order' : 'Quotation';
+        $documentCode = $type === 'DO' ? 'DO' : 'QUOTATION';
+        $isPcBuilder = $transaction->transaction_mode === 'rakit_pc';
+
+        $pdf = Pdf::loadView('transactions.document', [
+            'transaction' => $transaction,
+            'document_type' => $typeLabel,
+            'document_code' => $documentCode,
+            'issued_at' => now(),
+            'isPcBuilder' => $isPcBuilder,
+        ])->setPaper('a4');
+
+        $fileName = strtolower(str_replace(' ', '-', $typeLabel)) . '-' . now()->format('YmdHis') . '.pdf';
+
+        return $pdf->download($fileName);
+    }
+
+    private function makeDraftTransactionForDocument(array $validated): Transaction
+    {
+        $cart = collect($validated['cart']);
+        $subtotal = $cart->sum(fn ($item) => $item['price'] * $item['qty']);
+        $serviceFee = (float) $validated['service_fee'];
+        $installationFee = (float) data_get($validated, 'additional_fees.installation', 0);
+        $serviceLaborFee = (float) data_get($validated, 'additional_fees.service_labor', 0);
+        $discountPercent = min(100, max(0, (float) data_get($validated, 'additional_fees.discount', 0)));
+        $discountFee = round(($subtotal + $serviceFee) * $discountPercent / 100, 2);
+        $type = data_get($validated, 'transaction_data.type', 'Quotation');
+        $mode = data_get($validated, 'transaction_data.transactionMode', 'sparepart');
+
+        $transaction = new Transaction([
+            'sales_name' => data_get($validated, 'transaction_data.sales'),
+            'transaction_mode' => $mode,
+            'subtotal' => $subtotal,
+            'service_fee' => $serviceFee,
+            'installation_fee' => $installationFee,
+            'service_labor_fee' => $serviceLaborFee,
+            'shipping_fee' => 0,
+            'discount_fee' => $discountFee,
+            'marketing_fee' => 0,
+            'final_total' => max(0, $subtotal + $serviceFee - $discountFee),
+            'status' => 'Draft',
+            'type' => $type === 'DO' ? 'Delivery Order' : $type,
+            'transaction_date' => now()->toDateString(),
+        ]);
+        $transaction->id = now()->format('YmdHis');
+
+        $customer = new Customer([
+            'name' => data_get($validated, 'transaction_data.customerName', 'Customer'),
+            'phone' => data_get($validated, 'transaction_data.customerPhone', '-'),
+            'address' => data_get($validated, 'transaction_data.customerAddress', '-'),
+            'email' => '-',
+        ]);
+        $transaction->setRelation('customer', $customer);
+
+        $productNames = Product::query()
+            ->whereIn('id', $cart->pluck('product_id')->all())
+            ->pluck('name', 'id');
+
+        $details = $cart->map(function ($item) use ($productNames) {
+            $product = new Product([
+                'name' => $item['name'] ?? ($productNames[$item['product_id']] ?? 'Item'),
+            ]);
+
+            $detail = new \App\Models\TransactionDetail([
+                'product_id' => $item['product_id'],
+                'supplier_id' => $item['supplier_id'],
+                'product_supplier_id' => $item['product_supplier_id'] ?? null,
+                'quantity' => $item['qty'],
+                'price_at_transaction' => $item['price'],
+                'is_conflict' => (bool) ($item['is_conflict'] ?? false),
+            ]);
+            $detail->setRelation('product', $product);
+
+            return $detail;
+        });
+
+        $transaction->setRelation('details', $details);
+
+        return $transaction;
     }
 
     public function updateDesc(Request $request, Transaction $transaction)
