@@ -10,10 +10,9 @@ done
 echo "✅ MySQL terkoneksi, lanjut migrasi..."
 
 # ── Laravel bootstrap ─────────────────────────────────────────
-php artisan migrate --seed --force || { echo "❌ Migrasi gagal!"; exit 1; }
+php artisan migrate --force || { echo "❌ Migrasi gagal!"; exit 1; }
+php artisan db:seed --force || { echo "❌ Seeder gagal!"; exit 1; }
 
-php artisan config:clear
-php artisan cache:clear
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache

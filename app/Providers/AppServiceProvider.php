@@ -24,7 +24,10 @@ class AppServiceProvider extends ServiceProvider
         Paginator::defaultView('vendor.pagination.table');
         Paginator::defaultSimpleView('vendor.pagination.simple-table');
 
-        if (config('app.env') === 'production') {
+        // Force HTTPS whenever APP_URL is https — works regardless of APP_ENV value.
+        // Also trust Railway's load balancer proxy headers (X-Forwarded-Proto etc.)
+        // so that request()->secure() and URL generation both return correct scheme.
+        if (str_starts_with(config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
     }
