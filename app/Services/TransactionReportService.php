@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Exports\ExportTransactionReport;
+use App\Support\SchemaCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use App\Exports\ExportTransactionReport;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -101,7 +101,7 @@ class TransactionReportService
 
     private function buildTransactionReportLineSubquery(Request $request)
     {
-        $hasPaymentStatus = Schema::hasColumn('transactions', 'payment_status');
+        $hasPaymentStatus = SchemaCache::hasColumn('transactions', 'payment_status');
         $statusSelect = $hasPaymentStatus
             ? DB::raw("CASE WHEN t.payment_status = 'paid' THEN 'Completed' ELSE t.status END as status")
             : 't.status';

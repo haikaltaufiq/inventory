@@ -155,6 +155,11 @@ class TransactionService
                 'transaction_date' => $validated['transaction_date'],
             ]);
 
+            // Decrement stock first so any constraint error rolls back atomically.
+            DB::table('product_supplier')
+                ->where('id', $stockRow->id)
+                ->decrement('stock', $validated['quantity']);
+
             TransactionDetail::create([
                 'transaction_id' => $transaction->id,
                 'product_id' => $validated['product_id'],
@@ -164,10 +169,6 @@ class TransactionService
                 'price_at_transaction' => $price,
                 'is_conflict' => false,
             ]);
-
-            DB::table('product_supplier')
-                ->where('id', $stockRow->id)
-                ->decrement('stock', $validated['quantity']);
 
             return $transaction;
         });

@@ -4,8 +4,8 @@ namespace App\Http\Requests;
 
 use App\Models\Category;
 use App\Models\Supplier;
+use App\Support\SchemaCache;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -124,7 +124,7 @@ class ProductRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $payload = $this->all();
-            $supportsProductSupplierPemodal = $this->supportsProductSupplierPemodalColumn();
+            $supportsProductSupplierPemodal = SchemaCache::productSupplierHasPemodal();
             $category = Category::query()->find($payload['category_id'] ?? null);
             $definition = $this->specDefinitionForCategory($category?->name);
 
@@ -248,17 +248,6 @@ class ProductRequest extends FormRequest
             ->lower()
             ->replaceMatches('/[^a-z0-9]+/', '_')
             ->trim('_');
-    }
-
-    private function supportsProductSupplierPemodalColumn(): bool
-    {
-        static $supportsProductSupplierPemodal;
-
-        if ($supportsProductSupplierPemodal === null) {
-            $supportsProductSupplierPemodal = Schema::hasColumn('product_supplier', 'pemodal_user_id');
-        }
-
-        return $supportsProductSupplierPemodal;
     }
 
     private function nullableTrim(mixed $value): ?string

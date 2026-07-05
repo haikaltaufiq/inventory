@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Support\SchemaCache;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Schema;
 
 class ProductInventoryService
 {
@@ -53,7 +53,7 @@ class ProductInventoryService
                 ->map(fn ($supplier) => [
                     'mode' => 'existing',
                     'supplier_id' => (string) $supplier->id,
-                    'pemodal_user_id' => $this->supportsProductSupplierPemodalColumn()
+                    'pemodal_user_id' => SchemaCache::productSupplierHasPemodal()
                         ? (string) ($supplier->pivot->pemodal_user_id ?? '')
                         : '',
                     'new_supplier_name' => '',
@@ -69,14 +69,4 @@ class ProductInventoryService
         ];
     }
 
-    private function supportsProductSupplierPemodalColumn(): bool
-    {
-        static $supportsProductSupplierPemodal;
-
-        if ($supportsProductSupplierPemodal === null) {
-            $supportsProductSupplierPemodal = Schema::hasColumn('product_supplier', 'pemodal_user_id');
-        }
-
-        return $supportsProductSupplierPemodal;
-    }
 }

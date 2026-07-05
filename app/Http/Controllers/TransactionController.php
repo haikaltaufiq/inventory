@@ -7,14 +7,14 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Repositories\TransactionRepository;
+use App\Services\MidtransService;
 use App\Services\TransactionReportService;
 use App\Services\TransactionService;
-use \App\Services\MidtransService;
+use App\Support\SchemaCache;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class TransactionController extends Controller
 {
@@ -78,16 +78,22 @@ class TransactionController extends Controller
                 ], 422);
             }
 
-            $transaction = \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
-                $trx = $this->service->storeTransaction($request->validated());
+            $transaction = $this->service->storeTransaction($request->validated());
 
-                $paymentMethod = $request->input('transaction_data.paymentMethod', 'midtrans');
-                if ($paymentMethod === 'midtrans') {
-                    $this->midtrans->createSnapToken($trx);
+            // Create the Midtrans Snap token OUTSIDE the DB transaction so that
+            // a Midtrans API failure does not roll back the already-saved record.
+            $paymentMethod = $request->input('transaction_data.paymentMethod', 'midtrans');
+            if ($paymentMethod === 'midtrans') {
+                try {
+                    $this->midtrans->createSnapToken($transaction);
+                } catch (\Throwable $e) {
+                    Log::warning('Snap token creation failed after transaction save', [
+                        'transaction_id' => $transaction->id,
+                        'message'        => $e->getMessage(),
+                    ]);
+                    // Non-fatal: transaction is already stored; token can be re-requested later.
                 }
-
-                return $trx;
-            });
+            }
 
         } catch (ValidationException $exception) {
             throw $exception;
@@ -360,7 +366,7 @@ class TransactionController extends Controller
         if ($transaction->status !== 'Completed') {
             $payload = ['status' => 'Completed'];
 
-            if (Schema::hasColumn('transactions', 'payment_status')) {
+            if (SchemaCache::hasColumn('transactions', 'payment_status')) {
                 $payload['payment_status'] = 'paid';
             }
 

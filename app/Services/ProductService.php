@@ -6,10 +6,10 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Support\CacheVersions;
+use App\Support\SchemaCache;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Cloudinary\Cloudinary;
 use Cloudinary\Configuration\Configuration;
 
@@ -138,7 +138,7 @@ class ProductService
 
     private function syncProductSuppliers(Product $product, array $suppliers): void
     {
-        $supportsProductSupplierPemodal = $this->supportsProductSupplierPemodalColumn();
+        $supportsProductSupplierPemodal = SchemaCache::productSupplierHasPemodal();
         $processedSuppliers = [];
         $existingSuppliers = DB::table('product_supplier')
             ->where('product_id', $product->id)
@@ -275,20 +275,12 @@ class ProductService
         return 'existing';
     }
 
-    private function supportsProductSupplierPemodalColumn(): bool
-    {
-        static $supportsProductSupplierPemodal;
-
-        if ($supportsProductSupplierPemodal === null) {
-            $supportsProductSupplierPemodal = Schema::hasColumn('product_supplier', 'pemodal_user_id');
-        }
-
-        return $supportsProductSupplierPemodal;
-    }
-
     public function forgetProductOptionCaches(): void
     {
         Cache::forget(self::SPEC_OPTIONS_CACHE_KEY);
         Cache::forget('transactions:categories');
+        Cache::forget('products:filter:categories');
+        Cache::forget('products:filter:suppliers');
+        Cache::forget('products:filter:users');
     }
 }

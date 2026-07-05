@@ -4,10 +4,10 @@ namespace App\Services;
 
 use App\Models\Setting;
 use App\Models\Transaction;
+use App\Support\SchemaCache;
 use Midtrans\Config;
 use Midtrans\Snap;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 
 class MidtransService
 {
@@ -17,17 +17,31 @@ class MidtransService
     }
 
     // ─────────────────────────────────────────────
-    // Setup config dari DB setting
+    // Setup config dari DB setting (cached)
     // ─────────────────────────────────────────────
     private function configure(): void
     {
-        $config = Setting::midtransConfig();
+        $config = $this->cachedMidtransConfig();
 
         Config::$serverKey    = $config['server_key'];
         Config::$clientKey    = $config['client_key'];
         Config::$isProduction = $config['is_production'];
         Config::$isSanitized  = true;
         Config::$is3ds        = true;
+    }
+
+    /**
+     * Return Midtrans config from cache so we don't query the DB on every
+     * MidtransService instantiation.  Cache is busted by SettingsController
+     * whenever the keys are saved.
+     */
+    private function cachedMidtransConfig(): array
+    {
+        return \Illuminate\Support\Facades\Cache::remember(
+            'midtrans:config',
+            now()->addMinutes(60),
+            fn () => Setting::midtransConfig()
+        );
     }
 
     // ─────────────────────────────────────────────
@@ -69,7 +83,7 @@ class MidtransService
                 'payment_url' => $snapUrl,
             ];
 
-            if (Schema::hasColumn('transactions', 'payment_status')) {
+            if (SchemaCache::hasColumn('transactions', 'payment_status')) {
                 $updatePayload['payment_status'] = 'pending';
             }
 
@@ -244,7 +258,7 @@ class MidtransService
 
         $payload = ['status' => $dbStatus];
 
-        if (Schema::hasColumn('transactions', 'payment_status')) {
+        if (SchemaCache::hasColumn('transactions', 'payment_status')) {
             $payload['payment_status'] = $paymentStatus;
         }
 

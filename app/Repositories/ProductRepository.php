@@ -3,9 +3,9 @@
 namespace App\Repositories;
 
 use App\Models\Product;
+use App\Support\SchemaCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 
 class ProductRepository
 {
@@ -34,7 +34,7 @@ class ProductRepository
                         'warranty_detail',
                     ];
 
-                    if ($this->supportsProductSupplierPemodalColumn()) {
+                    if (SchemaCache::productSupplierHasPemodal()) {
                         $pivotFields[] = 'pemodal_user_id';
                     }
 
@@ -90,14 +90,4 @@ class ProductRepository
         return $query;
     }
 
-    private function supportsProductSupplierPemodalColumn(): bool
-    {
-        static $supportsProductSupplierPemodal;
-
-        if ($supportsProductSupplierPemodal === null) {
-            $supportsProductSupplierPemodal = Schema::hasColumn('product_supplier', 'pemodal_user_id');
-        }
-
-        return $supportsProductSupplierPemodal;
-    }
 }

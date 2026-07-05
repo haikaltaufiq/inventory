@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Cache;
 
 class CacheVersions
 {
-    private const CATALOG = 'cache_version:catalog';
+    private const CATALOG   = 'cache_version:catalog';
     private const PC_BUILDS = 'cache_version:pc_builds';
 
     public static function catalog(): int
@@ -29,12 +29,20 @@ class CacheVersions
         self::bump(self::PC_BUILDS);
     }
 
+    /**
+     * Atomically increment the version counter.
+     *
+     * Cache::increment() returns false when the key does not exist (for drivers
+     * that don't support atomic increment on a missing key, e.g. file cache).
+     * In that case we initialise with 2 so the version number is always > 0
+     * and distinct from the initial rememberForever value of 1.
+     */
     private static function bump(string $key): void
     {
-        if (! Cache::has($key)) {
-            Cache::forever($key, 1);
-        }
+        $result = Cache::increment($key);
 
-        Cache::increment($key);
+        if ($result === false) {
+            Cache::forever($key, 2);
+        }
     }
 }

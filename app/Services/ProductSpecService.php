@@ -269,8 +269,9 @@ class ProductSpecService
 
     private function matchExistingSpecValue(string $key, string $value): ?string
     {
-        static $allSpecifications;
-        $allSpecifications ??= $this->loadAllSpecifications();
+        // Use loadAllSpecifications() which is properly cache-backed and invalidated
+        // whenever specs change — avoid a raw static that leaks stale data in tests.
+        $allSpecifications = $this->loadAllSpecifications();
 
         $normalizedLookupKeys = $this->lookupKeysForSpecField($key)
             ->map(fn($item) => $this->normalizeIdentifier((string) $item))

@@ -14,6 +14,7 @@ use App\Services\ProductService;
 use App\Services\ProductSpecService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class ProductController extends Controller
 {
@@ -27,20 +28,17 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        $categories = Category::query()
-            ->select('id', 'name')
-            ->orderBy('name')
-            ->get();
+        $categories = Cache::remember('products:filter:categories', now()->addMinutes(30), fn () =>
+            Category::query()->select('id', 'name')->orderBy('name')->get()
+        );
 
-        $suppliers = Supplier::query()
-            ->select('id', 'nama_supplier')
-            ->orderBy('nama_supplier')
-            ->get();
+        $suppliers = Cache::remember('products:filter:suppliers', now()->addMinutes(30), fn () =>
+            Supplier::query()->select('id', 'nama_supplier')->orderBy('nama_supplier')->get()
+        );
 
-        $users = User::query()
-            ->select('id', 'name')
-            ->orderBy('name')
-            ->get();
+        $users = Cache::remember('products:filter:users', now()->addMinutes(30), fn () =>
+            User::query()->select('id', 'name')->orderBy('name')->get()
+        );
 
         $query = $this->productRepository->getForIndex($request);
         $summary = $this->productRepository->getIndexSummary($request);

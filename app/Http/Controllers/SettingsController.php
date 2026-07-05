@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class SettingsController extends Controller
 {
@@ -30,6 +31,9 @@ class SettingsController extends Controller
             'midtrans_client_key' => encrypt($request->midtrans_client_key),
             'midtrans_env'        => $request->midtrans_env,
         ]);
+
+        // Bust the MidtransService config cache so next request picks up new keys.
+        Cache::forget('midtrans:config');
 
         return redirect()->route('settings')->with('success', 'Konfigurasi Midtrans berhasil disimpan.');
     }
