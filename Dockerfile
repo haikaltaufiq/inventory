@@ -42,7 +42,6 @@ RUN chmod -R 775 storage bootstrap/cache public \
     && chown -R www-data:www-data /var/www
 
 EXPOSE 8080
-
 CMD ["sh", "-c", "\
   echo 'Menunggu koneksi ke MySQL di $DB_HOST:$DB_PORT...' && \
   while ! nc -z \"$DB_HOST\" \"$DB_PORT\"; do \
@@ -57,5 +56,5 @@ CMD ["sh", "-c", "\
   php artisan view:cache && \
   php artisan storage:link && \
   echo '🚀 Menjalankan Laravel server...' && \
-  php artisan serve --host=0.0.0.0 --port=8080 \
+  php artisan serve --host=0.0.0.0 --port=$PORT \
 "]
