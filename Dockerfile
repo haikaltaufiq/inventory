@@ -1,66 +1,48 @@
-# ─── Stage 1: Build assets ───────────────────────────────────────────────────
-FROM laravelsail/php83-composer:latest AS builder
+FROM laravelsail/php83-composer:latest
 
-# Install Node.js 20 and build dependencies
+# Switch ke root untuk proses instalasi dependensi sistem
+USER root
+
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
     zip \
     curl \
+    netcat-openbsd \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
     && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 20 resmi dari NodeSource
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /var/www
 
+# Copy manifest file untuk memanfaatkan caching layer Docker
+COPY package*.json composer.json composer.lock ./
+
+# Install dependensi backend dan frontend secara paralel/terpisah
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction \
+    && npm ci
+
+# Copy keseluruhan source code aplikasi
 COPY . .
 
-# Install PHP and JS dependencies, compile Vite assets
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
-    && npm install \
+# Optimasi autoloader Composer dan compile aset Vite
+RUN composer dump-autoload --optimize \
     && npm run build
 
-# ─── Stage 2: Production image ───────────────────────────────────────────────
-FROM php:8.3-fpm
-
-# Install nginx, supervisor, and required PHP extensions
-RUN apt-get update && apt-get install -y \
-    nginx \
-    supervisor \
-    git \
-    unzip \
-    zip \
-    curl \
-    libpng-dev \
-    libonig-dev \
-    libxml2-dev \
-    netcat-openbsd \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /var/www
-
-# Copy application files from builder (including compiled assets)
-COPY --from=builder /var/www .
-
-# Copy nginx and supervisor configuration
-COPY nginx.conf /etc/nginx/sites-available/default
-COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# Set correct permissions
-RUN chmod -R 775 storage bootstrap/cache \
-    && chown -R www-data:www-data storage bootstrap/cache public
-
-# Create supervisor log directory
-RUN mkdir -p /var/log/supervisor
+# Atur permission directory storage, cache, dan public untuk web server
+RUN chmod -R 775 storage bootstrap/cache public \
+    && chown -R www-data:www-data /var/www
 
 EXPOSE 8080
 
-# Run migrations, cache commands, then start nginx + PHP-FPM via supervisor
 CMD ["sh", "-c", "\
   echo 'Menunggu koneksi ke MySQL di $DB_HOST:$DB_PORT...' && \
   while ! nc -z \"$DB_HOST\" \"$DB_PORT\"; do \
@@ -74,6 +56,6 @@ CMD ["sh", "-c", "\
   php artisan route:cache && \
   php artisan view:cache && \
   php artisan storage:link && \
-  echo '🚀 Menjalankan nginx + PHP-FPM via supervisor...' && \
-  exec supervisord -c /etc/supervisor/conf.d/supervisord.conf \
+  echo '🚀 Menjalankan Laravel server...' && \
+  php artisan serve --host=0.0.0.0 --port=8080 \
 "]
