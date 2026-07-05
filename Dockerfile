@@ -1,7 +1,22 @@
-FROM laravelsail/php83-composer:latest
+# ============================================================
+# Stage 1 – Builder: compile frontend assets
+# ============================================================
+FROM node:20-alpine AS builder
 
-# Switch ke root untuk proses instalasi dependensi sistem
-USER root
+WORKDIR /app
+
+# Install Node dependencies first (layer cache)
+COPY package*.json ./
+RUN npm ci
+
+# Copy source and build Vite/Tailwind assets
+COPY . .
+RUN npm run build
+
+# ============================================================
+# Stage 2 – Production: PHP-FPM + nginx + supervisord
+# ============================================================
+FROM php:8.3-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -10,51 +25,46 @@ RUN apt-get update && apt-get install -y \
     zip \
     curl \
     netcat-openbsd \
+    nginx \
+    supervisor \
     libpng-dev \
     libonig-dev \
     libxml2-dev \
     && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 20 resmi dari NodeSource
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/*
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-# Copy manifest file untuk memanfaatkan caching layer Docker
-COPY package*.json composer.json composer.lock ./
+# Install PHP dependencies (layer cache)
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction
 
-# Install dependensi backend dan frontend secara paralel/terpisah
-RUN composer install --no-dev --no-scripts --no-autoloader --no-interaction \
-    && npm ci
-
-# Copy keseluruhan source code aplikasi
+# Copy full application source
 COPY . .
 
-# Optimasi autoloader Composer dan compile aset Vite
-RUN composer dump-autoload --optimize \
-    && npm run build
+# Copy Vite-compiled assets from builder stage
+COPY --from=builder /app/public/build ./public/build
 
-# Atur permission directory storage, cache, dan public untuk web server
+# Finalise Composer autoloader
+RUN composer dump-autoload --optimize
+
+# Set permissions
 RUN chmod -R 775 storage bootstrap/cache public \
     && chown -R www-data:www-data /var/www
 
+# ── nginx configuration ──────────────────────────────────────
+RUN rm -f /etc/nginx/sites-enabled/default
+COPY docker/nginx.conf /etc/nginx/sites-enabled/app.conf
+
+# ── supervisord configuration ────────────────────────────────
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# ── startup script ───────────────────────────────────────────
+COPY docker/start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 EXPOSE 8080
-CMD ["sh", "-c", "\
-  echo 'Menunggu koneksi ke MySQL di $DB_HOST:$DB_PORT...' && \
-  while ! nc -z \"$DB_HOST\" \"$DB_PORT\"; do \
-    echo 'MySQL belum siap, menunggu...' && sleep 5; \
-  done && \
-  echo '✅ MySQL terkoneksi, lanjut migrasi...' && \
-  php artisan migrate --seed --force || { echo '❌ Migrasi gagal!'; exit 1; } && \
-  php artisan config:clear && \
-  php artisan cache:clear && \
-  php artisan config:cache && \
-  php artisan route:cache && \
-  php artisan view:cache && \
-  php artisan storage:link && \
-  echo '🚀 Menjalankan Laravel server...' && \
-  php artisan serve --host=0.0.0.0 --port=$PORT \
-"]
+CMD ["/usr/local/bin/start.sh"]
