@@ -232,7 +232,8 @@ class TransactionController extends Controller
         $installationFee = (float) data_get($validated, 'additional_fees.installation', 0);
         $serviceLaborFee = (float) data_get($validated, 'additional_fees.service_labor', 0);
         $discountPercent = min(100, max(0, (float) data_get($validated, 'additional_fees.discount', 0)));
-        $discountFee = round(($subtotal + $serviceFee) * $discountPercent / 100, 2);
+        $discountBase = $subtotal + max(0, $serviceFee - $installationFee - $serviceLaborFee);
+        $discountFee = round($discountBase * $discountPercent / 100, 2);
         $type = data_get($validated, 'transaction_data.type', 'Quotation');
         $mode = data_get($validated, 'transaction_data.transactionMode', 'sparepart');
 

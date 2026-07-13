@@ -111,10 +111,11 @@
         $installationFee = $transaction->installation_fee ?? 0;
         $serviceLaborFee = $transaction->service_labor_fee ?? 0;
         $discountFee = $transaction->discount_fee ?? 0;
-        $discountBase = $subtotal + $serviceFee;
+        $discountBase = $subtotal + max(0, $serviceFee - $installationFee - $serviceLaborFee);
         $discountPercent = $discountBase > 0 ? round(($discountFee / $discountBase) * 100, 2) : 0;
         $otherFee = max(0, $serviceFee - $installationFee - $serviceLaborFee);
         $finalTotal = $transaction->final_total ?? max(0, $subtotal + $serviceFee - $discountFee);
+        $grandTotal = max(0, $discountBase - $discountFee);
         $showPricing = $document_type !== 'Delivery Order';
         $showItemPricing = $showPricing && empty($isPcBuilder);
     @endphp
@@ -199,23 +200,35 @@
                 <table class="totals">
                     @unless($isPcBuilder)
                         <tr>
-                            <td class="label-cell" style="width: 70%;">Subtotal</td>
+                            <td class="label-cell" style="width: 70%;">SUB TOTAL</td>
                             <td class="value-cell">Rp {{ number_format($subtotal, 0, ',', '.') }}</td>
                         </tr>
-                        <tr>
-                            <td class="label-cell">Service Fee</td>
-                            <td class="value-cell">Rp {{ number_format($serviceFee, 0, ',', '.') }}</td>
-                        </tr>
                     @endunless
+                    @if($isPcBuilder)
+                        <tr>
+                            <td class="label-cell" style="width: 70%;">SUB TOTAL</td>
+                            <td class="value-cell">Rp {{ number_format($discountBase, 0, ',', '.') }}</td>
+                        </tr>
+                    @endif
+                    @if($discountFee > 0)
+                        <tr>
+                            <td class="label-cell">DISC ({{ rtrim(rtrim(number_format($discountPercent, 2, ',', '.'), '0'), ',') }}%)</td>
+                            <td class="value-cell">- Rp {{ number_format($discountFee, 0, ',', '.') }}</td>
+                        </tr>
+                    @endif
+                    <tr>
+                        <td class="label-cell" style="font-weight: 700;">GRAND TOTAL</td>
+                        <td class="value-cell" style="font-size: 14px;">Rp {{ number_format($grandTotal, 0, ',', '.') }}</td>
+                    </tr>
                     @if($installationFee > 0)
                         <tr>
-                            <td class="label-cell">Detail Biaya Instalasi</td>
+                            <td class="label-cell">Biaya Instalasi</td>
                             <td class="value-cell">Rp {{ number_format($installationFee, 0, ',', '.') }}</td>
                         </tr>
                     @endif
                     @if($serviceLaborFee > 0)
                         <tr>
-                            <td class="label-cell">Detail Jasa Layanan</td>
+                            <td class="label-cell">Biaya Jasa</td>
                             <td class="value-cell">Rp {{ number_format($serviceLaborFee, 0, ',', '.') }}</td>
                         </tr>
                     @endif
@@ -225,14 +238,8 @@
                             <td class="value-cell">Rp {{ number_format($otherFee, 0, ',', '.') }}</td>
                         </tr>
                     @endif
-                    @if($discountFee > 0)
-                        <tr>
-                            <td class="label-cell">Diskon Transaksi ({{ rtrim(rtrim(number_format($discountPercent, 2, ',', '.'), '0'), ',') }}%)</td>
-                            <td class="value-cell">- Rp {{ number_format($discountFee, 0, ',', '.') }}</td>
-                        </tr>
-                    @endif
                     <tr>
-                        <td class="label-cell" style="font-weight: 700;">Grand Total</td>
+                        <td class="label-cell" style="font-weight: 700;">Total Tagihan</td>
                         <td class="value-cell" style="font-size: 14px;">Rp {{ number_format($finalTotal, 0, ',', '.') }}</td>
                     </tr>
                 </table>

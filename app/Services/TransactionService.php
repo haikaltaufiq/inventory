@@ -32,7 +32,8 @@ class TransactionService
             $serviceLaborFee = (float) data_get($validated, 'additional_fees.service_labor', 0);
             $discountPercent = min(100, max(0, (float) data_get($validated, 'additional_fees.discount', 0)));
             $serviceFee = (float) $validated['service_fee'];
-            $discountFee = round(($subtotal + $serviceFee) * $discountPercent / 100, 2);
+            $discountBase = $subtotal + max(0, $serviceFee - $installationFee - $serviceLaborFee);
+            $discountFee = round($discountBase * $discountPercent / 100, 2);
 
             $finalTotal = $subtotal + $serviceFee - $discountFee;
 

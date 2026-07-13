@@ -155,7 +155,10 @@ class MidtransService
 
         $discountAmount = (int) ($transaction->discount_fee ?? 0);
         if ($discountAmount > 0) {
-            $discountBase = (float) ($transaction->subtotal ?? 0) + (float) ($transaction->service_fee ?? 0);
+            $discountBase = (float) ($transaction->subtotal ?? 0)
+                + max(0, (float) ($transaction->service_fee ?? 0)
+                    - (float) ($transaction->installation_fee ?? 0)
+                    - (float) ($transaction->service_labor_fee ?? 0));
             $discountPercent = $discountBase > 0 ? round(($discountAmount / $discountBase) * 100, 2) : 0;
             $discountLabel = rtrim(rtrim(number_format($discountPercent, 2, '.', ''), '0'), '.');
 

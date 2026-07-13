@@ -178,7 +178,7 @@
                                 x-model.number="additionalFees.discount" placeholder="0"
                                 class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-slate-400">
                             <p class="mt-2 text-xs text-slate-400">Masukkan persentase. Nominal diskon dihitung dari
-                                subtotal dan biaya tambahan.</p>
+                                subtotal barang, tanpa biaya instalasi dan jasa.</p>
                         </div>
 
                         <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">

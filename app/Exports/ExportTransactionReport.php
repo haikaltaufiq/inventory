@@ -9,11 +9,9 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ExportTransactionReport implements WithMultipleSheets
 {
@@ -52,6 +50,11 @@ class ExportTransactionReport implements WithMultipleSheets
 
 class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
 {
+    private const SUMMARY_ROW = 14;
+    private const SUMMARY_VALUE_ROW = 15;
+    private const HEADING_ROW = 16;
+    private const DATA_START_ROW = 17;
+
     private const HEADINGS = [
         'No',
         'Date',
@@ -62,11 +65,11 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
         'ALAMAT',
         'MODAL',
         'TOTAL MODAL',
+        'SUBTOTAL',
+        'DISC',
         'HARGA JUAL',
         'INSTALL',
         'JASA',
-        'KURIR',
-        'MAKELAR',
         'TOTAL PROFIT',
         'PENJUAL',
         'NATOPC',
@@ -75,13 +78,15 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
     ];
 
     private array $transactionRanges = [];
+    private int $lastDataRow = self::HEADING_ROW;
+    private int $realModalHeaderRow = 0;
+    private int $realModalValueRow = 0;
 
     public function __construct(
         private readonly string $sellerName,
         private readonly Collection $rows,
         private readonly array $filters = []
-    ) {
-    }
+    ) {}
 
     public function title(): string
     {
@@ -101,23 +106,20 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
             ->values();
 
         $summary = $this->buildSummary($transactions);
-        $dataRows = [
-            array_fill(0, 19, null),
-            array_fill(0, 19, null),
-            array_fill(0, 19, null),
-            array_fill(0, 19, null),
-            array_merge(
-                [$this->titleLabel(), null, null, null, null, null],
-                ['MODAL', 'TOTAL MODAL', 'TOTAL OMSET', 'TOTAL INSTALL', 'TOTAL JASA', 'TOTAL ONGKIR', 'TOTAL MARKETING', 'GROSS PROFIT', 'PENJUAL', 'NATOPC', 'PROFIT KOTOR', $summary['gross_profit'], 'persentase %']
-            ),
-            array_merge(
-                array_fill(0, 6, null),
-                [$summary['modal'], $summary['total_modal'], $summary['omset'], $summary['install'], $summary['jasa'], $summary['kurir'], $summary['marketing'], $summary['gross_profit'], $summary['penjual'], $summary['natopc'], null, null, $summary['percent']]
-            ),
-            self::HEADINGS,
-        ];
+        $dataRows = array_fill(0, self::SUMMARY_ROW - 1, array_fill(0, 26, null));
+        $dataRows[] = array_merge(
+            [$this->titleLabel(), null, null, null, null, null, null],
+            ['MODAL', 'TOTAL MODAL', 'TOTAL SUBTOTAL', 'TOTAL DISC', 'TOTAL OMSET', 'TOTAL INSTALL', 'TOTAL JASA', 'GROSS PROFIT', 'PROFIT PENJUAL', 'PROFIT NATOPC', $summary['gross_profit'], 'persentase %'],
+            array_fill(0, 7, null)
+        );
+        $dataRows[] = array_merge(
+            array_fill(0, 7, null),
+            [$summary['modal'], $summary['total_modal'], $summary['subtotal'], $summary['discount'], $summary['omset'], $summary['install'], $summary['jasa'], $summary['gross_profit'], $summary['penjual'], $summary['natopc'], null, $summary['percent']],
+            array_fill(0, 7, null)
+        );
+        $dataRows[] = array_merge(self::HEADINGS, array_fill(0, 7, null));
 
-        $excelRow = 8;
+        $excelRow = self::DATA_START_ROW;
         foreach ($transactions as $index => $transactionRows) {
             $first = $transactionRows->first();
             $count = max(1, $transactionRows->count());
@@ -136,11 +138,11 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
                     $isFirst ? ($row->customer_address ?: '-') : null,
                     (float) ($row->harga_beli ?? 0),
                     $isFirst ? $totals['modal'] : null,
+                    $isFirst ? $totals['subtotal'] : null,
+                    $isFirst ? $totals['discount'] : null,
                     $isFirst ? $totals['selling'] : null,
                     $isFirst ? $totals['install'] : null,
                     $isFirst ? $totals['jasa'] : null,
-                    $isFirst ? $totals['kurir'] : null,
-                    $isFirst ? $totals['marketing'] : null,
                     $isFirst ? $totals['profit'] : null,
                     $isFirst ? $totals['seller'] : null,
                     $isFirst ? $totals['natopc'] : null,
@@ -159,6 +161,17 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
             }
         }
 
+        $this->lastDataRow = max(self::HEADING_ROW, $excelRow - 1);
+        $this->realModalHeaderRow = $this->lastDataRow + 6;
+        $this->realModalValueRow = $this->realModalHeaderRow + 1;
+
+        while (count($dataRows) < $this->realModalHeaderRow - 1) {
+            $dataRows[] = array_fill(0, 26, null);
+        }
+
+        $dataRows[] = array_merge(array_fill(0, 7, null), ['HASIL RILL TOTAL MODAL', null], array_fill(0, 17, null));
+        $dataRows[] = array_merge(array_fill(0, 7, null), [$summary['modal'], $summary['total_modal']], array_fill(0, 17, null));
+
         return $dataRows;
     }
 
@@ -167,23 +180,22 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
-                $lastRow = max(7, $sheet->getHighestRow());
-                $lastCol = 'S';
+                $lastTableRow = max(self::HEADING_ROW, $this->lastDataRow);
 
-                $sheet->mergeCells('A5:F6');
-                $sheet->getStyle('A5:S6')->applyFromArray([
+                $sheet->mergeCells('A14:F15');
+                $sheet->getStyle('A14:S15')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0000FF']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 ]);
 
-                $sheet->getStyle('A7:S7')->applyFromArray([
+                $sheet->getStyle('A16:S16')->applyFromArray([
                     'font' => ['bold' => true, 'color' => ['rgb' => 'FFD966']],
                     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '000000']],
                     'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
                 ]);
 
-                $sheet->getStyle("A5:{$lastCol}{$lastRow}")->applyFromArray([
+                $sheet->getStyle("A14:S{$lastTableRow}")->applyFromArray([
                     'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
                     'borders' => [
                         'allBorders' => [
@@ -193,13 +205,21 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
                     ],
                 ]);
 
-                $sheet->getStyle("A8:{$lastCol}{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $sheet->getStyle("D8:D{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setWrapText(true);
-                $sheet->getStyle("G8:G{$lastRow}")->getAlignment()->setWrapText(true);
-                $sheet->getStyle("S8:S{$lastRow}")->getAlignment()->setWrapText(true);
-                $sheet->getStyle("G6:Q{$lastRow}")->getNumberFormat()->setFormatCode('"Rp"#,##0');
-                $sheet->getStyle("R5:R5")->getNumberFormat()->setFormatCode('"Rp"#,##0');
-                $sheet->getStyle("S6:S6")->getNumberFormat()->setFormatCode('0.00');
+                if ($lastTableRow >= self::DATA_START_ROW) {
+                    $sheet->getStyle("A17:S{$lastTableRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+                    $sheet->getStyle("D17:D{$lastTableRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setWrapText(true);
+                    $sheet->getStyle("G17:G{$lastTableRow}")->getAlignment()->setWrapText(true);
+                    $sheet->getStyle("S17:S{$lastTableRow}")->getAlignment()->setWrapText(true);
+                }
+                $sheet->getStyle("H15:Q{$lastTableRow}")->getNumberFormat()->setFormatCode('"Rp"#,##0');
+                $sheet->getStyle("R14:R14")->getNumberFormat()->setFormatCode('"Rp"#,##0');
+                $sheet->getStyle("S15:S15")->getNumberFormat()->setFormatCode('0.00');
+                $sheet->getStyle("H{$this->realModalValueRow}:I{$this->realModalValueRow}")->getNumberFormat()->setFormatCode('"Rp"#,##0');
+
+                $sheet->mergeCells("H{$this->realModalHeaderRow}:I{$this->realModalHeaderRow}");
+                $sheet->getStyle("H{$this->realModalHeaderRow}:I{$this->realModalValueRow}")->applyFromArray([
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                ]);
 
                 foreach ($this->transactionRanges as [$startRow, $endRow, $isRakitPc]) {
                     $mergedColumns = ['A', 'B', 'E', 'F', 'G', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S'];
@@ -213,42 +233,68 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
                     }
                 }
 
-                foreach ([
-                    'A' => 6,
-                    'B' => 15,
-                    'C' => 18,
-                    'D' => 46,
-                    'E' => 18,
-                    'F' => 14,
-                    'G' => 28,
-                    'H' => 14,
-                    'I' => 14,
-                    'J' => 14,
-                    'K' => 12,
-                    'L' => 12,
-                    'M' => 12,
-                    'N' => 12,
-                    'O' => 14,
-                    'P' => 14,
-                    'Q' => 14,
-                    'R' => 20,
-                    'S' => 24,
-                ] as $column => $width) {
+                foreach (
+                    [
+                        'A' => 6,
+                        'B' => 15,
+                        'C' => 18,
+                        'D' => 46,
+                        'E' => 18,
+                        'F' => 14,
+                        'G' => 28,
+                        'H' => 14,
+                        'I' => 14,
+                        'J' => 14,
+                        'K' => 12,
+                        'L' => 12,
+                        'M' => 12,
+                        'N' => 12,
+                        'O' => 14,
+                        'P' => 14,
+                        'Q' => 14,
+                        'R' => 20,
+                        'S' => 24,
+                        'T' => 4,
+                        'U' => 16,
+                        'V' => 16,
+                        'W' => 16,
+                        'X' => 16,
+                        'Y' => 16,
+                        'Z' => 16,
+                    ] as $column => $width
+                ) {
                     $sheet->getColumnDimension($column)->setWidth($width);
                 }
 
-                for ($row = 8; $row <= $lastRow; $row++) {
-                    $sheet->getRowDimension($row)->setRowHeight(18);
+                if ($lastTableRow >= self::DATA_START_ROW) {
+                    for ($row = self::DATA_START_ROW; $row <= $lastTableRow; $row++) {
+                        $sheet->getRowDimension($row)->setRowHeight(18);
+                    }
                 }
 
-                $sheet->freezePane('A8');
+                foreach (range(14, 24) as $row) {
+                    $sheet->mergeCells("U{$row}:Z{$row}");
+                }
+
+                $sheet->setCellValue('U14', 'RUMUS PERHITUNGAN LAPORAN');
+                $sheet->setCellValue('U16', 'TOTAL MODAL = jumlah modal barang');
+                $sheet->setCellValue('U17', 'SUBTOTAL = harga barang sebelum disc');
+                $sheet->setCellValue('U18', 'DISC = nominal diskon dari subtotal, tidak termasuk install dan jasa');
+                $sheet->setCellValue('U19', 'HARGA JUAL / TOTAL OMSET = SUBTOTAL - DISC');
+                $sheet->setCellValue('U20', 'TOTAL BIAYA JASA = TOTAL INSTALL + TOTAL JASA');
+                $sheet->setCellValue('U21', 'TOTAL PROFIT / GROSS PROFIT = HARGA JUAL - TOTAL MODAL');
+                $sheet->setCellValue('U22', 'PROFIT PENJUAL = TOTAL PROFIT x 70%');
+                $sheet->setCellValue('U23', 'PROFIT NATOPC = TOTAL PROFIT x 30%');
+                $sheet->getStyle('U14:Z24')->applyFromArray([
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+                ]);
             },
         ];
     }
 
     private function buildSummary(Collection $transactions): array
     {
-        $totals = ['modal' => 0, 'selling' => 0, 'install' => 0, 'jasa' => 0, 'kurir' => 0, 'marketing' => 0, 'profit' => 0, 'seller' => 0, 'natopc' => 0];
+        $totals = ['modal' => 0, 'subtotal' => 0, 'discount' => 0, 'selling' => 0, 'install' => 0, 'jasa' => 0, 'profit' => 0, 'seller' => 0, 'natopc' => 0];
 
         foreach ($transactions as $transactionRows) {
             $transactionTotals = $this->transactionTotals($transactionRows);
@@ -260,11 +306,11 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
         return [
             'modal' => $totals['modal'],
             'total_modal' => $totals['modal'],
+            'subtotal' => $totals['subtotal'],
+            'discount' => $totals['discount'],
             'omset' => $totals['selling'],
             'install' => $totals['install'],
             'jasa' => $totals['jasa'],
-            'kurir' => $totals['kurir'],
-            'marketing' => $totals['marketing'],
             'gross_profit' => $totals['profit'],
             'penjual' => $totals['seller'],
             'natopc' => $totals['natopc'],
@@ -276,22 +322,22 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
     {
         $first = $rows->first();
         $modal = $rows->sum(fn($row) => (float) ($row->modal_line ?? 0));
+        $subtotal = $rows->sum(fn($row) => (float) ($row->subtotal_line ?? 0));
+        $discount = $rows->sum(fn($row) => (float) ($row->discount_line ?? 0));
         $selling = $rows->sum(fn($row) => (float) ($row->selling_line ?? 0));
         $install = (float) ($first->installation_fee ?? 0);
         $jasa = (($first->transaction_mode ?? null) === 'rakit_pc')
             ? (float) ($first->service_labor_fee ?? 0)
             : (float) ($first->service_labor_fee ?? $first->service_fee ?? 0);
-        $kurir = (float) ($first->shipping_fee ?? 0);
-        $marketing = (float) ($first->marketing_fee ?? 0);
         $profit = $selling - $modal;
 
         return [
             'modal' => $modal,
+            'subtotal' => $subtotal,
+            'discount' => $discount,
             'selling' => $selling,
             'install' => $install,
             'jasa' => $jasa,
-            'kurir' => $kurir,
-            'marketing' => $marketing,
             'profit' => $profit,
             'seller' => round($profit * 0.70, 2),
             'natopc' => round($profit * 0.30, 2),

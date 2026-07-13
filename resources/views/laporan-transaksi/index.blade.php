@@ -63,22 +63,34 @@
             </form>
         </div>
 
-        <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
             <div class="rounded-2xl bg-white p-5 shadow-sm">
                 <p class="text-sm text-slate-500">Jumlah transaksi</p>
                 <h3 class="mt-1 text-2xl font-semibold text-slate-900">{{ number_format($summary['total_rows']) }}</h3>
             </div>
 
             <div class="rounded-2xl bg-white p-5 shadow-sm">
-                <p class="text-sm text-slate-500">Total Harga Jual</p>
+                <p class="text-sm text-slate-500">Total Subtotal</p>
+                <h3 class="mt-1 text-2xl font-semibold text-slate-900">Rp
+                    {{ number_format($summary['total_subtotal'], 0, ',', '.') }}</h3>
+            </div>
+
+            <div class="rounded-2xl bg-white p-5 shadow-sm">
+                <p class="text-sm text-slate-500">Total Disc</p>
+                <h3 class="mt-1 text-2xl font-semibold text-rose-600">Rp
+                    {{ number_format($summary['total_discount'], 0, ',', '.') }}</h3>
+            </div>
+
+            <div class="rounded-2xl bg-white p-5 shadow-sm">
+                <p class="text-sm text-slate-500">Total Omset</p>
                 <h3 class="mt-1 text-2xl font-semibold text-slate-900">Rp
                     {{ number_format($summary['total_selling'], 0, ',', '.') }}</h3>
             </div>
 
             <div class="rounded-2xl bg-white p-5 shadow-sm">
-                <p class="text-sm text-slate-500">Total Service</p>
+                <p class="text-sm text-slate-500">Total Install + Jasa</p>
                 <h3 class="mt-1 text-2xl font-semibold text-slate-900">Rp
-                    {{ number_format($summary['total_service'], 0, ',', '.') }}</h3>
+                    {{ number_format($summary['total_install'] + $summary['total_jasa'], 0, ',', '.') }}</h3>
             </div>
 
             <div class="rounded-2xl bg-white p-5 shadow-sm">
@@ -90,7 +102,7 @@
 
         <div class="overflow-hidden rounded-2xl bg-white shadow-sm">
             <div class="overflow-x-auto">
-                <table class="min-w-[1900px] w-full text-sm">
+                <table class="min-w-[2150px] w-full text-sm">
                     <thead class="bg-slate-50 text-slate-500">
                         <tr>
                             <th class="px-4 py-4 text-left font-medium">Seller</th>
@@ -102,8 +114,11 @@
                             <th class="px-4 py-4 text-left font-medium">Customer</th>
                             <th class="px-4 py-4 text-left font-medium">Alamat</th>
                             <th class="px-4 py-4 text-right font-medium">Total Modal</th>
-                            <th class="px-4 py-4 text-right font-medium">Total Jual</th>
-                            <th class="px-4 py-4 text-right font-medium">Biaya Tambahan</th>
+                            <th class="px-4 py-4 text-right font-medium">Subtotal</th>
+                            <th class="px-4 py-4 text-right font-medium">Disc</th>
+                            <th class="px-4 py-4 text-right font-medium">Harga Jual</th>
+                            <th class="px-4 py-4 text-right font-medium">Install</th>
+                            <th class="px-4 py-4 text-right font-medium">Jasa</th>
                             <th class="px-4 py-4 text-right font-medium">Profit Kotor</th>
                             <th class="px-4 py-4 text-right font-medium">Penjual</th>
                             <th class="px-4 py-4 text-right font-medium">NATOPC</th>
@@ -182,11 +197,20 @@
                                 </td>
                                 <td class="px-4 py-4 text-right align-top tabular-nums text-slate-900">
                                     <div class="font-semibold">
-                                        Rp {{ number_format((float) $row->selling_total, 0, ',', '.') }}
+                                        Rp {{ number_format((float) $row->subtotal_total, 0, ',', '.') }}
                                     </div>
                                 </td>
+                                <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-rose-600">
+                                    Rp {{ number_format((float) $row->discount_total, 0, ',', '.') }}
+                                </td>
+                                <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-slate-900">
+                                    Rp {{ number_format((float) $row->selling_total, 0, ',', '.') }}
+                                </td>
                                 <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-sky-600">
-                                    Rp {{ number_format((float) $row->service_total, 0, ',', '.') }}
+                                    Rp {{ number_format((float) $row->install_total, 0, ',', '.') }}
+                                </td>
+                                <td class="px-4 py-4 text-right align-top font-semibold tabular-nums text-sky-600">
+                                    Rp {{ number_format((float) $row->jasa_total, 0, ',', '.') }}
                                 </td>
                                 <td
                                     class="px-4 py-4 text-right align-top font-semibold tabular-nums {{ (float) $row->gross_profit_total >= 0 ? 'text-emerald-600' : 'text-rose-600' }}">
@@ -225,7 +249,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="18" class="px-4 py-10 text-center text-sm text-slate-500">
+                                <td colspan="20" class="px-4 py-10 text-center text-sm text-slate-500">
                                     Belum ada data transaksi yang sesuai filter.
                                 </td>
                             </tr>
@@ -302,12 +326,24 @@
                             <span class="font-semibold text-slate-800">${rp(data.modal_total)}</span>
                         </div>
                         <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
-                            <span class="text-slate-600 font-medium">Total Jual</span> 
+                            <span class="text-slate-600 font-medium">Subtotal</span> 
+                            <span class="font-bold text-slate-900">${rp(data.subtotal_total)}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Disc</span> 
+                            <span class="font-bold text-rose-600">${rp(data.discount_total)}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Harga Jual</span> 
                             <span class="font-bold text-slate-900">${rp(data.selling_total)}</span>
                         </div>
                         <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
-                            <span class="text-slate-600 font-medium">Biaya Tambahan</span> 
-                            <span class="font-bold text-sky-600">${rp(data.service_total)}</span>
+                            <span class="text-slate-600 font-medium">Install</span> 
+                            <span class="font-bold text-sky-600">${rp(data.install_total)}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
+                            <span class="text-slate-600 font-medium">Jasa</span> 
+                            <span class="font-bold text-sky-600">${rp(data.jasa_total)}</span>
                         </div>
                         <div class="flex justify-between border-b border-emerald-200/50 pb-1.5">
                             <span class="text-slate-600 font-medium">Profit Kotor</span> 

@@ -130,7 +130,7 @@
 
             get discountAmount() {
                 const discountPct = Math.min(100, Math.max(0, Number(this.additionalFees.discount) || 0));
-                return Math.round((this.subtotal + this.totalChargeAmount) * discountPct / 100);
+                return Math.round((this.subtotal + this.buildMarginAmount) * discountPct / 100);
             },
 
                 // === COMPUTED: FINAL TOTAL (modal + margin + biaya tambahan - diskon) ===

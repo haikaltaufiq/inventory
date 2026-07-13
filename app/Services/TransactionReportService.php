@@ -18,8 +18,11 @@ class TransactionReportService
         $summary = DB::query()
             ->fromSub(clone $reportQuery, 'report_rows')
             ->selectRaw('COUNT(*) as total_rows')
+            ->selectRaw('COALESCE(SUM(subtotal_total), 0) as total_subtotal')
+            ->selectRaw('COALESCE(SUM(discount_total), 0) as total_discount')
             ->selectRaw('COALESCE(SUM(selling_total), 0) as total_selling')
-            ->selectRaw('COALESCE(SUM(service_total), 0) as total_service')
+            ->selectRaw('COALESCE(SUM(install_total), 0) as total_install')
+            ->selectRaw('COALESCE(SUM(jasa_total), 0) as total_jasa')
             ->selectRaw('COALESCE(SUM(gross_profit_total), 0) as total_profit')
             ->first();
 
@@ -33,8 +36,11 @@ class TransactionReportService
             'reportRows' => $reportRows,
             'summary' => [
                 'total_rows' => (int) ($summary->total_rows ?? 0),
+                'total_subtotal' => (float) ($summary->total_subtotal ?? 0),
+                'total_discount' => (float) ($summary->total_discount ?? 0),
                 'total_selling' => (float) ($summary->total_selling ?? 0),
-                'total_service' => (float) ($summary->total_service ?? 0),
+                'total_install' => (float) ($summary->total_install ?? 0),
+                'total_jasa' => (float) ($summary->total_jasa ?? 0),
                 'total_profit' => (float) ($summary->total_profit ?? 0),
             ],
         ];
@@ -89,8 +95,15 @@ class TransactionReportService
                 DB::raw('CASE WHEN SUM(lines.quantity) > 0 THEN SUM(lines.modal_line) / SUM(lines.quantity) ELSE 0 END as modal_price_unit'),
                 DB::raw('CASE WHEN SUM(lines.quantity) > 0 THEN SUM(lines.selling_line) / SUM(lines.quantity) ELSE 0 END as selling_price_unit'),
                 DB::raw('SUM(lines.modal_line) as modal_total'),
+                DB::raw('SUM(lines.subtotal_line) as subtotal_total'),
+                DB::raw('SUM(lines.discount_line) as discount_total'),
                 DB::raw('SUM(lines.selling_line) as selling_total'),
                 DB::raw('SUM(lines.service_line) as service_total'),
+                DB::raw('MAX(lines.installation_fee) as install_total'),
+                DB::raw("CASE MAX(lines.transaction_mode)
+                    WHEN 'rakit_pc' THEN COALESCE(MAX(lines.service_labor_fee), 0)
+                    ELSE COALESCE(MAX(lines.service_labor_fee), MAX(lines.service_fee), 0)
+                END as jasa_total"),
                 DB::raw('SUM(lines.gross_line) as gross_profit_total'),
                 DB::raw('SUM(lines.seller_line) as seller_profit_share'),
                 DB::raw('SUM(lines.natopc_line) as natopc_profit_share'),
@@ -172,30 +185,28 @@ class TransactionReportService
                 END
         END";
 
-        $sellingLineSql = "CASE
-            WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0 THEN
-                ROUND(
-                    ({$baseSellingSql})
-                    - (COALESCE(t.discount_fee, 0) * ({$baseSellingSql}) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0))),
-                    2
-                )
-            ELSE {$baseSellingSql}
-        END";
+        $discountBaseSql = "(COALESCE(t.subtotal, 0) + (CASE WHEN COALESCE(t.service_fee, 0) > (COALESCE(t.installation_fee, 0) + COALESCE(t.service_labor_fee, 0)) THEN COALESCE(t.service_fee, 0) - COALESCE(t.installation_fee, 0) - COALESCE(t.service_labor_fee, 0) ELSE 0 END))";
 
-        $serviceLineSql = "CASE
-            WHEN (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0)) > 0 THEN
-                ROUND(
-                    ({$baseServiceSql})
-                    - (COALESCE(t.discount_fee, 0) * ({$baseServiceSql}) / (COALESCE(t.subtotal, 0) + COALESCE(t.service_fee, 0))),
-                    2
-                )
+        $discountLineSql = "CASE
+            WHEN {$discountBaseSql} > 0 THEN
+                ROUND(COALESCE(t.discount_fee, 0) * ({$baseSellingSql}) / {$discountBaseSql}, 2)
             ELSE 0
         END";
+
+        $sellingLineSql = "CASE
+            WHEN {$discountBaseSql} > 0 THEN
+                ROUND(({$baseSellingSql}) - ({$discountLineSql}), 2)
+            ELSE ROUND({$baseSellingSql}, 2)
+        END";
+
+        $serviceLineSql = "ROUND({$baseServiceSql}, 2)";
 
         $modalLineSql = "(td.quantity * COALESCE(ps.harga_beli, 0))";
         $grossLineSql = "({$sellingLineSql} - {$modalLineSql})";
 
-        $query->selectRaw("{$sellingLineSql} as selling_line")
+        $query->selectRaw("ROUND({$baseSellingSql}, 2) as subtotal_line")
+            ->selectRaw("{$discountLineSql} as discount_line")
+            ->selectRaw("{$sellingLineSql} as selling_line")
             ->selectRaw("{$serviceLineSql} as service_line")
             ->selectRaw("{$grossLineSql} as gross_line")
             ->selectRaw("ROUND(({$grossLineSql} * 0.7), 2) as seller_line")
