@@ -56,33 +56,33 @@
             </form>
         </div>
 
-        <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-5">
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5 lg:p-4 xl:p-5">
                 <p class="text-sm text-slate-500">Pemodal Terdata</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">{{ number_format($summary['total_pemodal']) }}</h3>
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl md:text-2xl lg:text-base xl:text-lg 2xl:text-2xl">{{ number_format($summary['total_pemodal']) }}</h3>
             </div>
 
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5 lg:p-4 xl:p-5">
                 <p class="text-sm text-slate-500">Stock Awal</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">{{ number_format($summary['total_stock_awal']) }}
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl md:text-2xl lg:text-base xl:text-lg 2xl:text-2xl">{{ number_format($summary['total_stock_awal']) }}
                 </h3>
             </div>
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5 lg:p-4 xl:p-5">
                 <p class="text-sm text-slate-500">Terjual</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">{{ number_format($summary['total_terjual']) }}</h3>
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl md:text-2xl lg:text-base xl:text-lg 2xl:text-2xl">{{ number_format($summary['total_terjual']) }}</h3>
             </div>
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5 lg:p-4 xl:p-5">
                 <p class="text-sm text-slate-500">Stock Ready</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">{{ number_format($summary['total_stock_ready']) }}
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl md:text-2xl lg:text-base xl:text-lg 2xl:text-2xl">{{ number_format($summary['total_stock_ready']) }}
                 </h3>
             </div>
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5 lg:p-4 xl:p-5">
                 <p class="text-sm text-slate-500">Total Modal</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">Rp
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl md:text-2xl lg:text-base xl:text-lg 2xl:text-2xl">Rp
                     {{ number_format($summary['total_modal'], 0, ',', '.') }}
                 </h3>
             </div>
