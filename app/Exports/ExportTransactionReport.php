@@ -321,7 +321,7 @@ class TransactionSellerSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
     private function transactionTotals(Collection $rows): array
     {
         $first = $rows->first();
-        $modal = $rows->sum(fn($row) => (float) ($row->modal_line ?? 0));
+        $modal = $rows->sum(fn($row) => (float) ($row->harga_beli ?? 0));
         $subtotal = $rows->sum(fn($row) => (float) ($row->subtotal_line ?? 0));
         $discount = $rows->sum(fn($row) => (float) ($row->discount_line ?? 0));
         $selling = $rows->sum(fn($row) => (float) ($row->selling_line ?? 0));

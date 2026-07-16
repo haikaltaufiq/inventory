@@ -63,40 +63,47 @@
             </form>
         </div>
 
-        <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
                 <p class="text-sm text-slate-500">Jumlah transaksi</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">{{ number_format($summary['total_rows']) }}</h3>
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl lg:text-2xl xl:text-xl 2xl:text-2xl">
+                    {{ number_format($summary['total_rows']) }}
+                </h3>
             </div>
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
                 <p class="text-sm text-slate-500">Total Subtotal</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">Rp
-                    {{ number_format($summary['total_subtotal'], 0, ',', '.') }}</h3>
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl lg:text-2xl xl:text-xl 2xl:text-2xl">
+                    Rp {{ number_format($summary['total_subtotal'], 0, ',', '.') }}
+                </h3>
             </div>
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
                 <p class="text-sm text-slate-500">Total Disc</p>
-                <h3 class="mt-1 text-2xl font-semibold text-rose-600">Rp
-                    {{ number_format($summary['total_discount'], 0, ',', '.') }}</h3>
+                <h3 class="mt-1 text-lg font-semibold text-rose-600 sm:text-xl lg:text-2xl xl:text-xl 2xl:text-2xl">
+                    Rp {{ number_format($summary['total_discount'], 0, ',', '.') }}
+                </h3>
             </div>
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
                 <p class="text-sm text-slate-500">Total Omset</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">Rp
-                    {{ number_format($summary['total_selling'], 0, ',', '.') }}</h3>
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl lg:text-2xl xl:text-xl 2xl:text-2xl">
+                    Rp {{ number_format($summary['total_selling'], 0, ',', '.') }}
+                </h3>
             </div>
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
                 <p class="text-sm text-slate-500">Total Install + Jasa</p>
-                <h3 class="mt-1 text-2xl font-semibold text-slate-900">Rp
-                    {{ number_format($summary['total_install'] + $summary['total_jasa'], 0, ',', '.') }}</h3>
+                <h3 class="mt-1 text-lg font-semibold text-slate-900 sm:text-xl lg:text-2xl xl:text-xl 2xl:text-2xl">
+                    Rp {{ number_format($summary['total_install'] + $summary['total_jasa'], 0, ',', '.') }}
+                </h3>
             </div>
 
-            <div class="rounded-2xl bg-white p-5 shadow-sm">
+            <div class="rounded-2xl bg-white p-4 shadow-sm sm:p-5">
                 <p class="text-sm text-slate-500">Total Profit</p>
-                <h3 class="mt-1 text-2xl font-semibold text-emerald-600">Rp
-                    {{ number_format($summary['total_profit'], 0, ',', '.') }}</h3>
+                <h3 class="mt-1 text-lg font-semibold text-emerald-600 sm:text-xl lg:text-2xl xl:text-xl 2xl:text-2xl">
+                    Rp {{ number_format($summary['total_profit'], 0, ',', '.') }}
+                </h3>
             </div>
         </div>
 
