@@ -18,7 +18,7 @@ class DashboardController extends Controller
         $stats = Cache::remember(
             'dashboard:stats:v' . CacheVersions::catalog(),
             now()->addSeconds(30),
-            fn () => $this->buildStats()
+            fn() => $this->buildStats()
         );
 
         return view('dashboard.index', compact('stats'));
