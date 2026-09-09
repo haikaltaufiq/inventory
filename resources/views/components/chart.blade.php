@@ -147,7 +147,10 @@
                         fontSize: '11px'
                     },
                     y: {
-                        formatter: function(value, { seriesIndex, w }) {
+                        formatter: function(value, {
+                            seriesIndex,
+                            w
+                        }) {
                             const seriesName = (w?.globals?.seriesNames?.[seriesIndex] || '').toLowerCase();
 
                             if (seriesName.includes('revenue') || seriesName.includes('omzet')) {

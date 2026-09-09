@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class CustomerController extends Controller
 {
@@ -16,9 +17,9 @@ class CustomerController extends Controller
 
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%");
             });
         }
 
@@ -41,6 +42,7 @@ class CustomerController extends Controller
         ]);
 
         Customer::create($validated);
+        Cache::forget('transactions:customers');
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer berhasil ditambahkan');
@@ -61,6 +63,7 @@ class CustomerController extends Controller
         ]);
 
         $customer->update($validated);
+        Cache::forget('transactions:customers');
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer berhasil diupdate');
@@ -69,6 +72,7 @@ class CustomerController extends Controller
     public function destroy(Customer $customer)
     {
         $customer->delete();
+        Cache::forget('transactions:customers');
 
         return redirect()->route('customers.index')
             ->with('success', 'Customer berhasil dihapus');

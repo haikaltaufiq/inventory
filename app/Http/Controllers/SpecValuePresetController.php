@@ -19,6 +19,7 @@ class SpecValuePresetController extends Controller
 
         // Semua preset yang tersimpan
         $presets = SpecValuePreset::query()
+            ->withCount('products')
             ->orderBy('spec_key')
             ->orderBy('spec_value')
             ->get()
@@ -39,7 +40,7 @@ class SpecValuePresetController extends Controller
                 'presets'  => $presets->get($key, collect())->map(fn($p) => [
                     'id'            => $p->id,
                     'value'         => $p->spec_value,
-                    'products_count'=> $p->products()->count(), // berapa produk pakai preset ini
+                    'products_count' => (int) $p->products_count,
                 ])->values()->all(),
             ];
         })->values()->all();

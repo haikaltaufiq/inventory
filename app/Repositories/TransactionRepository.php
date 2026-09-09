@@ -14,9 +14,11 @@ use Illuminate\Support\Facades\Cache;
 
 class TransactionRepository
 {
+    private const CUSTOMERS_CACHE_KEY = 'transactions:customers';
+
     public function getSalesUsers(): Collection
     {
-        return Cache::remember('transactions:sales_users', now()->addMinutes(15), fn () => User::query()
+        return Cache::remember('transactions:sales_users', now()->addMinutes(15), fn() => User::query()
             ->select('id', 'name')
             ->orderBy('name')
             ->get());
@@ -24,7 +26,7 @@ class TransactionRepository
 
     public function getCategories(): Collection
     {
-        return Cache::remember('transactions:categories', now()->addMinutes(15), fn () => Category::query()
+        return Cache::remember('transactions:categories', now()->addMinutes(15), fn() => Category::query()
             ->orderBy('name')
             ->get(['id', 'name']));
     }
@@ -37,7 +39,7 @@ class TransactionRepository
 
         return $this->productIndexQuery()
             ->get()
-            ->map(fn (Product $product) => $this->formatProductForIndex($product))
+            ->map(fn(Product $product) => $this->formatProductForIndex($product))
             ->values();
     }
 
@@ -47,7 +49,7 @@ class TransactionRepository
         $query = $this->productIndexQuery();
 
         $ids = collect((array) $request->input('ids', []))
-            ->map(fn ($id) => (int) $id)
+            ->map(fn($id) => (int) $id)
             ->filter()
             ->unique()
             ->values();
@@ -58,7 +60,7 @@ class TransactionRepository
         } else {
             if ($request->filled('category') && $request->input('category') !== 'Semua') {
                 $category = trim((string) $request->input('category'));
-                $query->whereHas('category', fn ($q) => $q->where('name', $category));
+                $query->whereHas('category', fn($q) => $q->where('name', $category));
             }
 
             if ($request->filled('search')) {
@@ -77,7 +79,7 @@ class TransactionRepository
         }
 
         $page = (int) $request->integer('page', 1);
-        $cacheKey = 'transactions:products:v'.CacheVersions::catalog().':'.
+        $cacheKey = 'transactions:products:v' . CacheVersions::catalog() . ':' .
             md5(json_encode([
                 'page' => $page,
                 'per_page' => $perPage,
@@ -86,10 +88,10 @@ class TransactionRepository
                 'search' => trim((string) $request->input('search', '')),
             ]));
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), fn () => $query
+        return Cache::remember($cacheKey, now()->addMinutes(5), fn() => $query
             ->orderBy('products.name')
             ->paginate($perPage)
-            ->through(fn (Product $product) => $this->formatProductForIndex($product)));
+            ->through(fn(Product $product) => $this->formatProductForIndex($product)));
     }
 
     private function productIndexQuery()
@@ -105,7 +107,7 @@ class TransactionRepository
             ])
             ->with([
                 'category:id,name',
-                'specs' => fn ($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
+                'specs' => fn($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
                 'suppliers' => function ($query) {
                     $query
                         ->select('suppliers.id', 'suppliers.nama_supplier')
@@ -119,7 +121,7 @@ class TransactionRepository
     {
         $specs = collect($product->specs)->pluck('spec_value', 'spec_key');
         $specItems = collect($product->specs)
-            ->map(fn ($spec) => [
+            ->map(fn($spec) => [
                 'key' => $spec->spec_key,
                 'value' => $spec->spec_value,
             ])
@@ -127,7 +129,7 @@ class TransactionRepository
             ->all();
 
         $suppliers = collect($product->suppliers)
-            ->map(fn ($supplier) => [
+            ->map(fn($supplier) => [
                 'id' => $supplier->id,
                 'supplier_id' => $supplier->id,
                 'nama_supplier' => $supplier->nama_supplier,
@@ -142,7 +144,7 @@ class TransactionRepository
 
         $basePrice = $suppliers
             ->pluck('pivot.harga_jual_manual')
-            ->filter(fn ($price) => $price !== null)
+            ->filter(fn($price) => $price !== null)
             ->min();
 
         return [
@@ -162,10 +164,20 @@ class TransactionRepository
 
     public function getCustomersForCreate(): Collection
     {
-        return Customer::query()
-            ->select('id', 'name', 'email')
+        return $this->getCustomersForIndex();
+    }
+
+    public function getCustomersForIndex(): Collection
+    {
+        return Cache::remember(self::CUSTOMERS_CACHE_KEY, now()->addMinutes(15), fn() => Customer::query()
+            ->select('id', 'name', 'phone', 'address', 'email')
             ->orderBy('name')
-            ->get();
+            ->get());
+    }
+
+    public function forgetCustomersCache(): void
+    {
+        Cache::forget(self::CUSTOMERS_CACHE_KEY);
     }
 
     public function getProductsForCreate(): Collection

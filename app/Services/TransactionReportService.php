@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Exports\ExportTransactionReport;
+use App\Support\CacheVersions;
 use App\Support\SchemaCache;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -15,16 +17,22 @@ class TransactionReportService
     {
         $reportQuery = $this->buildTransactionReportQuery($request);
 
-        $summary = DB::query()
-            ->fromSub(clone $reportQuery, 'report_rows')
-            ->selectRaw('COUNT(*) as total_rows')
-            ->selectRaw('COALESCE(SUM(subtotal_total), 0) as total_subtotal')
-            ->selectRaw('COALESCE(SUM(discount_total), 0) as total_discount')
-            ->selectRaw('COALESCE(SUM(selling_total), 0) as total_selling')
-            ->selectRaw('COALESCE(SUM(install_total), 0) as total_install')
-            ->selectRaw('COALESCE(SUM(jasa_total), 0) as total_jasa')
-            ->selectRaw('COALESCE(SUM(gross_profit_total), 0) as total_profit')
-            ->first();
+        $summaryCacheKey = 'reports:transactions:summary:v' . CacheVersions::catalog() . ':' . md5(json_encode(
+            $request->only(['date_from', 'date_to', 'search'])
+        ));
+
+        $summary = Cache::remember($summaryCacheKey, now()->addSeconds(30), function () use ($reportQuery) {
+            return DB::query()
+                ->fromSub(clone $reportQuery, 'report_rows')
+                ->selectRaw('COUNT(*) as total_rows')
+                ->selectRaw('COALESCE(SUM(subtotal_total), 0) as total_subtotal')
+                ->selectRaw('COALESCE(SUM(discount_total), 0) as total_discount')
+                ->selectRaw('COALESCE(SUM(selling_total), 0) as total_selling')
+                ->selectRaw('COALESCE(SUM(install_total), 0) as total_install')
+                ->selectRaw('COALESCE(SUM(jasa_total), 0) as total_jasa')
+                ->selectRaw('COALESCE(SUM(gross_profit_total), 0) as total_profit')
+                ->first();
+        });
 
         $reportRows = (clone $reportQuery)
             ->orderByDesc('transaction_date')
@@ -237,7 +245,7 @@ class TransactionReportService
                 't.description',
                 'ps.warranty_detail',
             ])
-            ->when($hasPaymentStatus, fn ($q) => $q->groupBy('t.payment_status'));
+            ->when($hasPaymentStatus, fn($q) => $q->groupBy('t.payment_status'));
 
         if ($request->filled('search')) {
             $search = trim((string) $request->input('search'));
@@ -265,11 +273,11 @@ class TransactionReportService
         }
 
         if ($request->filled('date_from')) {
-            $query->whereDate('t.transaction_date', '>=', $request->input('date_from'));
+            $query->where('t.transaction_date', '>=', $request->input('date_from'));
         }
 
         if ($request->filled('date_to')) {
-            $query->whereDate('t.transaction_date', '<=', $request->input('date_to'));
+            $query->where('t.transaction_date', '<=', $request->input('date_to'));
         }
 
         return $query;

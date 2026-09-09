@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Exports\ExportProductStockReport;
 use App\Models\Category;
 use App\Models\User;
+use App\Support\CacheVersions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,16 +29,22 @@ class ProductReportService
 
         $reportQuery = $this->buildProductStockReportQuery($request);
 
-        $summary = DB::query()
-            ->fromSub(clone $reportQuery, 'report_rows')
-            ->selectRaw('COUNT(*) as total_rows')
-            ->selectRaw('COUNT(DISTINCT pemodal_user_id) as total_pemodal')
-            ->selectRaw('COALESCE(SUM(CASE WHEN pemodal_user_id IS NULL THEN 1 ELSE 0 END), 0) as total_tanpa_pemodal')
-            ->selectRaw('COALESCE(SUM(stock_awal), 0) as total_stock_awal')
-            ->selectRaw('COALESCE(SUM(sold_qty), 0) as total_terjual')
-            ->selectRaw('COALESCE(SUM(stock_ready), 0) as total_stock_ready')
-            ->selectRaw('COALESCE(SUM(total_modal), 0) as total_modal')
-            ->first();
+        $summaryCacheKey = 'reports:products:summary:v' . CacheVersions::catalog() . ':' . md5(json_encode(
+            $request->only(['search', 'category_id', 'pemodal_user_id', 'owner_id'])
+        ));
+
+        $summary = Cache::remember($summaryCacheKey, now()->addSeconds(30), function () use ($reportQuery) {
+            return DB::query()
+                ->fromSub(clone $reportQuery, 'report_rows')
+                ->selectRaw('COUNT(*) as total_rows')
+                ->selectRaw('COUNT(DISTINCT pemodal_user_id) as total_pemodal')
+                ->selectRaw('COALESCE(SUM(CASE WHEN pemodal_user_id IS NULL THEN 1 ELSE 0 END), 0) as total_tanpa_pemodal')
+                ->selectRaw('COALESCE(SUM(stock_awal), 0) as total_stock_awal')
+                ->selectRaw('COALESCE(SUM(sold_qty), 0) as total_terjual')
+                ->selectRaw('COALESCE(SUM(stock_ready), 0) as total_stock_ready')
+                ->selectRaw('COALESCE(SUM(total_modal), 0) as total_modal')
+                ->first();
+        });
 
         $reportRows = (clone $reportQuery)
             ->orderBy('pemodal_users.name')

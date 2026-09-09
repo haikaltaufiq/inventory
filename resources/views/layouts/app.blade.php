@@ -386,10 +386,6 @@
                             </div>
                         </div>
                     </x-modal>
-                    {{-- ApexCharts dulu --}}
-                    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
-
-                    {{-- Baru script dari component --}}
                     @stack('scripts')
                 </div>
             </section>

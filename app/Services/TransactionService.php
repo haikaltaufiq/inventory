@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Support\CacheVersions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -304,6 +305,7 @@ class TransactionService
                 $customer->address = $address;
             }
             $customer->save();
+            Cache::forget('transactions:customers');
 
             return $customer;
         }
@@ -312,12 +314,16 @@ class TransactionService
         $emailBase = $baseName !== '' ? $baseName : 'customer';
         $email = $this->generateUniqueCustomerEmail($emailBase, $phone);
 
-        return Customer::create([
+        $customer = Customer::create([
             'name' => $name !== '' ? $name : 'Customer POS',
             'email' => $email,
             'phone' => $phone !== '' ? $phone : 'N/A-' . now()->format('YmdHis'),
             'address' => $address !== '' ? $address : '-',
         ]);
+
+        Cache::forget('transactions:customers');
+
+        return $customer;
     }
 
     private function generateUniqueCustomerEmail(string $emailBase, string $phone): string

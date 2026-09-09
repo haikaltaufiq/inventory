@@ -52,41 +52,60 @@ class DashboardController extends Controller
             ->select('categories.name')
             ->selectRaw('COALESCE(SUM(product_supplier.stock), 0) as total_stock')
             ->groupBy('categories.id', 'categories.name')
+            ->havingRaw('SUM(product_supplier.stock) > 0')
             ->orderByDesc('total_stock')
+            ->limit(6)
             ->get()
-            ->filter(fn($row) => (int) $row->total_stock > 0)
-            ->take(6)
             ->values();
 
         $inventoryLabels = $inventoryRows->pluck('name')->all();
         $inventorySeries = $inventoryRows->pluck('total_stock')->map(fn($stock) => (int) $stock)->all();
         $inventoryTotalStock = array_sum($inventorySeries);
 
-        $totalTransactions = Transaction::count();
-        $totalRevenue = (float) Transaction::sum('final_total');
-        $totalProducts = Product::count();
+        $transactionStats = Transaction::query()
+            ->selectRaw('COUNT(*) as total_transactions')
+            ->selectRaw('COALESCE(SUM(final_total), 0) as total_revenue')
+            ->selectRaw('SUM(CASE WHEN transaction_date BETWEEN ? AND ? THEN 1 ELSE 0 END) as current_month_transactions', [
+                $currentMonthStart->toDateString(),
+                $currentMonthEnd->toDateString(),
+            ])
+            ->selectRaw('SUM(CASE WHEN transaction_date BETWEEN ? AND ? THEN 1 ELSE 0 END) as previous_month_transactions', [
+                $previousMonthStart->toDateString(),
+                $previousMonthEnd->toDateString(),
+            ])
+            ->selectRaw('COALESCE(SUM(CASE WHEN transaction_date BETWEEN ? AND ? THEN final_total ELSE 0 END), 0) as current_month_revenue', [
+                $currentMonthStart->toDateString(),
+                $currentMonthEnd->toDateString(),
+            ])
+            ->selectRaw('COALESCE(SUM(CASE WHEN transaction_date BETWEEN ? AND ? THEN final_total ELSE 0 END), 0) as previous_month_revenue', [
+                $previousMonthStart->toDateString(),
+                $previousMonthEnd->toDateString(),
+            ])
+            ->first();
+
+        $productStats = Product::query()
+            ->selectRaw('COUNT(*) as total_products')
+            ->selectRaw('SUM(CASE WHEN created_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as current_month_products', [
+                $currentMonthStart,
+                $currentMonthEnd,
+            ])
+            ->selectRaw('SUM(CASE WHEN created_at BETWEEN ? AND ? THEN 1 ELSE 0 END) as previous_month_products', [
+                $previousMonthStart,
+                $previousMonthEnd,
+            ])
+            ->first();
+
+        $totalTransactions = (int) ($transactionStats->total_transactions ?? 0);
+        $totalRevenue = (float) ($transactionStats->total_revenue ?? 0);
+        $totalProducts = (int) ($productStats->total_products ?? 0);
         $lowStockItems = DB::table('product_supplier')->where('stock', '<=', 5)->count();
 
-        $currentMonthTransactions = Transaction::query()
-            ->whereBetween('transaction_date', [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()])
-            ->count();
-        $previousMonthTransactions = Transaction::query()
-            ->whereBetween('transaction_date', [$previousMonthStart->toDateString(), $previousMonthEnd->toDateString()])
-            ->count();
-
-        $currentMonthRevenue = (float) Transaction::query()
-            ->whereBetween('transaction_date', [$currentMonthStart->toDateString(), $currentMonthEnd->toDateString()])
-            ->sum('final_total');
-        $previousMonthRevenue = (float) Transaction::query()
-            ->whereBetween('transaction_date', [$previousMonthStart->toDateString(), $previousMonthEnd->toDateString()])
-            ->sum('final_total');
-
-        $currentMonthProducts = Product::query()
-            ->whereBetween('created_at', [$currentMonthStart, $currentMonthEnd])
-            ->count();
-        $previousMonthProducts = Product::query()
-            ->whereBetween('created_at', [$previousMonthStart, $previousMonthEnd])
-            ->count();
+        $currentMonthTransactions = (int) ($transactionStats->current_month_transactions ?? 0);
+        $previousMonthTransactions = (int) ($transactionStats->previous_month_transactions ?? 0);
+        $currentMonthRevenue = (float) ($transactionStats->current_month_revenue ?? 0);
+        $previousMonthRevenue = (float) ($transactionStats->previous_month_revenue ?? 0);
+        $currentMonthProducts = (int) ($productStats->current_month_products ?? 0);
+        $previousMonthProducts = (int) ($productStats->previous_month_products ?? 0);
 
         $recentTransactions = Transaction::query()
             ->with([

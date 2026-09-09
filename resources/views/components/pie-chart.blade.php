@@ -21,7 +21,7 @@
         ->values();
 @endphp
 
-@if($segments->isEmpty() || $total === 0)
+@if ($segments->isEmpty() || $total === 0)
     <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-7 text-center">
         <p class="text-[13px] font-medium text-slate-700">Belum ada distribusi stok</p>
         <p class="mt-1 text-xs text-slate-500">Chart akan muncul saat data stok kategori tersedia.</p>
@@ -37,15 +37,17 @@
         </div>
 
         <div class="space-y-1.5">
-            @foreach($segments as $segment)
+            @foreach ($segments as $segment)
                 <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-2.5 py-1.5">
                     <div class="flex min-w-0 items-center gap-2.5">
                         <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $segment['color'] }}"></span>
                         <span class="truncate text-[13px] text-slate-700">{{ $segment['label'] }}</span>
                     </div>
                     <div class="text-right">
-                        <div class="text-[13px] font-semibold text-slate-900">{{ number_format($segment['value']) }}</div>
-                        <div class="text-[10px] text-slate-400">{{ rtrim(rtrim(number_format($segment['share'], 1, ',', '.'), '0'), ',') }}%</div>
+                        <div class="text-[13px] font-semibold text-slate-900">{{ number_format($segment['value']) }}
+                        </div>
+                        <div class="text-[10px] text-slate-400">
+                            {{ rtrim(rtrim(number_format($segment['share'], 1, ',', '.'), '0'), ',') }}%</div>
                     </div>
                 </div>
             @endforeach

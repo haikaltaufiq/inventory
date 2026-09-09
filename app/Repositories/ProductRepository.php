@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Support\SchemaCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class ProductRepository
 {
@@ -24,7 +25,7 @@ class ProductRepository
             ])
             ->with([
                 'category:id,name',
-                'specs' => fn ($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
+                'specs' => fn($q) => $q->select('spec_value_presets.id', 'spec_key', 'spec_value'),
                 'suppliers' => function ($query) {
                     $pivotFields = [
                         'condition',
@@ -50,15 +51,22 @@ class ProductRepository
 
     public function getIndexSummary(Request $request): array
     {
-        $summaryRow = $this->applyProductIndexFilters(
-            Product::query()
-                ->leftJoin('product_supplier', 'product_supplier.product_id', '=', 'products.id')
-                ->selectRaw('COUNT(DISTINCT products.id) as total_produk')
-                ->selectRaw('COALESCE(SUM(product_supplier.stock), 0) as total_stok')
-                ->selectRaw('COALESCE(SUM(product_supplier.stock * product_supplier.harga_beli), 0) as nilai_inv')
-                ->selectRaw('COALESCE(SUM(CASE WHEN product_supplier.stock <= 10 THEN 1 ELSE 0 END), 0) as stok_menipis'),
-            $request
-        )->first();
+        $cacheKey = 'products:index:summary:v' . \App\Support\CacheVersions::catalog() . ':' . md5(json_encode([
+            'search' => trim((string) $request->input('search', '')),
+            'category_id' => $request->input('category_id'),
+        ]));
+
+        $summaryRow = Cache::remember($cacheKey, now()->addMinutes(2), function () use ($request) {
+            return $this->applyProductIndexFilters(
+                Product::query()
+                    ->leftJoin('product_supplier', 'product_supplier.product_id', '=', 'products.id')
+                    ->selectRaw('COUNT(DISTINCT products.id) as total_produk')
+                    ->selectRaw('COALESCE(SUM(product_supplier.stock), 0) as total_stok')
+                    ->selectRaw('COALESCE(SUM(product_supplier.stock * product_supplier.harga_beli), 0) as nilai_inv')
+                    ->selectRaw('COALESCE(SUM(CASE WHEN product_supplier.stock <= 10 THEN 1 ELSE 0 END), 0) as stok_menipis'),
+                $request
+            )->first();
+        });
 
         return [
             'total_produk' => (int) ($summaryRow->total_produk ?? 0),
@@ -89,5 +97,4 @@ class ProductRepository
 
         return $query;
     }
-
 }

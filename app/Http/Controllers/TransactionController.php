@@ -29,7 +29,7 @@ class TransactionController extends Controller
     {
         $salesUsers = $this->repository->getSalesUsers();
         $categories = $this->repository->getCategories();
-        $customers = Customer::select('id','name','phone','address')->get();
+        $customers = $this->repository->getCustomersForIndex();
 
         return view('transactions.index', compact('categories', 'salesUsers', 'customers'));
     }
@@ -94,7 +94,6 @@ class TransactionController extends Controller
                     // Non-fatal: transaction is already stored; token can be re-requested later.
                 }
             }
-
         } catch (ValidationException $exception) {
             throw $exception;
         } catch (\Throwable $exception) {
@@ -227,7 +226,7 @@ class TransactionController extends Controller
     private function makeDraftTransactionForDocument(array $validated): Transaction
     {
         $cart = collect($validated['cart']);
-        $subtotal = $cart->sum(fn ($item) => $item['price'] * $item['qty']);
+        $subtotal = $cart->sum(fn($item) => $item['price'] * $item['qty']);
         $serviceFee = (float) $validated['service_fee'];
         $installationFee = (float) data_get($validated, 'additional_fees.installation', 0);
         $serviceLaborFee = (float) data_get($validated, 'additional_fees.service_labor', 0);
@@ -336,7 +335,6 @@ class TransactionController extends Controller
                 'snap_token' => $result['snap_token'],
                 'client_key' => $result['client_key'],
             ]);
-
         } catch (\Throwable $e) {
             Log::error('getSnapToken failed', ['message' => $e->getMessage()]);
 
