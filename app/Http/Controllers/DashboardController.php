@@ -6,12 +6,25 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Transaction;
+use App\Support\CacheVersions;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
+    {
+        $stats = Cache::remember(
+            'dashboard:stats:v' . CacheVersions::catalog(),
+            now()->addSeconds(30),
+            fn () => $this->buildStats()
+        );
+
+        return view('dashboard.index', compact('stats'));
+    }
+
+    private function buildStats(): array
     {
         $currentMonthStart = now()->startOfMonth();
         $currentMonthEnd = now()->endOfMonth();
@@ -198,7 +211,7 @@ class DashboardController extends Controller
             'recent_transactions' => $recentTransactions,
         ];
 
-        return view('dashboard.index', compact('stats'));
+        return $stats;
     }
 
     private function buildDeltaMeta(int|float $currentValue, int|float $previousValue, string $suffix): array
