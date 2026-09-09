@@ -17,7 +17,7 @@ class DashboardController extends Controller
     {
         $stats = Cache::remember(
             'dashboard:stats:v' . CacheVersions::catalog(),
-            now()->addSeconds(30),
+            now()->addMinutes(5),
             fn() => $this->buildStats()
         );
 

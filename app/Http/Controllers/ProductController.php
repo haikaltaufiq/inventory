@@ -122,7 +122,13 @@ class ProductController extends Controller
 
     private function buildAllSpecTemplates(Collection $categories): array
     {
-        $allSpecifications = $this->productSpecService->loadAllSpecifications();
+        $optionKeys = collect(config('product_specs.categories', []))
+            ->flatMap(fn (array $definition) => collect($definition['fields'] ?? [])
+                ->flatMap(fn (array $field) => collect([$field['key']])
+                    ->merge($field['lookup_keys'] ?? [])
+                    ->merge(config('product_specs.compatibility_aliases.' . $field['key'], []))))
+            ->all();
+        $allSpecifications = $this->productSpecService->loadAllSpecifications($optionKeys);
 
         return $categories
             ->mapWithKeys(fn(Category $category) => [

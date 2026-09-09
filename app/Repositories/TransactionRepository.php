@@ -45,7 +45,8 @@ class TransactionRepository
 
     public function getProductsForIndexPage(Request $request): LengthAwarePaginator
     {
-        $perPage = min(120, max(24, (int) $request->integer('per_page', 72)));
+        // Keep the first POS response small; infinite scroll loads the remaining products.
+        $perPage = min(60, max(24, (int) $request->integer('per_page', 36)));
         $query = $this->productIndexQuery();
 
         $ids = collect((array) $request->input('ids', []))

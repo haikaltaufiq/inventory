@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\SpecValuePreset;
+use App\Support\CacheVersions;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -169,12 +170,23 @@ class ProductSpecService
      * SEBELUM: join ProductSpecification + SpecValuePreset (2 sumber).
      * SEKARANG: cukup dari SpecValuePreset saja — satu sumber kebenaran.
      */
-    public function loadAllSpecifications(): Collection
+    public function loadAllSpecifications(?array $specKeys = null): Collection
     {
+        $specKeys = collect($specKeys)
+            ->map(fn ($key) => $this->normalizeIdentifier($key))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+        $cacheKey = self::SPEC_OPTIONS_CACHE_KEY . ':v' . CacheVersions::catalog() . ':' . md5(json_encode($specKeys));
+
         return Cache::remember(
-            self::SPEC_OPTIONS_CACHE_KEY,
+            $cacheKey,
             now()->addMinutes(10),
-            fn() => SpecValuePreset::query()->get(['id', 'spec_key', 'spec_value'])
+            fn () => SpecValuePreset::query()
+                ->when($specKeys !== [], fn ($query) => $query->whereIn('spec_key', $specKeys))
+                ->get(['id', 'spec_key', 'spec_value'])
         );
     }
 

@@ -202,7 +202,7 @@
 
                     const params = new URLSearchParams({
                         page: String(ids.length ? 1 : this.productPage),
-                        per_page: ids.length ? String(Math.max(ids.length, 24)) : '72',
+                        per_page: ids.length ? String(Math.max(ids.length, 24)) : '36',
                     });
 
                     if (ids.length) {
