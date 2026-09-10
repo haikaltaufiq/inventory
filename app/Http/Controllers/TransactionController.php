@@ -29,9 +29,8 @@ class TransactionController extends Controller
     {
         $salesUsers = $this->repository->getSalesUsers();
         $categories = $this->repository->getCategories();
-        $customers = $this->repository->getCustomersForIndex();
 
-        return view('transactions.index', compact('categories', 'salesUsers', 'customers'));
+        return view('transactions.index', compact('categories', 'salesUsers'));
     }
 
     public function products(Request $request)

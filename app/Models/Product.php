@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Support\Facades\Schema;
+use App\Support\SchemaCache;
 
 class Product extends Model
 {
@@ -48,7 +48,7 @@ class Product extends Model
             'entry_date',
         ];
 
-        if (Schema::hasColumn('product_supplier', 'pemodal_user_id')) {
+        if (SchemaCache::productSupplierHasPemodal()) {
             $pivotFields[] = 'pemodal_user_id';
         }
 

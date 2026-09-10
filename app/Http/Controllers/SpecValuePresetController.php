@@ -12,18 +12,30 @@ class SpecValuePresetController extends Controller
 {
     private const SPEC_OPTIONS_CACHE_KEY = 'products.spec_options';
 
-    public function index()
+    public function index(Request $request)
+    {
+        $page = max(1, $request->integer('preset_page', 1));
+        $data = Cache::remember(
+            'spec-presets:sections:v' . CacheVersions::catalog() . ':p' . $page,
+            now()->addMinutes(10),
+            fn () => $this->buildSections($page)
+        );
+
+        return view('spec.index', $data);
+    }
+
+    private function buildSections(int $page): array
     {
         $config    = config('product_specs.categories', []);
         $allFields = $this->collectAllFields($config);
 
         // Semua preset yang tersimpan
-        $presets = SpecValuePreset::query()
+        $presetPage = SpecValuePreset::query()
             ->withCount('products')
             ->orderBy('spec_key')
             ->orderBy('spec_value')
-            ->get()
-            ->groupBy('spec_key');
+            ->paginate(100, ['*'], 'preset_page', $page);
+        $presets = $presetPage->getCollection()->groupBy('spec_key');
 
         // Di arsitektur baru, product_values (nilai di produk yang belum jadi preset)
         // tidak relevan lagi — semua spec produk ADALAH preset via pivot.
@@ -45,9 +57,14 @@ class SpecValuePresetController extends Controller
             ];
         })->values()->all();
 
-        return view('spec.index', [
+        return [
             'sections' => $sections,
-        ]);
+            'presetPagination' => [
+                'current_page' => $presetPage->currentPage(),
+                'last_page' => $presetPage->lastPage(),
+                'total' => $presetPage->total(),
+            ],
+        ];
     }
 
     public function store(Request $request)

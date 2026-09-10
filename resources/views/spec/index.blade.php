@@ -166,6 +166,20 @@
             @endforeach
         </div>
 
+        @if ($presetPagination['last_page'] > 1)
+            <nav class="mt-6 flex items-center justify-between gap-3" aria-label="Halaman preset spesifikasi">
+                <p class="text-xs text-slate-500">{{ number_format($presetPagination['total']) }} preset · Halaman {{ $presetPagination['current_page'] }} dari {{ $presetPagination['last_page'] }}</p>
+                <div class="flex gap-2">
+                    @if ($presetPagination['current_page'] > 1)
+                        <a href="{{ request()->fullUrlWithQuery(['preset_page' => $presetPagination['current_page'] - 1]) }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">Sebelumnya</a>
+                    @endif
+                    @if ($presetPagination['current_page'] < $presetPagination['last_page'])
+                        <a href="{{ request()->fullUrlWithQuery(['preset_page' => $presetPagination['current_page'] + 1]) }}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50">Berikutnya</a>
+                    @endif
+                </div>
+            </nav>
+        @endif
+
         {{-- Empty state --}}
         <div x-show="noResults()" x-cloak class="mt-10 text-center text-sm text-slate-400">
             <i class="fas fa-search mb-2 text-2xl opacity-30"></i>

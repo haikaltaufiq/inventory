@@ -107,10 +107,13 @@
                             <label class="text-sm font-medium mt-3 text-slate-600">Pilih Customer</label>
 
                             <div class="flex gap-2">
-                                <select x-model="selectedCustomerId" @change="selectCustomer"
+                                <input type="search" x-model="customerLookupQuery" @input="queueCustomerLookup"
+                                    placeholder="Cari nama, HP, atau email..."
                                     class="w-full rounded-xl border px-4 py-3 text-sm">
+                                <select x-model="selectedCustomerId" @change="selectCustomer"
+                                    class="w-full rounded-xl border px-4 py-3 text-sm" :disabled="customerLookupQuery.length < 2">
 
-                                    <option value="">-- Customer Baru / Pilih --</option>
+                                    <option value="">-- Pilih hasil pencarian --</option>
 
                                     <template x-for="cust in customers" :key="cust.id">
                                         <option :value="cust.id" x-text="cust.name"></option>

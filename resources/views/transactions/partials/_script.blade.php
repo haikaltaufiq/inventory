@@ -56,7 +56,11 @@
                 modeSwitchWarningOpen: false,
                 pendingTransactionMode: null,
                 // === DATA SOURCES ===
-                customers: @json($customers),
+                // Loaded only after the cashier searches. This keeps the first
+                // document response independent of the total customer count.
+                customers: [],
+                customerLookupQuery: '',
+                customerLookupTimer: null,
                 categories: @json($categories),
                 products: [],
                 productPage: 1,
@@ -202,7 +206,7 @@
 
                     const params = new URLSearchParams({
                         page: String(ids.length ? 1 : this.productPage),
-                        per_page: ids.length ? String(Math.max(ids.length, 24)) : '36',
+                        per_page: ids.length ? String(Math.max(ids.length, 10)) : '10',
                     });
 
                     if (ids.length) {
@@ -242,6 +246,34 @@
 
                     if (missingIds.length) {
                         await this.loadProducts(false, missingIds);
+                    }
+                },
+
+                queueCustomerLookup() {
+                    clearTimeout(this.customerLookupTimer);
+                    const term = String(this.customerLookupQuery || '').trim();
+                    if (term.length < 2) {
+                        this.customers = [];
+                        this.selectedCustomerId = '';
+                        return;
+                    }
+
+                    this.customerLookupTimer = setTimeout(() => this.loadCustomers(term), 250);
+                },
+
+                async loadCustomers(term) {
+                    try {
+                        const response = await fetch(`{{ route('customers.lookup') }}?q=${encodeURIComponent(term)}`, {
+                            headers: { 'Accept': 'application/json' },
+                        });
+                        if (!response.ok) throw new Error(`Server error ${response.status}`);
+                        // Ignore a delayed response for an older search term.
+                        if (term !== String(this.customerLookupQuery || '').trim()) return;
+                        this.customers = await response.json();
+                        this.selectedCustomerId = '';
+                    } catch (error) {
+                        console.error('loadCustomers error:', error);
+                        this.customers = [];
                     }
                 },
 

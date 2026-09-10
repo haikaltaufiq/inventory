@@ -54,6 +54,7 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('products')->name('products.')->group(function () {
         Route::get('/', [ProductController::class, 'index'])->name('index');
+        Route::get('/list', [ProductController::class, 'list'])->name('list');
         Route::get('/spec-options', [ProductController::class, 'specOptions'])->name('spec-options');
         Route::post('/', [ProductController::class, 'store'])->name('store');
         Route::put('/{product}', [ProductController::class, 'update'])->name('update');
@@ -67,6 +68,7 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('customers')->name('customers.')->group(function () {
         Route::get('/', [CustomerController::class, 'index'])->name('index');
+        Route::get('/lookup', [CustomerController::class, 'lookup'])->name('lookup');
         Route::get('/create', [CustomerController::class, 'create'])->name('create');
         Route::post('/', [CustomerController::class, 'store'])->name('store');
         Route::get('/{customer}/edit', [CustomerController::class, 'edit'])->name('edit');

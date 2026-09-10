@@ -8,6 +8,7 @@ class CacheVersions
 {
     private const CATALOG   = 'cache_version:catalog';
     private const PC_BUILDS = 'cache_version:pc_builds';
+    private const CUSTOMERS = 'cache_version:customers';
 
     public static function catalog(): int
     {
@@ -19,6 +20,11 @@ class CacheVersions
         return (int) Cache::rememberForever(self::PC_BUILDS, fn () => 1);
     }
 
+    public static function customers(): int
+    {
+        return (int) Cache::rememberForever(self::CUSTOMERS, fn () => 1);
+    }
+
     public static function bumpCatalog(): void
     {
         self::bump(self::CATALOG);
@@ -27,6 +33,11 @@ class CacheVersions
     public static function bumpPcBuilds(): void
     {
         self::bump(self::PC_BUILDS);
+    }
+
+    public static function bumpCustomers(): void
+    {
+        self::bump(self::CUSTOMERS);
     }
 
     /**

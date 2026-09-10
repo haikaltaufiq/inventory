@@ -28,30 +28,61 @@ class ProductController extends Controller
 
     public function index(Request $request)
     {
-        $categories = Cache::remember('products:filter:categories', now()->addMinutes(30), fn () =>
+        $categories = Cache::remember(
+            'products:filter:categories',
+            now()->addMinutes(30),
+            fn() =>
             Category::query()->select('id', 'name')->orderBy('name')->get()
         );
 
-        $suppliers = Cache::remember('products:filter:suppliers', now()->addMinutes(30), fn () =>
+        $suppliers = Cache::remember(
+            'products:filter:suppliers',
+            now()->addMinutes(30),
+            fn() =>
             Supplier::query()->select('id', 'nama_supplier')->orderBy('nama_supplier')->get()
         );
 
-        $users = Cache::remember('products:filter:users', now()->addMinutes(30), fn () =>
+        $users = Cache::remember(
+            'products:filter:users',
+            now()->addMinutes(30),
+            fn() =>
             User::query()->select('id', 'name')->orderBy('name')->get()
         );
 
-        $query = $this->productRepository->getForIndex($request);
         $summary = $this->productRepository->getIndexSummary($request);
-        $products = $query->paginate(10)->withQueryString();
+
+        $products = $this->productRepository->getForIndex($request)
+            ->paginate(15)
+            ->withQueryString();
+
+        // Kirim row yang sudah dinormalisasi agar pivot supplier terbaca tabel.
+        $productRows = $this->productInventoryService->resolveProductRowsForIndex($products->getCollection());
 
         return view('products.index', [
-            'products' => $products,
-            'summary' => $summary,
             'categories' => $categories,
             'suppliers' => $suppliers,
             'users' => $users,
-            'productRows' => $this->productInventoryService->resolveProductRowsForIndex($products->getCollection()),
-            'specTemplates' => $this->buildAllSpecTemplates($categories),
+            'summary' => $summary,
+            'productRows' => $productRows, // Pass variabel ke view
+            'products' => $products,
+            'specTemplates' => $this->buildSpecTemplateDefinitions($categories),
+        ]);
+    }
+
+    /** Lightweight background feed for the inventory table. */
+    public function list(Request $request)
+    {
+        $products = $this->productRepository->getForIndex($request)
+            ->paginate(15)
+            ->withQueryString();
+
+        return response()->json([
+            'data' => $this->productInventoryService->resolveProductRowsForIndex($products->getCollection()),
+            'summary' => $this->productRepository->getIndexSummary($request),
+            'meta' => [
+                'current_page' => $products->currentPage(),
+                'has_more' => $products->hasMorePages(),
+            ],
         ]);
     }
 
@@ -123,8 +154,8 @@ class ProductController extends Controller
     private function buildAllSpecTemplates(Collection $categories): array
     {
         $optionKeys = collect(config('product_specs.categories', []))
-            ->flatMap(fn (array $definition) => collect($definition['fields'] ?? [])
-                ->flatMap(fn (array $field) => collect([$field['key']])
+            ->flatMap(fn(array $definition) => collect($definition['fields'] ?? [])
+                ->flatMap(fn(array $field) => collect([$field['key']])
                     ->merge($field['lookup_keys'] ?? [])
                     ->merge(config('product_specs.compatibility_aliases.' . $field['key'], []))))
             ->all();
@@ -133,6 +164,15 @@ class ProductController extends Controller
         return $categories
             ->mapWithKeys(fn(Category $category) => [
                 $category->id => $this->buildSpecTemplatePayload($category, $allSpecifications),
+            ])
+            ->all();
+    }
+
+    private function buildSpecTemplateDefinitions(Collection $categories): array
+    {
+        return $categories
+            ->mapWithKeys(fn(Category $category) => [
+                $category->id => $this->buildSpecTemplatePayload($category, collect()),
             ])
             ->all();
     }

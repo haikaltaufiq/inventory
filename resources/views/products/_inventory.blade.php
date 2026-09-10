@@ -186,6 +186,16 @@
         </div>
     </div>
 
+    @if ($products->hasPages())
+        <div class="mt-4 flex items-center justify-between gap-4">
+            <p class="text-xs text-slate-500">
+                Menampilkan {{ $products->firstItem() }}-{{ $products->lastItem() }} dari {{ $products->total() }}
+                produk
+            </p>
+            {{ $products->links() }}
+        </div>
+    @endif
+
     <x-modal id="modal-product-form" title="Form Produk" size="xl">
         <template x-if="formReady && formRow">
             <form id="product-form" :action="productFormAction()" method="POST" enctype="multipart/form-data"
@@ -240,13 +250,14 @@
                         <div>
                             <label
                                 class="mb-1 block text-xs font-medium uppercase tracking-wider text-slate-400">Kategori</label>
-                            <select name="category_id"
-                                x-model="formRow.category_id"
+                            <select name="category_id" x-model="formRow.category_id"
                                 @change="changeCategory(formRow)"
                                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
                                 <option value="">Pilih kategori</option>
                                 @foreach ($categories as $category)
-                                    <option value="{{ $category->id }}" :selected="formRow.category_id == '{{ $category->id }}'">{{ $category->name }}</option>
+                                    <option value="{{ $category->id }}"
+                                        :selected="formRow.category_id == '{{ $category->id }}'">
+                                        {{ $category->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -344,9 +355,13 @@
                                                 class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
                                                 <option value="">Pilih supplier</option>
                                                 @foreach ($suppliers as $supplier)
-                                                     <option value="{{ $supplier->id }}" :selected="supplierRow.supplier_id == '{{ $supplier->id }}'">{{ $supplier->nama_supplier }}</option>
-                                                 @endforeach
-                                                <option value="__new__" :selected="supplierRow.supplier_id === '__new__'">+ Input supplier baru</option>
+                                                    <option value="{{ $supplier->id }}"
+                                                        :selected="supplierRow.supplier_id == '{{ $supplier->id }}'">
+                                                        {{ $supplier->nama_supplier }}</option>
+                                                @endforeach
+                                                <option value="__new__"
+                                                    :selected="supplierRow.supplier_id === '__new__'">+ Input
+                                                    supplier baru</option>
                                             </select>
                                         </div>
 
@@ -383,7 +398,9 @@
                                                     class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
                                                     <option value="">Pilih pemodal</option>
                                                     @foreach ($users as $user)
-                                                        <option value="{{ $user->id }}" :selected="supplierRow.pemodal_user_id == '{{ $user->id }}'">{{ $user->name }}</option>
+                                                        <option value="{{ $user->id }}"
+                                                            :selected="supplierRow.pemodal_user_id == '{{ $user->id }}'">
+                                                            {{ $user->name }}</option>
                                                     @endforeach
                                                 </select>
                                             </div>
@@ -393,9 +410,13 @@
                                                 <select :name="`suppliers[${supplierIndex}][condition]`"
                                                     x-model="supplierRow.condition"
                                                     class="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-slate-400">
-                                                    <option value="New" :selected="supplierRow.condition === 'New'">New</option>
-                                                    <option value="Used" :selected="supplierRow.condition === 'Used'">Used</option>
-                                                    <option value="Refurbished" :selected="supplierRow.condition === 'Refurbished'">Refurbished</option>
+                                                    <option value="New"
+                                                        :selected="supplierRow.condition === 'New'">New</option>
+                                                    <option value="Used"
+                                                        :selected="supplierRow.condition === 'Used'">Used</option>
+                                                    <option value="Refurbished"
+                                                        :selected="supplierRow.condition === 'Refurbished'">
+                                                        Refurbished</option>
                                                 </select>
                                             </div>
                                             <div>
@@ -489,7 +510,9 @@
                                                 <option value="">Pilih value</option>
                                                 <template x-for="option in specSelectOptions(formRow, field.key)"
                                                     :key="`form-detail-${field.key}-${option}`">
-                                                    <option :value="option" x-text="option" :selected="option === formRow.specs[field.key]?.value"></option>
+                                                    <option :value="option" x-text="option"
+                                                        :selected="option === formRow.specs[field.key]?.value">
+                                                    </option>
                                                 </template>
                                             </select>
                                         </div>
@@ -546,7 +569,9 @@
                                                         x-text="`${knownKey.label} - ${knownKey.key}`"
                                                         :selected="knownKey.key === extraSpec._selectedKey"></option>
                                                 </template>
-                                                <option value="__custom__" :selected="extraSpec._selectedKey === '__custom__'">Lainnya (tulis sendiri)</option>
+                                                <option value="__custom__"
+                                                    :selected="extraSpec._selectedKey === '__custom__'">Lainnya (tulis
+                                                    sendiri)</option>
                                             </select>
                                             <input x-show="extraSpec._selectedKey === '__custom__'" x-cloak
                                                 :disabled="extraSpec._selectedKey !== '__custom__'"
@@ -768,5 +793,4 @@
         </template>
     </x-modal>
 
-    <div class="mt-6">{{ $products->links() }}</div>
 </div>
