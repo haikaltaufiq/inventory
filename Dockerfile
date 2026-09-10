@@ -1,55 +1,59 @@
-FROM laravelsail/php83-composer:latest
+# Stage 1: Build Frontend Assets
+FROM node:20-alpine AS frontend-builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
 
-# Install dependency
-RUN apt-get update && apt-get install -y \
+# Stage 2: Production FrankenPHP Image
+FROM dunglas/frankenphp:latest-php8.3-alpine
+
+# Install system dependencies & PHP extensions
+RUN apk add --no-cache \
     git \
     unzip \
     zip \
     curl \
-    nodejs \
-    npm \
     netcat-openbsd \
     libpng-dev \
-    libonig-dev \
+    libzip-dev \
+    oniguruma-dev \
     libxml2-dev \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd \
-    && rm -rf /var/lib/apt/lists/*
-    
-# Install Node.js 20
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
+    linux-headers \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip
+
+# Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-# Copy seluruh project terlebih dahulu
+# Copy dependency definition & install vendor (Layer Caching)
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --prefer-dist --no-scripts --no-autoloader --no-interaction
+
+# Copy sisa seluruh project
 COPY . .
 
-# Install dependency PHP dan JS
-RUN composer install --no-dev --optimize-autoloader --no-interaction \
-    && npm install \
-    && npm run build \
-    && npm install -g vite
+# Copy hasil build asset dari Stage 1
+COPY --from=frontend-builder /app/public/build ./public/build
+
+# Finish Composer Autoload
+RUN composer dump-autoload --optimize --no-dev
 
 # Set permission
-RUN chmod -R 775 storage bootstrap/cache
+RUN chmod -R 777 storage bootstrap/cache
 
-# Expose port
 EXPOSE 8080
 
-# Jalankan Laravel
 CMD ["sh", "-c", "\
-  echo 'Menunggu koneksi ke MySQL di $DB_HOST:$DB_PORT...' && \
-  while ! nc -z \"$DB_HOST\" \"$DB_PORT\"; do \
-    echo 'MySQL belum siap, menunggu...' && sleep 5; \
+  while ! nc -z \"$DB_HOST\" \"$DB_PORT\" > /dev/null 2>&1; do \
+    sleep 2; \
   done && \
-  echo '✅ MySQL terkoneksi, lanjut migrasi...' && \
-  php artisan migrate --seed --force || { echo '❌ Migrasi gagal!'; exit 1; } && \
-  php artisan config:clear && \
-  php artisan cache:clear && \
+  php artisan migrate --force && \
   php artisan config:cache && \
   php artisan route:cache && \
   php artisan view:cache && \
   php artisan storage:link && \
-  echo '🚀 Menjalankan Laravel server...' && \
-  php artisan serve --host=0.0.0.0 --port=8080 \
+  php artisan octane:start --server=frankenphp --host=0.0.0.0 --port=8080 \
 "]
